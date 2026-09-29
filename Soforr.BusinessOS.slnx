@@ -1,2 +1,8 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Soforr.Api/Soforr.Api.csproj" />
+    <Project Path="src/Soforr.Application/Soforr.Application.csproj" />
+    <Project Path="src/Soforr.Domain/Soforr.Domain.csproj" />
+    <Project Path="src/Soforr.Infrastructure/Soforr.Infrastructure.csproj" />
+  </Folder>
 </Solution>
