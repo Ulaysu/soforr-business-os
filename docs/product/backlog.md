@@ -71,7 +71,7 @@ AI Assistant (EPIC 12)
 - **Testing:** build + format verification; CI green (until FOUNDATION-006 the CI test step passes vacuously because there are no test projects).
 
 ### FOUNDATION-002 — Solution structure and composition roots
-- **Status:** In Review · **Priority:** P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** P0 · **Agent:** Backend
 - **Description:** The four backend projects already exist with the agreed references. Add per-layer registration entry points (`AddApplication()`, `AddInfrastructure(config)`), add a `tests/` solution folder, and wire the composition in `Program.cs`. Keep projects empty of business code.
 - **Acceptance criteria:** Reference graph matches [architecture.md](../architecture/architecture.md#dependency-direction) and ADR 0001 (verified by inspection until FOUNDATION-006 automates it); API starts; `/openapi/v1.json` served in Development.
 - **Dependencies:** none (governed by ADR 0001)
@@ -103,9 +103,9 @@ AI Assistant (EPIC 12)
 - **Testing:** `WebApplicationFactory` tests (no database needed): error response shape, correlation ID propagation, no stack trace leakage. **Approval:** Serilog is in the approved stack.
 
 ### FOUNDATION-006 — Testing infrastructure (unit, architecture, API skeleton)
-- **Status:** Backlog · **Priority:** P0 · **Agent:** QA
+- **Status:** In Review · **Priority:** P0 · **Agent:** QA
 - **Description:** Per [ADR 0005](../decisions/0005-testing-infrastructure.md): create `tests/Soforr.Domain.Tests`, `Soforr.Application.Tests`, `Soforr.Architecture.Tests` (plain reflection over assembly references) and a `Soforr.Api.IntegrationTests` skeleton using `WebApplicationFactory` without a database. CI then runs real tests. Split from the original combined item so it does not wait on PostgreSQL work.
-- **Acceptance criteria:** `dotnet test` runs all projects and executes at least one test in each; architecture tests fail if Domain has any reference, or Application references Infrastructure/Api/Npgsql/ASP.NET Core; demonstrated once with a deliberate violation (then removed).
+- **Acceptance criteria:** `dotnet test` runs all projects and executes at least one test in the Application, Architecture and API projects (`Soforr.Domain.Tests` is created empty and receives its first tests with ORG-001, since Domain has no behavior yet; a placeholder test would be false coverage); architecture tests fail if Domain has any reference, or Application references Infrastructure/Api/Npgsql/ASP.NET Core; demonstrated once with a deliberate violation (then removed).
 - **Dependencies:** FOUNDATION-002; ADR 0005
 - **Affected area:** tests/, CI
 - **Testing:** the tests themselves. Test-only packages: xUnit family, `Microsoft.NET.Test.Sdk`, `Microsoft.AspNetCore.Mvc.Testing`.

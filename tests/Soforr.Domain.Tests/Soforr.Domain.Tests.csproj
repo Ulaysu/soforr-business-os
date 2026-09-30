@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Soforr.Domain\Soforr.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
