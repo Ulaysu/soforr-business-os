@@ -1,0 +1,23 @@
+name: Security hardening
+description: Non-sensitive security work. Report exploitable vulnerabilities privately to the project owner, not here.
+labels: ["security"]
+body:
+  - type: textarea
+    id: concern
+    attributes:
+      label: Concern
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: ["Authentication", "Authorization", "Tenant isolation", "Input validation", "File uploads", "Secrets", "API", "Auditability", "Rate limiting", "AI", "Financial integrity", "Dependencies"]
+  - type: textarea
+    id: mitigation
+    attributes:
+      label: Proposed mitigation
+  - type: textarea
+    id: verification
+    attributes:
+      label: How to verify

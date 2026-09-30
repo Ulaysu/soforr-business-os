@@ -1,0 +1,24 @@
+name: Architecture decision
+description: Propose a decision to record as an ADR (docs/decisions)
+labels: ["architecture", "needs-human-approval"]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed decision
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: consequences
+    attributes:
+      label: Consequences and risks

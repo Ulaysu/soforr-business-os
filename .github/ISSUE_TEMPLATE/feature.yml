@@ -1,0 +1,47 @@
+name: Feature
+description: A backlog item delivering user-visible or business behavior
+labels: ["feature"]
+body:
+  - type: input
+    id: backlog-id
+    attributes:
+      label: Backlog ID
+      description: e.g. CATALOG-003 (see docs/product/backlog.md)
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+    validations:
+      required: true
+  - type: input
+    id: dependencies
+    attributes:
+      label: Dependencies
+  - type: input
+    id: area
+    attributes:
+      label: Affected area / module
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options: ["P0", "P1", "P2"]
+  - type: input
+    id: agent
+    attributes:
+      label: Suggested agent
+  - type: textarea
+    id: testing
+    attributes:
+      label: Testing requirements
+  - type: textarea
+    id: approval
+    attributes:
+      label: Human approval needed?
+      description: See "Human Approval Boundaries" in docs/engineering/development.md

@@ -51,6 +51,15 @@ Product
 → Stock Forecast
 → Reorder Recommendation
 
+## Documentation
+
+- Product: [vision](docs/product/vision.md), [scope](docs/product/scope.md), [roadmap](docs/product/roadmap.md), [backlog](docs/product/backlog.md)
+- Architecture: [architecture](docs/architecture/architecture.md), [modules](docs/architecture/modules.md), [data model](docs/architecture/data-model.md), [AI architecture](docs/architecture/ai-architecture.md)
+- Engineering: [development](docs/engineering/development.md), [testing](docs/engineering/testing.md), [definition of done](docs/engineering/definition-of-done.md)
+- Security: [security](docs/security/security.md), [threat model](docs/security/threat-model.md)
+- Decisions: [ADRs](docs/decisions/README.md)
+- Agent rules: [CLAUDE.md](CLAUDE.md), [AGENTS.md](AGENTS.md)
+
 ## Development Philosophy
 
 The system should prioritize:

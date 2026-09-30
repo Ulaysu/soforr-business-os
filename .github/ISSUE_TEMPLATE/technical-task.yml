@@ -1,0 +1,28 @@
+name: Technical task
+description: Engineering work not tied to user-visible behavior (foundation, refactor, tooling)
+labels: ["technical"]
+body:
+  - type: input
+    id: backlog-id
+    attributes:
+      label: Backlog ID
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+    validations:
+      required: true
+  - type: input
+    id: dependencies
+    attributes:
+      label: Dependencies
+  - type: textarea
+    id: testing
+    attributes:
+      label: Testing requirements

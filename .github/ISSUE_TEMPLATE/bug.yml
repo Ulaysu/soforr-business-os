@@ -1,0 +1,32 @@
+name: Bug
+description: Something behaves incorrectly
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Data-integrity or tenant-isolation impact?
+      options: ["No", "Possible", "Yes"]
+  - type: textarea
+    id: notes
+    attributes:
+      label: Logs / environment
+      description: Do not paste secrets or personal data.
