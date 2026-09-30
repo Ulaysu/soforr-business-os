@@ -717,3 +717,33 @@ Record activity
 The goal is not to give business owners more software to operate.
 
 The goal is to make the business require less manual operation.
+
+# 26. Agent Operating Protocol
+
+Claude should operate as an implementation engineer under the direction of the project owner.
+
+Before making significant changes:
+
+1. Read CLAUDE.md.
+2. Inspect the existing repository.
+3. Understand the relevant architecture.
+4. Identify the affected modules.
+5. State the implementation plan.
+6. Implement the smallest coherent change.
+7. Run relevant tests and builds.
+8. Review the resulting changes.
+9. Report what changed, what was tested, and any remaining concerns.
+
+Claude may autonomously implement routine engineering work that follows the established architecture.
+
+Claude must stop and request approval before making changes listed under "Human Approval Required."
+
+Claude must never silently change product requirements or architectural principles.
+
+When requirements are ambiguous but the ambiguity does not materially affect architecture, security, data integrity, or product behavior, choose the simplest reasonable implementation and document the assumption.
+
+When ambiguity could materially affect architecture, security, financial data, tenant isolation, or product behavior, ask for clarification before proceeding.
+
+Do not hide failed tests, warnings, migrations, security concerns, or incomplete work.
+
+Never claim a feature is complete unless the relevant implementation and verification have actually been performed.
