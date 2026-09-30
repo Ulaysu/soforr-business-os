@@ -5,4 +5,5 @@
     <Project Path="src/Soforr.Domain/Soforr.Domain.csproj" />
     <Project Path="src/Soforr.Infrastructure/Soforr.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/" />
 </Solution>

@@ -63,7 +63,7 @@ AI Assistant (EPIC 12)
 # EPIC 01 — Engineering Foundation
 
 ### FOUNDATION-001 — Repository architecture and standards
-- **Status:** In Review · **Priority:** P0 · **Agent:** Architecture / Backend
+- **Status:** Done · **Priority:** P0 · **Agent:** Architecture / Backend
 - **Description:** Establish repo-wide build conventions: `global.json` pinning the .NET 10 SDK with `rollForward: latestFeature` (developer machines may also have .NET 9 installed; without a pin the SDK in use is implicit), `Directory.Build.props` (nullable, warnings, analyzers, `TreatWarningsAsErrors` for CI), `.editorconfig`, `.gitattributes`, and `Directory.Packages.props` for central package versions. Update `.github/workflows/ci.yml` to use `global-json-file` in `setup-dotnet` and add a `dotnet format --verify-no-changes` step.
 - **Acceptance criteria:** `dotnet build` and `dotnet format --verify-no-changes` pass at the repo root; CI uses the same SDK as `global.json`; package versions live in one place; no behavior changes.
 - **Dependencies:** none
@@ -71,7 +71,7 @@ AI Assistant (EPIC 12)
 - **Testing:** build + format verification; CI green (until FOUNDATION-006 the CI test step passes vacuously because there are no test projects).
 
 ### FOUNDATION-002 — Solution structure and composition roots
-- **Status:** Ready · **Priority:** P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** P0 · **Agent:** Backend
 - **Description:** The four backend projects already exist with the agreed references. Add per-layer registration entry points (`AddApplication()`, `AddInfrastructure(config)`), add a `tests/` solution folder, and wire the composition in `Program.cs`. Keep projects empty of business code.
 - **Acceptance criteria:** Reference graph matches [architecture.md](../architecture/architecture.md#dependency-direction) and ADR 0001 (verified by inspection until FOUNDATION-006 automates it); API starts; `/openapi/v1.json` served in Development.
 - **Dependencies:** none (governed by ADR 0001)
