@@ -11,15 +11,21 @@ permissions:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      CI: true
+      DOTNET_NOLOGO: true
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
 
       - name: Restore
         run: dotnet restore Soforr.BusinessOS.slnx
+
+      - name: Verify formatting
+        run: dotnet format Soforr.BusinessOS.slnx --verify-no-changes --no-restore
 
       - name: Build
         run: dotnet build Soforr.BusinessOS.slnx --no-restore --configuration Release
