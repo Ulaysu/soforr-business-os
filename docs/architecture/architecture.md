@@ -61,6 +61,17 @@ Web            → Api over HTTP only
 - **Money and quantities:** `decimal` with explicit precision in dedicated value objects; currency stored with money. Never floating point.
 - **Persistence:** PostgreSQL via EF Core; schema changes by migrations only.
 
+## Persistence Port
+
+Application reaches the database only through `IAppDbContext` (ADR-0001). Its EF Core dependency is deliberately narrow:
+
+- **Allowed in Application:** the provider-agnostic `Microsoft.EntityFrameworkCore` package: `DbSet<TEntity>`, LINQ over entity sets, and the async query extensions (`ToListAsync`, `FirstOrDefaultAsync`, `AnyAsync`, `Include`, ...). `IAppDbContext` exposes `Set<TEntity>()` and `SaveChangesAsync`; nothing provider-specific.
+- **Not allowed in Application:** any other `Microsoft.EntityFrameworkCore.*` package (Relational, Design, provider packages), Npgsql, ASP.NET Core. As a consequence, relational-only APIs (raw SQL such as `FromSql`/`ExecuteSql`, `Database.Migrate`, `ExecuteUpdate`/`ExecuteDelete`, `EF.Functions` PostgreSQL methods) do not compile in Application. If a use case needs one, it is hidden behind a purpose-built Application port implemented in Infrastructure, not exposed through `IAppDbContext`.
+- **Domain** references nothing; entities are mapped with the Fluent API in Infrastructure.
+- **Infrastructure** owns `AppDbContext`, the Npgsql provider, entity configuration and migrations.
+
+Architecture tests enforce this (`DependencyDirectionTests`, `PersistencePortTests`): declared and compiled references of Application, and the assemblies of every type in the `IAppDbContext` signature.
+
 ## Modules and Data
 
 Modules are folders/namespaces inside the existing projects: [modules.md](modules.md). Data conventions: [data-model.md](data-model.md).

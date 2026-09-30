@@ -79,15 +79,15 @@ AI Assistant (EPIC 12)
 - **Testing:** build; manual start of the API confirmed and reported.
 
 ### FOUNDATION-003 — PostgreSQL and EF Core
-- **Status:** Backlog · **Priority:** P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** P0 · **Agent:** Backend
 - **Description:** Add `docker-compose.yml` with PostgreSQL for local development, EF Core + Npgsql in Infrastructure, an `AppDbContext` implementing an Application-level `IAppDbContext` (ADR 0001), conventions from [data-model.md](../architecture/data-model.md) (UUID keys, UTC timestamps, decimal precision), an initial empty migration, and a database health check.
 - **Acceptance criteria:** `docker compose up` provides a database; migration applies to a clean DB; health check reports DB status; connection string comes from configuration/user-secrets, not source.
 - **Dependencies:** FOUNDATION-001, FOUNDATION-002, FOUNDATION-004; ADR 0001
 - **Affected area:** Infrastructure, Application (`IAppDbContext` port per ADR 0001), Api, repo root
-- **Testing:** integration test applies migrations against real PostgreSQL. **Approval:** adding EF Core/Npgsql are already-approved stack dependencies; no further approval needed.
+- **Testing:** startup/health behavior tests without a database (unreachable database reports unhealthy; missing connection string fails at startup); migration applied manually to a real PostgreSQL from `docker compose` and reported in the PR. The automated migration-apply test needs the Testcontainers harness and is part of FOUNDATION-008 (which depends on this item). **Approval:** adding EF Core/Npgsql are already-approved stack dependencies; no further approval needed.
 
 ### FOUNDATION-004 — Application configuration
-- **Status:** In Review · **Priority:** P0 · **Agent:** Backend / Security
+- **Status:** Done · **Priority:** P0 · **Agent:** Backend / Security
 - **Description:** Typed options with startup validation, environment-specific settings, user-secrets for local secrets, documented configuration keys, and `.env`/secret handling rules.
 - **Acceptance criteria:** Invalid or missing required config fails fast at startup with a clear message; no secrets in tracked files; configuration keys documented in `docs/engineering/development.md`.
 - **Dependencies:** none

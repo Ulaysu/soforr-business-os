@@ -76,6 +76,24 @@ public class DependencyDirectionTests
     }
 
     [Fact]
+    public void Application_DeclaresOnlyTheProviderAgnosticEntityFrameworkCorePackage()
+    {
+        var declared = SolutionLayout.ForProject("Soforr.Application");
+
+        var violations = declared.Packages.Where(IsProviderSpecificEntityFramework).ToArray();
+        Assert.Empty(violations);
+    }
+
+    [Fact]
+    public void Application_AssemblyReferencesOnlyTheProviderAgnosticEntityFrameworkCore()
+    {
+        var referenced = ReferencedAssemblyNames("Soforr.Application");
+
+        var violations = referenced.Where(IsProviderSpecificEntityFramework).ToArray();
+        Assert.Empty(violations);
+    }
+
+    [Fact]
     public void Infrastructure_AssemblyDoesNotReferenceApi()
     {
         var referenced = ReferencedAssemblyNames("Soforr.Infrastructure");
@@ -85,6 +103,14 @@ public class DependencyDirectionTests
 
     private static string[] ReferencedAssemblyNames(string assemblyName) =>
         Assembly.Load(assemblyName).GetReferencedAssemblies().Select(a => a.Name!).ToArray();
+
+    /// <summary>
+    /// ADR-0001 allows Application to use Microsoft.EntityFrameworkCore only. Every other Microsoft.EntityFrameworkCore.*
+    /// package (Relational, Design, SqlServer, Sqlite, ...) is provider-specific or tooling and belongs in Infrastructure.
+    /// </summary>
+    internal static bool IsProviderSpecificEntityFramework(string name) =>
+        name.StartsWith("Microsoft.EntityFrameworkCore.", StringComparison.Ordinal)
+        && !name.Equals("Microsoft.EntityFrameworkCore.Abstractions", StringComparison.Ordinal);
 
     private static bool StartsWithAny(string name, string[] prefixes) =>
         prefixes.Any(prefix => name.StartsWith(prefix, StringComparison.Ordinal));

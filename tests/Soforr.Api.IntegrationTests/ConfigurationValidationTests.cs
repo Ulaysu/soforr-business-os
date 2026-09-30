@@ -45,7 +45,7 @@ public class ConfigurationValidationTests
     }
 
     private static WebApplicationFactory<Program> CreateFactory(Dictionary<string, string?> settings) =>
-        new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        new ApiFactory().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Development");
             builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(settings));

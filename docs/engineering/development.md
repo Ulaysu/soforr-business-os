@@ -112,13 +112,22 @@ Configuration is bound to typed options classes and validated when the host star
 
 | Key | Required | Secret | Description |
 |---|---|---|---|
-| _none yet_ | | | The first keys arrive with FOUNDATION-003 (database connection). |
+| `ConnectionStrings:Database` | yes | **yes** | PostgreSQL connection string (Npgsql format). Application fails at startup if missing. |
 
 ## Database Migrations
 
 - EF Core migrations only; committed with the change that needs them; never edited after merge (add a new one).
 - Every migration is reviewed for: existing data, nullable→non-null steps, indexes (lead with `OrganizationId`), FKs, constraints, locking impact.
 - Migrations must apply cleanly to an empty database and to the previous release schema (verified in CI once the database exists).
+- Migrations live in `src/Soforr.Infrastructure/Persistence/Migrations` and are marked as generated code in `.editorconfig` (excluded from formatting and analyzers). The `dotnet-ef` tool is pinned in `.config/dotnet-tools.json`; run `dotnet tool restore` once.
+- The application never migrates the database on startup. Apply migrations explicitly:
+
+  ```bash
+  dotnet ef migrations add <Name> --project src/Soforr.Infrastructure --startup-project src/Soforr.Api --output-dir Persistence/Migrations
+  dotnet ef database update --project src/Soforr.Infrastructure --startup-project src/Soforr.Api
+  ```
+
+  The `ef` commands start the Api host to discover the context, so `ConnectionStrings:Database` must be available (user secrets in Development, or the `ConnectionStrings__Database` environment variable). `migrations add` does not connect to the database; `database update` does.
 - Destructive migrations (drop column/table) and major redesigns require human approval.
 - No manual production schema changes.
 
@@ -128,7 +137,7 @@ Vue 3 `<script setup>` + TypeScript strict, Vite, Tailwind. API access through a
 
 ## Local Development
 
-Prerequisites: .NET 10 SDK, Docker (PostgreSQL via `docker compose`, added by FOUNDATION-003), Node LTS (from FOUNDATION-007).
+Prerequisites: .NET 10 SDK, Docker (local PostgreSQL via `docker compose`), Node LTS (from FOUNDATION-007).
 
 ```bash
 dotnet restore
@@ -136,3 +145,16 @@ dotnet build
 dotnet test
 dotnet format --verify-no-changes
 ```
+
+**Local database**
+
+```bash
+cp .env.example .env            # then set your own POSTGRES_PASSWORD in .env (git-ignored)
+docker compose up -d            # PostgreSQL 17 on 127.0.0.1:5432 (loopback only)
+dotnet user-secrets set "ConnectionStrings:Database" "Host=localhost;Port=5432;Database=soforr;Username=soforr;Password=<your POSTGRES_PASSWORD>" --project src/Soforr.Api
+dotnet tool restore
+dotnet ef database update --project src/Soforr.Infrastructure --startup-project src/Soforr.Api
+dotnet run --project src/Soforr.Api --launch-profile http
+```
+
+`GET /health/ready` reports database status (200 healthy, 503 unhealthy; no details are exposed). Data lives in the `postgres-data` Docker volume; `docker compose down -v` deletes it. The compose file is for local development only.

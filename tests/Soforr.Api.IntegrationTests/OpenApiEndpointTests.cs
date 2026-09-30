@@ -9,7 +9,7 @@ public class OpenApiEndpointTests
     [Fact]
     public async Task OpenApiDocument_IsServed_InDevelopment()
     {
-        using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder => builder.UseEnvironment("Development"));
+        using var factory = new ApiFactory().WithWebHostBuilder(builder => builder.UseEnvironment("Development"));
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/openapi/v1.json");
@@ -20,7 +20,7 @@ public class OpenApiEndpointTests
     [Fact]
     public async Task OpenApiDocument_IsNotServed_InProduction()
     {
-        using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder => builder.UseEnvironment("Production"));
+        using var factory = new ApiFactory().WithWebHostBuilder(builder => builder.UseEnvironment("Production"));
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/openapi/v1.json");
