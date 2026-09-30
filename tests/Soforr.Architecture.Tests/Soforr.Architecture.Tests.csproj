@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Soforr.Domain\Soforr.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Soforr.Application\Soforr.Application.csproj" />
+    <ProjectReference Include="..\..\src\Soforr.Infrastructure\Soforr.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Soforr.Api\Soforr.Api.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -12,7 +12,7 @@ tests/
 └── Soforr.Api.IntegrationTests   WebApplicationFactory + real PostgreSQL
 ```
 
-xUnit throughout. Created in FOUNDATION-006 (the first two arrive with the first domain code).
+xUnit v2 throughout. Created in FOUNDATION-006. `Soforr.Domain.Tests` has no tests until the Domain contains behavior (ORG-001). Architecture tests check both the references declared in each `.csproj` and the compiled assembly references, because the compiler omits references that no code uses.
 
 ## Pyramid
 

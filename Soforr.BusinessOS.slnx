@@ -5,5 +5,10 @@
     <Project Path="src/Soforr.Domain/Soforr.Domain.csproj" />
     <Project Path="src/Soforr.Infrastructure/Soforr.Infrastructure.csproj" />
   </Folder>
-  <Folder Name="/tests/" />
+  <Folder Name="/tests/">
+    <Project Path="tests/Soforr.Api.IntegrationTests/Soforr.Api.IntegrationTests.csproj" />
+    <Project Path="tests/Soforr.Application.Tests/Soforr.Application.Tests.csproj" />
+    <Project Path="tests/Soforr.Architecture.Tests/Soforr.Architecture.Tests.csproj" />
+    <Project Path="tests/Soforr.Domain.Tests/Soforr.Domain.Tests.csproj" />
+  </Folder>
 </Solution>
