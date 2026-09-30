@@ -180,21 +180,23 @@ Business-critical rules must not exist only in the frontend.
 
 # 5. Dependency Direction
 
-Maintain the following dependency direction:
+Maintain the following dependency direction (see ADR-0001):
 
-Api
-→ Application
-→ Domain
-
-Infrastructure
-→ Application
-→ Domain
-
+```text
 Domain
-→ nothing outside the Domain layer
-
+  ↑
 Application
-→ Domain
+  ↑
+Infrastructure
+
+Api → Application
+Api → Infrastructure
+```
+
+- Domain has no dependency on outer layers or on any framework or persistence library.
+- Application depends on Domain. It may reference provider-agnostic application ports such as IAppDbContext (and provider-agnostic EF Core abstractions), but never Npgsql, ASP.NET Core, or Infrastructure.
+- Infrastructure depends on Application and Domain. It implements persistence and external infrastructure concerns. PostgreSQL, Npgsql, EF Core provider-specific implementation, and migrations remain in Infrastructure.
+- Api references Application, and references Infrastructure only for composition, configuration and registration at the composition root. Api must not contain business logic.
 
 The Domain must never depend on Infrastructure or API.
 

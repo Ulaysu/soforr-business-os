@@ -1,6 +1,6 @@
 # 0002 — Authentication, authorization and tenant isolation
 
-- Status: **Proposed** (requires human approval before IDENTITY-001; CLAUDE.md §21)
+- Status: **Accepted** (approved by the project owner, 2026-09-30)
 - Date: 2026-09-30
 - Deciders: project owner
 
@@ -34,7 +34,7 @@ Token transport for a Vue SPA:
 | B. JWT access token in `localStorage` | Easy | Any XSS steals it; revocation hard. **Rejected.** |
 | C. Short-lived JWT in memory + rotating refresh token in HttpOnly cookie | Works cross-origin and for future native clients; XSS cannot steal the refresh token | Much more machinery: token issuing, refresh rotation with reuse detection, hashed refresh-token table, revocation by token family, clock/expiry handling |
 
-### Recommendation: Option A for the MVP
+### Decision: Option A for the MVP
 
 The only client is the first-party SPA, which we control and can serve same-site (Vite dev proxy locally; reverse proxy or shared parent domain in deployment). Option A is the least code with the strongest browser-side security. Mobile apps are outside the MVP (CLAUDE.md §24). If a non-browser client is approved later, add Option C behind the same `ICurrentUser` abstraction via a new ADR; Application/Domain do not change.
 
@@ -70,12 +70,12 @@ Details:
 
 - IDENTITY-001 is implemented as Option A; scope excludes email delivery and reset (IDENTITY-004).
 - Frontend and API must be deployed same-site; documented in deployment work (EPIC 18).
-- Adding native/mobile clients later needs Option C and a new ADR.
+- JWT is deferred until a real mobile/external API requirement exists; adding such clients later needs Option C and a new ADR.
 - Identity's tables (users, stamps) live in Infrastructure; Domain owns `Membership`, `Role`.
 
-## Decisions needed from the owner
+## Decisions approved by the owner
 
-1. Approve Option A (cookie session) over B/C for the MVP.
-2. Approve one-organization-per-user for the MVP.
-3. Approve ASP.NET Core Identity (platform component; no new paid service).
-4. Approve fixed roles/permissions in code for the MVP.
+1. Option A (cookie session) over B/C for the MVP.
+2. One-organization-per-user for the MVP.
+3. ASP.NET Core Identity (platform component; no new paid service).
+4. Fixed roles/permissions in code for the MVP.

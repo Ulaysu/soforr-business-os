@@ -10,17 +10,17 @@ Every item's testing requirements are additional to the universal Definition of 
 
 ## Architecture Gate
 
-These ADRs in [docs/decisions/](../decisions/README.md) must be **Accepted by the human owner** before the gated items start:
+These ADRs in [docs/decisions/](../decisions/README.md) are **Accepted** (approved by the owner, 2026-09-30). The listed items must implement them as written; any deviation needs a new or superseding ADR and human approval.
 
-| ADR | Gates |
+| ADR | Governs |
 |---|---|
-| 0001 Dependency model (the owner must also amend CLAUDE.md §5) | FOUNDATION-002, FOUNDATION-003 |
+| 0001 Dependency model | FOUNDATION-002, FOUNDATION-003 |
 | 0005 Testing infrastructure | FOUNDATION-006, FOUNDATION-008 |
 | 0003 Commands/queries without mediator | ORG-001 |
 | 0002 Authentication, authorization, tenant isolation | IDENTITY-001 and everything after it |
 | 0004 Inventory concurrency | INVENTORY-001 |
 
-Not gated: FOUNDATION-001, FOUNDATION-004, FOUNDATION-007, SECURITY-001.
+Not governed by an ADR: FOUNDATION-001, FOUNDATION-004, FOUNDATION-007, SECURITY-001.
 
 ## Dependency Graph
 
@@ -63,7 +63,7 @@ AI Assistant (EPIC 12)
 # EPIC 01 — Engineering Foundation
 
 ### FOUNDATION-001 — Repository architecture and standards
-- **Status:** Ready · **Priority:** P0 · **Agent:** Architecture / Backend
+- **Status:** In Review · **Priority:** P0 · **Agent:** Architecture / Backend
 - **Description:** Establish repo-wide build conventions: `global.json` pinning the .NET 10 SDK with `rollForward: latestFeature` (developer machines may also have .NET 9 installed; without a pin the SDK in use is implicit), `Directory.Build.props` (nullable, warnings, analyzers, `TreatWarningsAsErrors` for CI), `.editorconfig`, `.gitattributes`, and `Directory.Packages.props` for central package versions. Update `.github/workflows/ci.yml` to use `global-json-file` in `setup-dotnet` and add a `dotnet format --verify-no-changes` step.
 - **Acceptance criteria:** `dotnet build` and `dotnet format --verify-no-changes` pass at the repo root; CI uses the same SDK as `global.json`; package versions live in one place; no behavior changes.
 - **Dependencies:** none
@@ -74,7 +74,7 @@ AI Assistant (EPIC 12)
 - **Status:** Ready · **Priority:** P0 · **Agent:** Backend
 - **Description:** The four backend projects already exist with the agreed references. Add per-layer registration entry points (`AddApplication()`, `AddInfrastructure(config)`), add a `tests/` solution folder, and wire the composition in `Program.cs`. Keep projects empty of business code.
 - **Acceptance criteria:** Reference graph matches [architecture.md](../architecture/architecture.md#dependency-direction) and ADR 0001 (verified by inspection until FOUNDATION-006 automates it); API starts; `/openapi/v1.json` served in Development.
-- **Dependencies:** none (ADR 0001 Accepted)
+- **Dependencies:** none (governed by ADR 0001)
 - **Affected area:** Api, Application, Infrastructure, solution file
 - **Testing:** build; manual start of the API confirmed and reported.
 
@@ -82,7 +82,7 @@ AI Assistant (EPIC 12)
 - **Status:** Backlog · **Priority:** P0 · **Agent:** Backend
 - **Description:** Add `docker-compose.yml` with PostgreSQL for local development, EF Core + Npgsql in Infrastructure, an `AppDbContext` implementing an Application-level `IAppDbContext` (ADR 0001), conventions from [data-model.md](../architecture/data-model.md) (UUID keys, UTC timestamps, decimal precision), an initial empty migration, and a database health check.
 - **Acceptance criteria:** `docker compose up` provides a database; migration applies to a clean DB; health check reports DB status; connection string comes from configuration/user-secrets, not source.
-- **Dependencies:** FOUNDATION-001, FOUNDATION-002, FOUNDATION-004; ADR 0001 Accepted
+- **Dependencies:** FOUNDATION-001, FOUNDATION-002, FOUNDATION-004; ADR 0001
 - **Affected area:** Infrastructure, Application (`IAppDbContext` port per ADR 0001), Api, repo root
 - **Testing:** integration test applies migrations against real PostgreSQL. **Approval:** adding EF Core/Npgsql are already-approved stack dependencies; no further approval needed.
 
@@ -106,7 +106,7 @@ AI Assistant (EPIC 12)
 - **Status:** Backlog · **Priority:** P0 · **Agent:** QA
 - **Description:** Per [ADR 0005](../decisions/0005-testing-infrastructure.md): create `tests/Soforr.Domain.Tests`, `Soforr.Application.Tests`, `Soforr.Architecture.Tests` (plain reflection over assembly references) and a `Soforr.Api.IntegrationTests` skeleton using `WebApplicationFactory` without a database. CI then runs real tests. Split from the original combined item so it does not wait on PostgreSQL work.
 - **Acceptance criteria:** `dotnet test` runs all projects and executes at least one test in each; architecture tests fail if Domain has any reference, or Application references Infrastructure/Api/Npgsql/ASP.NET Core; demonstrated once with a deliberate violation (then removed).
-- **Dependencies:** FOUNDATION-002; ADR 0005 Accepted
+- **Dependencies:** FOUNDATION-002; ADR 0005
 - **Affected area:** tests/, CI
 - **Testing:** the tests themselves. Test-only packages: xUnit family, `Microsoft.NET.Test.Sdk`, `Microsoft.AspNetCore.Mvc.Testing`.
 
@@ -114,7 +114,7 @@ AI Assistant (EPIC 12)
 - **Status:** Backlog · **Priority:** P0 · **Agent:** QA / Backend
 - **Description:** Testcontainers PostgreSQL fixture (one container per run, one database per test class created from migrations), `Integration` category, two-tenant fixture stub (completed in IDENTITY-003).
 - **Acceptance criteria:** `dotnet test` needs only Docker; migrations apply to an empty database in a test; tests are order-independent; CI runs them.
-- **Dependencies:** FOUNDATION-003, FOUNDATION-006; ADR 0005 Accepted
+- **Dependencies:** FOUNDATION-003, FOUNDATION-006; ADR 0005
 - **Affected area:** tests/, CI
 - **Testing:** the harness's own migration-apply test. Test-only package: `Testcontainers.PostgreSql`.
 
@@ -142,7 +142,7 @@ AI Assistant (EPIC 12)
 - **Status:** Backlog · **Priority:** P0 · **Agent:** Backend / Architecture
 - **Description:** `Organization` entity (name, currency, timezone), invariants, `Money`/currency value objects placed in Domain, `IClock` and id-generation abstractions. Establish the module folder layout and the handler pattern of [ADR 0003](../decisions/0003-commands-and-queries-without-mediator.md) (`ICommandHandler`/`IQueryHandler`, `Result<T>`/`Error`, registration scan) that later modules copy. No mediator dependency.
 - **Acceptance criteria:** Domain has no external dependencies; invariants (non-empty name, valid ISO currency) enforced and tested; handler pattern in place and used by the Organization module only.
-- **Dependencies:** FOUNDATION-002, FOUNDATION-006; ADR 0003 Accepted
+- **Dependencies:** FOUNDATION-002, FOUNDATION-006; ADR 0003
 - **Affected area:** Domain, Application
 - **Testing:** domain unit tests.
 
@@ -164,9 +164,9 @@ AI Assistant (EPIC 12)
 
 ### IDENTITY-001 — Authentication foundation
 - **Status:** Backlog · **Priority:** P0 · **Agent:** Security / Backend
-- **Description:** User registration/sign-in, credential storage, session/token model, membership of users in organizations, first user becomes Owner of a new organization. Implements [ADR 0002](../decisions/0002-authentication.md) as accepted (recommended: ASP.NET Core Identity, HttpOnly cookie session, one organization per user, antiforgery on unsafe methods, security-stamp revocation). Email verification and password reset are excluded (IDENTITY-004).
+- **Description:** User registration/sign-in, credential storage, session/token model, membership of users in organizations, first user becomes Owner of a new organization. Implements [ADR 0002](../decisions/0002-authentication.md) (ASP.NET Core Identity, HttpOnly cookie session, one organization per user, antiforgery on unsafe methods, security-stamp revocation). Email verification and password reset are excluded (IDENTITY-004).
 - **Acceptance criteria:** Users can register (creating User + Organization + Owner membership atomically), sign in and out over HTTPS; passwords hashed; lockout in place; `ICurrentUser` and `IOrganizationContext` expose user id and organization; no secrets in source or `localStorage`.
-- **Dependencies:** ORG-003; ADR 0002 Accepted (human approval required, CLAUDE.md §21)
+- **Dependencies:** ORG-003; ADR 0002 (Accepted)
 - **Affected area:** Identity, Api, Infrastructure
 - **Testing:** integration tests for register/sign-in/failure/lockout; unit tests for membership rules.
 
@@ -246,7 +246,7 @@ AI Assistant (EPIC 12)
 - **Status:** Backlog · **Priority:** P0 · **Agent:** Backend / Architecture
 - **Description:** `InventoryMovement` (append-only), `StockLevel`, reasons, non-negative stock rule, `Quantity` value object. The concurrency mechanism is decided in [ADR 0004](../decisions/0004-inventory-concurrency.md) (optimistic token plus database backstops).
 - **Acceptance criteria:** Domain model reflects ADR 0004 (append-only movements, reasons, idempotency source reference); invariants covered in tests.
-- **Dependencies:** CATALOG-001; ADR 0004 Accepted
+- **Dependencies:** CATALOG-001; ADR 0004
 - **Affected area:** Domain, docs
 - **Testing:** unit tests for movement application and rule violations.
 
@@ -407,4 +407,4 @@ Decompose into items when their dependencies approach Done. Do not start these b
 
 # Immediately Executable (dependencies satisfied)
 
-FOUNDATION-001, FOUNDATION-004, FOUNDATION-007, SECURITY-001 (not gated by any ADR), and FOUNDATION-002 once ADR 0001 is Accepted.
+FOUNDATION-001, FOUNDATION-002, FOUNDATION-004, FOUNDATION-007, SECURITY-001.

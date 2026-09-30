@@ -1,6 +1,6 @@
 # 0004 — Inventory concurrency
 
-- Status: **Proposed** (needs human approval before INVENTORY-001)
+- Status: **Accepted** (approved by the project owner, 2026-09-30)
 - Date: 2026-09-30
 - Deciders: project owner
 
@@ -21,7 +21,7 @@ Workflow characteristics of the target customer (SMB): a handful of concurrent c
 | Under high contention | Retry storms on hot rows | Fine but slows | Best |
 | Complexity | Low | Medium | Medium (special-cases the model) |
 
-## Decision (recommended): A, with database backstops
+## Decision: A, with database backstops
 
 Use **optimistic concurrency**. The default is right for this workflow; nothing in the first slice demonstrates a need for stronger locking.
 

@@ -20,7 +20,7 @@ xUnit throughout. Created in FOUNDATION-006 (the first two arrive with the first
 |---|---|---|
 | Unit | Domain invariants, calculations, forecasting math | every build |
 | Application | Handlers with fake ports: orchestration, authorization, validation | every build |
-| Integration | EF Core, transactions, concurrency, migrations, auth, tenant isolation, API workflows against real PostgreSQL (Testcontainers; see [ADR 0005](../decisions/0005-testing-infrastructure.md), proposed) | every PR |
+| Integration | EF Core, transactions, concurrency, migrations, auth, tenant isolation, API workflows against real PostgreSQL (Testcontainers; see [ADR 0005](../decisions/0005-testing-infrastructure.md)) | every PR |
 | End-to-end | Critical journeys through the UI (Playwright), added once the Web project has flows | PR / nightly |
 | Architecture | Layer/dependency rules | every build |
 

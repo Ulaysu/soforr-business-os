@@ -1,6 +1,6 @@
 # 0005 — Testing infrastructure
 
-- Status: **Proposed** (needs human approval; adds test-only packages)
+- Status: **Accepted** (approved by the project owner, 2026-09-30)
 - Date: 2026-09-30
 - Deciders: project owner
 
@@ -22,7 +22,7 @@ CLAUDE.md §19 prioritises tests for inventory, sales, purchases, permissions an
 | Frontend unit tests (Vitest) | Comes with the Vue scaffold (FOUNDATION-007) | Use |
 | FluentAssertions, Moq/NSubstitute, AutoFixture, Bogus, Respawn, coverage tools | Convenience, not need (FluentAssertions v8+ is commercial) | **Do not add** now; xUnit `Assert` and hand-written fakes suffice |
 
-## Decision (recommended): the smallest useful stack
+## Decision: the smallest useful stack
 
 ```text
 tests/

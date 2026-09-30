@@ -39,7 +39,7 @@ This is the planning baseline. Nothing here is implemented yet; each area maps t
 - HTTPS only; CORS restricted to the known web origin; security headers; request size limits.
 - Centralized error handling exposes no internals (CLAUDE.md §17).
 - Versioned routes; idempotency keys for retry-sensitive writes.
-- Anti-forgery/CSRF handling follows [ADR 0002](../decisions/0002-authentication.md) (proposed: cookie session with antiforgery).
+- Anti-forgery/CSRF handling follows [ADR 0002](../decisions/0002-authentication.md) (Accepted: cookie session with antiforgery on unsafe methods).
 
 ## Rate Limiting
 - Built-in ASP.NET Core rate limiting: strict on authentication endpoints, per-user/per-organization limits elsewhere, tighter on expensive and AI endpoints. Required before any external user (EPIC 16).

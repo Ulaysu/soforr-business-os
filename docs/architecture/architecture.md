@@ -18,7 +18,7 @@ Test projects live under `tests/` (see [testing.md](../engineering/testing.md)).
 ## Dependency Direction
 
 ```text
-Application    → Domain
+Application    → Domain (+ provider-agnostic EF Core abstractions via IAppDbContext)
 Infrastructure → Application + Domain
 Api            → Application + Infrastructure   (Infrastructure only for DI composition)
 Domain         → nothing outside Domain
@@ -27,7 +27,7 @@ Web            → Api over HTTP only
 
 - No circular references. The Domain has no reference to ASP.NET Core, EF Core, Npgsql, Vue or any AI SDK.
 - Application defines the interfaces it needs (`IClock`, `ICurrentUser`, `IAIModelClient`, file storage, ...); Infrastructure implements them.
-- [ADR 0001](../decisions/0001-dependency-model.md) (proposed) settles how Application reaches the database.
+- [ADR 0001](../decisions/0001-dependency-model.md) (Accepted) defines how Application reaches the database (`IAppDbContext` port).
 - Api may reference Infrastructure solely to register services in `Program.cs`. Endpoints depend on Application, never on Infrastructure types.
 
 ## Layer Responsibilities

@@ -19,14 +19,14 @@ Use an ADR for: architecture changes, choice of a major dependency, tenant-isola
 ## Alternatives considered
 ```
 
-Only **Accepted** ADRs are authoritative (see [AGENTS.md](../../AGENTS.md)). Agents may propose ADRs; a human accepts them.
+Only **Accepted** ADRs are authoritative (see [AGENTS.md](../../AGENTS.md)). Agents may propose ADRs; only the human owner accepts them. An agent never sets `Accepted` on its own.
 
 ## Index
 
 | ADR | Title | Status |
 |---|---|---|
-| [0001](0001-dependency-model.md) | Layer dependency model | Proposed |
-| [0002](0002-authentication.md) | Authentication, authorization and tenant isolation | Proposed |
-| [0003](0003-commands-and-queries-without-mediator.md) | Commands and queries without a mediator library | Proposed |
-| [0004](0004-inventory-concurrency.md) | Inventory concurrency | Proposed |
-| [0005](0005-testing-infrastructure.md) | Testing infrastructure | Proposed |
+| [0001](0001-dependency-model.md) | Layer dependency model | Accepted |
+| [0002](0002-authentication.md) | Authentication, authorization and tenant isolation | Accepted |
+| [0003](0003-commands-and-queries-without-mediator.md) | Commands and queries without a mediator library | Accepted |
+| [0004](0004-inventory-concurrency.md) | Inventory concurrency | Accepted |
+| [0005](0005-testing-infrastructure.md) | Testing infrastructure | Accepted |

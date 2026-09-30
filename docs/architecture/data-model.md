@@ -10,7 +10,7 @@ Conceptual model and conventions for the first vertical slice. Detailed schemas 
 - Timestamps in UTC (`timestamptz`): `CreatedAtUtc`, `UpdatedAtUtc`; actor columns where auditability matters.
 - Money: `numeric(19,4)` plus currency code. Quantities: `numeric(18,4)`. No floating point.
 - Soft-deactivation instead of deletion for entities with history.
-- Concurrency token on stock levels and on documents that change state (see [ADR 0004](../decisions/0004-inventory-concurrency.md), proposed).
+- Concurrency token on stock levels and on documents that change state (see [ADR 0004](../decisions/0004-inventory-concurrency.md)).
 - Database constraints as a second line of defense (CHECK for non-negative amounts, FKs, unique indexes).
 - Append-only audit events for important business actions.
 

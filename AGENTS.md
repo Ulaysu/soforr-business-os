@@ -160,13 +160,20 @@ Avoid spawning agents simply to appear autonomous.
 
 Agents must treat the following as authoritative, in order:
 
-1. Explicit human decisions
-2. CLAUDE.md
-3. Product specifications
-4. Architecture documentation
-5. Accepted Architecture Decision Records
+1. Explicit current human decisions
+2. Accepted human-approved Architecture Decision Records
+3. CLAUDE.md
+4. Product specifications
+5. Architecture documentation
 6. GitHub backlog
 7. Existing implementation
+
+Rules:
+
+- An ADR with status `Accepted`, approved by the human owner, supersedes older conflicting wording in CLAUDE.md and in lower-ranked documentation. Wording that conflicts with an Accepted ADR should be corrected, not obeyed.
+- Only the human owner accepts an ADR. Agents may draft ADRs as `Proposed` and must never mark one `Accepted`, and a `Proposed` ADR has no authority.
+- An ADR never overrides an explicit, newer human decision given in the current conversation. A later human decision supersedes an ADR until the ADR is formally updated or superseded.
+- Do not cite an ADR, or any other document, to justify actions that CLAUDE.md or AGENTS.md require human approval for (approval boundaries below) unless that approval has been given.
 
 If existing code conflicts with an explicit architectural decision, do not silently preserve the existing behavior.
 

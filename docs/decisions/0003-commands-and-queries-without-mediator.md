@@ -1,6 +1,6 @@
 # 0003 — Commands and queries without a mediator library
 
-- Status: **Proposed** (needs human approval)
+- Status: **Accepted** (approved by the project owner, 2026-09-30)
 - Date: 2026-09-30
 - Deciders: project owner
 
@@ -8,7 +8,7 @@
 
 CLAUDE.md §8 requires explicit, testable, auditable application commands (`CreateSale`, `ReceivePurchase`, ...) and warns against unnecessary abstraction and new dependencies (§6, §7). The team is small and the first slice has roughly 30 handlers. A mediator library (MediatR or similar) adds a dependency, indirection ("who handles this?"), reflection-based dispatch, and in some cases licensing changes, in exchange for pipeline behaviors that we can achieve simply for now.
 
-## Decision (recommended)
+## Decision
 
 Do **not** add a mediator package. Use explicit handler classes resolved by dependency injection.
 

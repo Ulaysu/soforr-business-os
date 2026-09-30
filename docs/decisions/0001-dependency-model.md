@@ -1,6 +1,6 @@
 # 0001 — Layer dependency model
 
-- Status: **Proposed** (needs human approval; amends CLAUDE.md §5)
+- Status: **Accepted** (approved by the project owner, 2026-09-30)
 - Date: 2026-09-30
 - Deciders: project owner
 
@@ -26,7 +26,7 @@ Two questions follow.
 2. **Handlers live in Infrastructure** (or Application handlers depend on a per-aggregate store interface for every operation). Keeps EF out of Application but moves use cases into the persistence layer, or creates one store interface per query, which is the repository pattern under another name.
 3. **Narrow per-use-case ports** (`IProductStore.FindBySku`, ...) implemented in Infrastructure. Purist, but produces a large port surface, and read-model queries (reports, searches, forecasts) need bespoke ports each time.
 
-## Decision (recommended)
+## Decision
 
 **A. Ratify `Api → Application + Infrastructure`**, with Infrastructure referenced *only* for composition (`Program.cs` / a composition extension). Endpoint code depends on Application types only.
 
@@ -50,12 +50,12 @@ Enforced by architecture tests (FOUNDATION-006): Domain has no package or projec
 
 ## Consequences
 
-- `CLAUDE.md` §5 must be amended by the owner (proposed wording below). Per [AGENTS.md](../../AGENTS.md) source-of-truth order, CLAUDE.md outranks ADRs, so an accepted ADR alone does not override it. Agents must not edit CLAUDE.md themselves.
-- Handlers are unit-testable only with a real or SQLite/in-memory provider for LINQ semantics; the testing ADR (0005) resolves this by using real PostgreSQL for anything touching queries.
+- `CLAUDE.md` §5 has been amended to match this ADR (wording below). Per the [AGENTS.md](../../AGENTS.md) source-of-truth order, an Accepted ADR supersedes older conflicting wording elsewhere.
+- Handler logic that depends on LINQ-to-EF semantics is tested against real PostgreSQL (ADR 0005), not against an in-memory provider.
 - Application has a compile-time dependency on EF Core, i.e. LINQ-to-EF behaviour can leak into handlers. Accepted trade-off.
 - Reversal cost: moderate; `IAppDbContext` can later be replaced by ports without touching Domain.
 
-Proposed CLAUDE.md §5 replacement:
+CLAUDE.md §5 amendment (as applied):
 
 ```text
 Domain          → nothing outside the Domain layer
