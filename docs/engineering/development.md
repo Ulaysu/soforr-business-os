@@ -76,7 +76,43 @@ See [architecture.md](../architecture/architecture.md#dependency-direction). Enf
 
 ## Configuration
 
-- `appsettings.json` holds non-secret defaults; secrets come from user-secrets/environment/secret store. Options bound to typed classes and validated at startup.
+Configuration is bound to typed options classes and validated when the host starts, so a missing or invalid setting stops the application immediately with a message naming the problem instead of failing later at runtime.
+
+**Sources and precedence** (later sources override earlier ones; standard ASP.NET Core behavior):
+
+1. `appsettings.json`: non-secret defaults, tracked in Git.
+2. `appsettings.{Environment}.json`: non-secret, environment-specific values, tracked in Git.
+3. User secrets (Development only): local secrets, stored outside the repository.
+4. Environment variables: how secrets and environment values are supplied in every other environment. Use `__` as the section separator, e.g. `ConnectionStrings__Database`.
+5. Command-line arguments.
+
+**Rules**
+
+- No secret (password, token, API key, connection string with credentials, signing key) in any tracked file, including `appsettings*.json`, Dockerfiles, compose files, tests, and docs. Tracked files may contain placeholders or non-secret defaults only.
+- Local development secrets use user secrets (the Api project has a `UserSecretsId`):
+
+  ```bash
+  dotnet user-secrets set "ConnectionStrings:Database" "<value>" --project src/Soforr.Api
+  dotnet user-secrets list --project src/Soforr.Api
+  ```
+
+- `.env` files are git-ignored and are for tools that read them (e.g. Docker Compose from FOUNDATION-003). ASP.NET Core does not load `.env` by itself.
+- Non-development secrets come from the deployment environment's secret store; never from files in the image or repository.
+- Never log configuration values that may contain secrets.
+- Rotate any secret that was committed, even briefly.
+
+**Adding a setting**
+
+1. Create an options class (in the layer that consumes it; Infrastructure options live in Infrastructure) with data annotations for required values and ranges.
+2. Register it with `services.AddValidatedOptions<TOptions>(configuration, "SectionName")` (`Soforr.Infrastructure.Configuration`). This binds the required section, validates annotations, and validates at startup. A missing section fails with `Section 'X' not found in configuration.`; a missing or invalid value fails with `DataAnnotation validation failed for 'TOptions' members: ...`.
+3. Consume it through `IOptions<TOptions>`; do not read `IConfiguration` directly in application code.
+4. Add the key to the table below.
+
+**Configuration keys**
+
+| Key | Required | Secret | Description |
+|---|---|---|---|
+| _none yet_ | | | The first keys arrive with FOUNDATION-003 (database connection). |
 
 ## Database Migrations
 
