@@ -41,6 +41,7 @@ xUnit v2 throughout. Created in FOUNDATION-006. `Soforr.Domain.Tests` has no tes
 - Test names describe behavior (`Sale_WithInsufficientStock_IsRejected_AndLeavesStockUnchanged`).
 - AI: tools are tested like any Application service; model calls are faked in tests; an evaluation set covers prompts (later).
 - Do not weaken or delete a test to make a build pass; fix the cause or raise it.
+- Startup-failure behavior (for example options validation) is tested with a plain generic host, not `WebApplicationFactory`: when the full application host fails to start, its deferred host intermittently reports an `ObjectDisposedException` instead of the real exception. Cross-cutting HTTP behavior is tested with `PipelineTestHost`, which uses the real Api pipeline with test-only endpoints and an in-memory log sink.
 
 ## Commands
 

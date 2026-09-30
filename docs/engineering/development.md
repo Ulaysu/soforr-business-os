@@ -64,13 +64,16 @@ See [architecture.md](../architecture/architecture.md#dependency-direction). Enf
 ## Error Handling
 
 - Expected failures (validation, not found, rule violations) return typed results from handlers; no exceptions for control flow.
-- Unexpected exceptions are handled once by middleware: log with correlation ID, return generic `ProblemDetails`. No stack traces, connection strings or SQL in responses.
+- Unexpected exceptions are handled once, by `UseApiPipeline` (exception handler + status-code pages + `AddApiErrorHandling`): the exception is logged with its correlation ID, and the client receives a generic RFC 9457 `application/problem+json` response (`500`, title "An unexpected error occurred.", no detail, no exception or stack trace, in every environment including Development) carrying `correlationId`. Errors from unknown routes (404) and other status codes use the same format.
+- No stack traces, connection strings or SQL in responses.
 
 ## Logging and Observability
 
-- Serilog structured logging; a correlation ID on every request, propagated to logs.
+- Serilog structured logging. Levels and overrides live in the `Serilog` configuration section; the console sink is human-readable in Development and compact structured JSON (`RenderedCompactJsonFormatter`) in every other environment. Configured in `Soforr.Api.Hosting.ApiHostingExtensions.UseApiLogging`.
+- **Correlation ID:** every request has one. A caller-supplied `X-Correlation-ID` is honored only if it is at most 64 characters of letters, digits, `-`, `_` or `.`; otherwise a new one is generated. It is returned in the `X-Correlation-ID` response header, attached to every log event of the request as `CorrelationId`, and included in problem responses as `correlationId`.
+- **Request logging:** one completion event per request (method, path, status, duration). Query strings, headers and bodies are not logged.
 - Log business events (commands executed, actor, organization, outcome). Never log secrets, tokens, passwords or full personal data.
-- Health checks (`/health/live`, `/health/ready`) before any deployment.
+- Health checks: `GET /health/live` (process is up; no dependency checks) and `GET /health/ready` (database reachable). Both return only `Healthy`/`Unhealthy`, 200 or 503, with no details. They are unauthenticated for now; authorization policy arrives with IDENTITY-002.
 - Audit events for important business actions (e.g. reorder approved by user X).
 - Later: metrics/tracing via OpenTelemetry, automation run history.
 

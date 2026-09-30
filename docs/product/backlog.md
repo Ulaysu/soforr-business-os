@@ -79,7 +79,7 @@ AI Assistant (EPIC 12)
 - **Testing:** build; manual start of the API confirmed and reported.
 
 ### FOUNDATION-003 — PostgreSQL and EF Core
-- **Status:** In Review · **Priority:** P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** P0 · **Agent:** Backend
 - **Description:** Add `docker-compose.yml` with PostgreSQL for local development, EF Core + Npgsql in Infrastructure, an `AppDbContext` implementing an Application-level `IAppDbContext` (ADR 0001), conventions from [data-model.md](../architecture/data-model.md) (UUID keys, UTC timestamps, decimal precision), an initial empty migration, and a database health check.
 - **Acceptance criteria:** `docker compose up` provides a database; migration applies to a clean DB; health check reports DB status; connection string comes from configuration/user-secrets, not source.
 - **Dependencies:** FOUNDATION-001, FOUNDATION-002, FOUNDATION-004; ADR 0001
@@ -95,7 +95,7 @@ AI Assistant (EPIC 12)
 - **Testing:** host-startup tests (in `Soforr.Api.IntegrationTests`, `WebApplicationFactory`, no database) for: valid config starts, missing value fails naming the setting, missing section fails naming the section. The first real required settings arrive with FOUNDATION-003; this item delivers the validated-options mechanism, user-secrets wiring and the rules.
 
 ### FOUNDATION-005 — Logging, error handling and correlation IDs
-- **Status:** Backlog · **Priority:** P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** P0 · **Agent:** Backend
 - **Description:** Serilog (console + structured), request logging, correlation ID middleware, centralized `ProblemDetails` exception handling, liveness/readiness health endpoints.
 - **Acceptance criteria:** Each request has a correlation ID in logs and response header; unhandled exceptions return generic RFC 9457 responses without internals; health endpoints work.
 - **Dependencies:** FOUNDATION-004, FOUNDATION-006
