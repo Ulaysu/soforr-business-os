@@ -87,12 +87,12 @@ AI Assistant (EPIC 12)
 - **Testing:** integration test applies migrations against real PostgreSQL. **Approval:** adding EF Core/Npgsql are already-approved stack dependencies; no further approval needed.
 
 ### FOUNDATION-004 — Application configuration
-- **Status:** Ready · **Priority:** P0 · **Agent:** Backend / Security
+- **Status:** In Review · **Priority:** P0 · **Agent:** Backend / Security
 - **Description:** Typed options with startup validation, environment-specific settings, user-secrets for local secrets, documented configuration keys, and `.env`/secret handling rules.
 - **Acceptance criteria:** Invalid or missing required config fails fast at startup with a clear message; no secrets in tracked files; configuration keys documented in `docs/engineering/development.md`.
 - **Dependencies:** none
 - **Affected area:** Api, Infrastructure
-- **Testing:** unit tests for options validation.
+- **Testing:** host-startup tests (in `Soforr.Api.IntegrationTests`, `WebApplicationFactory`, no database) for: valid config starts, missing value fails naming the setting, missing section fails naming the section. The first real required settings arrive with FOUNDATION-003; this item delivers the validated-options mechanism, user-secrets wiring and the rules.
 
 ### FOUNDATION-005 — Logging, error handling and correlation IDs
 - **Status:** Backlog · **Priority:** P0 · **Agent:** Backend
@@ -103,7 +103,7 @@ AI Assistant (EPIC 12)
 - **Testing:** `WebApplicationFactory` tests (no database needed): error response shape, correlation ID propagation, no stack trace leakage. **Approval:** Serilog is in the approved stack.
 
 ### FOUNDATION-006 — Testing infrastructure (unit, architecture, API skeleton)
-- **Status:** In Review · **Priority:** P0 · **Agent:** QA
+- **Status:** Done · **Priority:** P0 · **Agent:** QA
 - **Description:** Per [ADR 0005](../decisions/0005-testing-infrastructure.md): create `tests/Soforr.Domain.Tests`, `Soforr.Application.Tests`, `Soforr.Architecture.Tests` (plain reflection over assembly references) and a `Soforr.Api.IntegrationTests` skeleton using `WebApplicationFactory` without a database. CI then runs real tests. Split from the original combined item so it does not wait on PostgreSQL work.
 - **Acceptance criteria:** `dotnet test` runs all projects and executes at least one test in the Application, Architecture and API projects (`Soforr.Domain.Tests` is created empty and receives its first tests with ORG-001, since Domain has no behavior yet; a placeholder test would be false coverage); architecture tests fail if Domain has any reference, or Application references Infrastructure/Api/Npgsql/ASP.NET Core; demonstrated once with a deliberate violation (then removed).
 - **Dependencies:** FOUNDATION-002; ADR 0005
