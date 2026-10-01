@@ -8,6 +8,8 @@ using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 using Soforr.Api.Hosting;
+using Soforr.Api.Http;
+using Soforr.Application.Common;
 
 namespace Soforr.Api.IntegrationTests;
 
@@ -46,6 +48,10 @@ internal sealed class PipelineTestHost : IAsyncDisposable
         var app = builder.Build();
         app.UseApiPipeline();
         app.MapGet("/ok", () => "ok");
+        app.MapGet(
+            "/problem/{kind}",
+            (string kind, string? field) => ResultHttpExtensions.ToProblem(new Error("test.code", Enum.Parse<ErrorKind>(kind), "A test message.", field)));
+        app.MapPost("/echo", (EchoBody body) => body.Value);
         app.MapGet("/boom", (Func<string>)(() => throw new InvalidOperationException(SecretExceptionMessage)));
 
         await app.StartAsync();
@@ -58,6 +64,8 @@ internal sealed class PipelineTestHost : IAsyncDisposable
         await _app.DisposeAsync();
     }
 }
+
+internal sealed record EchoBody(string? Value);
 
 internal sealed class CapturingSink : ILogEventSink
 {

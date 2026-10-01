@@ -19,8 +19,9 @@ The model is deliberately minimal; entities are named for orientation and refine
 ## Organizations
 - **Responsibility:** Tenants and their settings.
 - **Concepts:** Organization (name, currency, timezone).
-- **Commands:** CreateOrganization, UpdateOrganizationSettings.
+- **Commands:** CreateOrganization, UpdateOrganizationSettings (name and time zone; the currency cannot change).
 - **Queries:** GetOrganization.
+- **API (ORG-003):** `POST /api/v1/organizations` (201 with `Location`), `GET /api/v1/organizations/{id}`, `PUT /api/v1/organizations/{id}/settings`, documented in OpenAPI. They have no authentication or authorization yet, so they are mapped **only in Development** until IDENTITY-002; this is enforced by a test that they are absent in other environments.
 - **Invariants:** Every tenant-owned record in any module references exactly one organization. The name is required (at most 200 characters, trimmed); the time zone is an IANA identifier supported by the application's runtime time zone database; the currency is one of Soforr's supported ISO 4217 currencies (a maintained snapshot of the current set) and is fixed at creation, so it is never silently changed once transactions exist; timestamps are UTC.
 - **Depends on:** none.
 - **Tenant context:** `IOrganizationContext` (Application) exposes the current organization id, derived on the server from the authenticated membership and never from request data; null means no organization and consumers fail closed. Until IDENTITY-001 provides the real implementation, Infrastructure registers a default that always returns null. The query filters that use it arrive with IDENTITY-003.

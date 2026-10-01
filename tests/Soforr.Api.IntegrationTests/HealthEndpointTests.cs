@@ -50,6 +50,19 @@ public class HealthEndpointTests
     }
 
     [Fact]
+    public void TheClock_ReturnsWholeMicroseconds_SoStoredTimestampsReadBackUnchanged()
+    {
+        using var factory = new ApiFactory().WithWebHostBuilder(builder => builder.UseEnvironment("Development"));
+        using var scope = factory.Services.CreateScope();
+        var clock = scope.ServiceProvider.GetRequiredService<IClock>();
+
+        // Truncation is invisible in one sample 1 time in 10, so take many.
+        var remainders = Enumerable.Range(0, 200).Select(_ => clock.UtcNow.Ticks % TimeSpan.TicksPerMicrosecond).ToArray();
+
+        Assert.All(remainders, remainder => Assert.Equal(0, remainder));
+    }
+
+    [Fact]
     public void AppDbContext_IsResolvableThroughTheApplicationPort()
     {
         using var factory = new ApiFactory().WithWebHostBuilder(builder => builder.UseEnvironment("Development"));

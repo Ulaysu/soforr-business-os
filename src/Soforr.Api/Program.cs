@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Soforr.Api.Hosting;
+using Soforr.Api.Organizations;
 using Soforr.Application;
 using Soforr.Infrastructure;
 
@@ -17,9 +18,12 @@ var app = builder.Build();
 
 app.UseApiPipeline();
 
+// Development only until authentication and authorization exist (IDENTITY-002): these endpoints have no access
+// control yet, so they must not be reachable in any other environment.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapOrganizationEndpoints();
 }
 
 app.UseHttpsRedirection();

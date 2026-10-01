@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Serilog;
 using Serilog.Formatting.Compact;
@@ -52,6 +53,13 @@ public static class ApiHostingExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddProblemDetails(options => options.CustomizeProblemDetails = CustomizeProblemDetails);
+
+        // A request the framework cannot read is the caller's mistake: answer with its 4xx status and do not log it
+        // as an unhandled server error.
+        services.AddExceptionHandler<ClientErrorExceptionHandler>();
+        services.Configure<ExceptionHandlerOptions>(options =>
+            options.SuppressDiagnosticsCallback = context => context.Exception is BadHttpRequestException);
+
         return services;
     }
 

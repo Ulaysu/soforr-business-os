@@ -147,7 +147,7 @@ AI Assistant (EPIC 12)
 - **Testing:** domain unit tests.
 
 ### ORG-002 — Organization persistence
-- **Status:** In Review · **Priority:** P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** P0 · **Agent:** Backend
 - **Description:** EF Core configuration and migration for organizations; tenant-scoping infrastructure hooks (an `IOrganizationContext` abstraction in Application; filter wiring completed in IDENTITY-003).
 - **Acceptance criteria:** Migration applies to clean DB; constraints (required name, currency length) in place.
 - **Dependencies:** ORG-001, FOUNDATION-003, FOUNDATION-008
@@ -155,7 +155,7 @@ AI Assistant (EPIC 12)
 - **Testing:** integration test for persistence round-trip and constraints.
 
 ### ORG-003 — Organization API
-- **Status:** Backlog · **Priority:** P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** P0 · **Agent:** Backend
 - **Description:** `CreateOrganization`, `UpdateOrganizationSettings`, `GetOrganization` commands/queries and thin endpoints, with validation and ProblemDetails errors. Authorization is added once IDENTITY-002 lands (until then endpoints are not exposed beyond Development).
 - **Acceptance criteria:** OpenAPI documents the endpoints; handler `Result` errors (ADR-0003) are mapped centrally to RFC 9457 responses with a stable `code` extension, and validation errors list field-level problems (the generic error pipeline itself exists from FOUNDATION-005); endpoints are mapped only in Development until IDENTITY-002 is Done, proven by a test that they are absent in other environments.
 - **Dependencies:** ORG-002, FOUNDATION-005
