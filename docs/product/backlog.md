@@ -95,7 +95,7 @@ AI Assistant (EPIC 12)
 - **Testing:** host-startup tests (in `Soforr.Api.IntegrationTests`, `WebApplicationFactory`, no database) for: valid config starts, missing value fails naming the setting, missing section fails naming the section. The first real required settings arrive with FOUNDATION-003; this item delivers the validated-options mechanism, user-secrets wiring and the rules.
 
 ### FOUNDATION-005 — Logging, error handling and correlation IDs
-- **Status:** In Review · **Priority:** P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** P0 · **Agent:** Backend
 - **Description:** Serilog (console + structured), request logging, correlation ID middleware, centralized `ProblemDetails` exception handling, liveness/readiness health endpoints. Out of scope here (deferred to ORG-003, the first item with handlers and endpoints): the stable error `code`, field-level validation errors, and the `Result`-to-HTTP mapping.
 - **Acceptance criteria:** Each request has a correlation ID in logs and response header; unhandled exceptions return generic RFC 9457 responses without internals; health endpoints work.
 - **Dependencies:** FOUNDATION-004, FOUNDATION-006
@@ -139,9 +139,9 @@ AI Assistant (EPIC 12)
 # EPIC 02 — Identity & Organizations
 
 ### ORG-001 — Organization domain model
-- **Status:** Backlog · **Priority:** P0 · **Agent:** Backend / Architecture
+- **Status:** In Review · **Priority:** P0 · **Agent:** Backend / Architecture
 - **Description:** `Organization` entity (name, currency, timezone), invariants, `Money`/currency value objects placed in Domain, `IClock` and id-generation abstractions. Establish the module folder layout and the handler pattern of [ADR 0003](../decisions/0003-commands-and-queries-without-mediator.md) (`ICommandHandler`/`IQueryHandler`, `Result<T>`/`Error`, registration scan) that later modules copy. No mediator dependency.
-- **Acceptance criteria:** Domain has no external dependencies; invariants (non-empty name, valid ISO currency) enforced and tested; handler pattern in place and used by the Organization module only.
+- **Acceptance criteria:** Domain has no external dependencies; invariants (non-empty name, valid ISO currency) enforced and tested; handler pattern in place and covered by tests with test-defined handlers (the Organization commands and queries themselves, and the `DomainException`-to-`Error` translation, arrive with ORG-003).
 - **Dependencies:** FOUNDATION-002, FOUNDATION-006; ADR 0003
 - **Affected area:** Domain, Application
 - **Testing:** domain unit tests.

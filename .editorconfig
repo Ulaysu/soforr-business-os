@@ -14,6 +14,9 @@ indent_size = 2
 trim_trailing_whitespace = false
 
 [*.cs]
+# The solution is C# only; names such as Error and Set are fine (VB keyword clash)
+dotnet_diagnostic.CA1716.severity = none
+
 # Namespaces and usings
 csharp_style_namespace_declarations = file_scoped:warning
 csharp_using_directive_placement = outside_namespace:warning

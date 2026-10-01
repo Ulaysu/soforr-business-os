@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 
 namespace Soforr.Application.Persistence;
@@ -13,7 +12,6 @@ namespace Soforr.Application.Persistence;
 /// </summary>
 public interface IAppDbContext
 {
-    [SuppressMessage("Naming", "CA1716:Identifiers should not match keywords", Justification = "Mirrors DbContext.Set<TEntity>(); the solution is C# only.")]
     DbSet<TEntity> Set<TEntity>()
         where TEntity : class;
 

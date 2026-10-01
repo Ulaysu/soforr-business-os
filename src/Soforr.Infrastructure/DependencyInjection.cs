@@ -2,7 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Soforr.Application.Common;
 using Soforr.Application.Persistence;
+using Soforr.Infrastructure.Common;
 using Soforr.Infrastructure.Configuration;
 using Soforr.Infrastructure.Persistence;
 
@@ -17,6 +19,9 @@ public static class DependencyInjection
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
+
+        services.AddSingleton<IClock, SystemClock>();
+        services.AddSingleton<IIdGenerator, GuidV7IdGenerator>();
 
         services.AddValidatedOptions<ConnectionStringsOptions>(configuration, ConnectionStringsOptions.SectionName);
 

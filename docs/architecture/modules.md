@@ -21,7 +21,7 @@ The model is deliberately minimal; entities are named for orientation and refine
 - **Concepts:** Organization (name, currency, timezone).
 - **Commands:** CreateOrganization, UpdateOrganizationSettings.
 - **Queries:** GetOrganization.
-- **Invariants:** Every tenant-owned record in any module references exactly one organization; currency is not silently changed once transactions exist.
+- **Invariants:** Every tenant-owned record in any module references exactly one organization. The name is required (at most 200 characters, trimmed); the time zone is an IANA identifier supported by the application's runtime time zone database; the currency is one of Soforr's supported ISO 4217 currencies (a maintained snapshot of the current set) and is fixed at creation, so it is never silently changed once transactions exist; timestamps are UTC.
 - **Depends on:** none.
 
 ## Catalog

@@ -72,6 +72,34 @@ Application reaches the database only through `IAppDbContext` (ADR-0001). Its EF
 
 Architecture tests enforce this (`DependencyDirectionTests`, `PersistencePortTests`): declared and compiled references of Application, and the assemblies of every type in the `IAppDbContext` signature.
 
+## Module Layout and Handler Pattern
+
+Modules are folders and namespaces inside the existing projects (see [modules.md](modules.md)); each layer uses the same convention so later modules copy it.
+
+```text
+src/Soforr.Domain/
+  Common/                shared kernel: DomainException, Currency, Money
+  <Module>/              entities and value objects of one module (e.g. Organizations/Organization.cs)
+src/Soforr.Application/
+  Common/                Result<T>, Error, ErrorKind, ICommandHandler, IQueryHandler, handler registration, IClock, IIdGenerator
+  Persistence/           IAppDbContext
+  <Module>/<UseCase>/    one command or query with its handler, validation and DTOs
+src/Soforr.Infrastructure/
+  Common/                SystemClock, GuidV7IdGenerator
+  Persistence/           AppDbContext, entity configurations, migrations
+  Configuration/         validated options helpers
+src/Soforr.Api/
+  Hosting/, Observability/   cross-cutting HTTP concerns; endpoints are grouped per module
+```
+
+The handler pattern is defined by [ADR 0003](../decisions/0003-commands-and-queries-without-mediator.md) and implemented in `Soforr.Application.Common`:
+
+- `ICommandHandler<TCommand, TResult>` and `IQueryHandler<TQuery, TResult>` each have one method returning `Task<Result<TResult>>`. There is no mediator: endpoints call the handler directly.
+- `AddApplication()` scans the Application assembly and registers each handler (scoped) as its concrete type and its interface. Two handlers for the same command or query fail at startup.
+- `Result<T>` carries a value or an `Error(Code, Kind, Message)` for expected failures. The mapping from `ErrorKind` to HTTP is central and arrives with the first endpoints (ORG-003).
+- Domain invariants are enforced by Domain constructors and methods, which throw `DomainException` with a stable `Code`. Handlers translate it to an `Error` rather than letting it escape; that translation is written with the first handlers (ORG-003), once, in the Application layer.
+- The Domain never reads a clock or creates ids: time and ids are passed in. Handlers get them from `IClock` and `IIdGenerator` (implemented in Infrastructure), which keeps behavior deterministic in tests.
+
 ## Modules and Data
 
 Modules are folders/namespaces inside the existing projects: [modules.md](modules.md). Data conventions: [data-model.md](data-model.md).

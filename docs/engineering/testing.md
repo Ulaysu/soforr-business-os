@@ -12,7 +12,7 @@ tests/
 └── Soforr.Api.IntegrationTests   WebApplicationFactory (+ real PostgreSQL from FOUNDATION-008); see API test hosts
 ```
 
-xUnit v2 throughout. Created in FOUNDATION-006. `Soforr.Domain.Tests` has no tests until the Domain contains behavior (ORG-001). Architecture tests check both the references declared in each `.csproj` and the compiled assembly references, because the compiler omits references that no code uses.
+xUnit v2 throughout. Created in FOUNDATION-006. `Soforr.Domain.Tests` received its first tests with ORG-001 (Currency, Money, Organization). Architecture tests check both the references declared in each `.csproj` and the compiled assembly references, because the compiler omits references that no code uses.
 
 ## Pyramid
 
