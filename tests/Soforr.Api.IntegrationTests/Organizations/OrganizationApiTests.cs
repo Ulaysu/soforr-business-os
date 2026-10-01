@@ -99,7 +99,7 @@ public sealed class OrganizationApiTests : IClassFixture<PostgresDatabaseFixture
         Assert.Equal("UTC", updated.GetProperty("timeZoneId").GetString());
         Assert.Equal("GMD", updated.GetProperty("currency").GetString());
 
-        await using var db = _database.CreateContext();
+        await using var db = _database.CreateContext(id);
         Assert.Equal("Soforr Group", (await db.Set<Organization>().SingleAsync(o => o.Id == id)).Name);
     }
 
@@ -130,7 +130,7 @@ public sealed class OrganizationApiTests : IClassFixture<PostgresDatabaseFixture
             Assert.Single(response.Headers.GetValues("X-Correlation-ID")),
             problem.GetProperty("correlationId").GetString());
 
-        await using var db = _database.CreateContext();
+        await using var db = _database.CreateContext(id);
         var stored = await db.Set<Organization>().SingleAsync(o => o.Id == id);
         Assert.Equal("Soforr Trading", stored.Name);
         Assert.Equal("Europe/London", stored.TimeZoneId);

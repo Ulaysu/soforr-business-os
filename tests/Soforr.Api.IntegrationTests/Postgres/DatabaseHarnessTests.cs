@@ -48,12 +48,4 @@ public class DatabaseHarnessTests(PostgresDatabaseFixture database) : IClassFixt
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("Healthy", await response.Content.ReadAsStringAsync());
     }
-
-    [Fact]
-    public void TheTwoTenantStub_ProvidesTwoDistinctOrganizations()
-    {
-        Assert.NotEqual(Guid.Empty, TestTenants.OrganizationA);
-        Assert.NotEqual(Guid.Empty, TestTenants.OrganizationB);
-        Assert.NotEqual(TestTenants.OrganizationA, TestTenants.OrganizationB);
-    }
 }

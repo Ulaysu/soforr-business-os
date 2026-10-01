@@ -73,9 +73,9 @@ public sealed class AuthApiTests : IClassFixture<PostgresDatabaseFixture>, IDisp
         await using var db = _database.CreateContext();
         var user = await db.Set<ApplicationUser>().SingleAsync(candidate => candidate.Id == userId);
         Assert.Equal(email, user.Email);
-        var organization = await db.Set<Organization>().SingleAsync(candidate => candidate.Id == organizationId);
+        var organization = await db.Set<Organization>().IgnoreQueryFilters().SingleAsync(candidate => candidate.Id == organizationId);
         Assert.Equal("Soforr Trading", organization.Name);
-        var membership = await db.Set<Membership>().SingleAsync(candidate => candidate.UserId == userId);
+        var membership = await db.Set<Membership>().IgnoreQueryFilters().SingleAsync(candidate => candidate.UserId == userId);
         Assert.Equal(organizationId, membership.OrganizationId);
         Assert.Equal(Role.Owner, membership.Role);
     }
@@ -113,8 +113,8 @@ public sealed class AuthApiTests : IClassFixture<PostgresDatabaseFixture>, IDisp
         var uniqueEmail = email.Contains('@', StringComparison.Ordinal) && email.StartsWith("a@", StringComparison.Ordinal) ? NewEmail() : email;
         await using var before = _database.CreateContext();
         var usersBefore = await before.Set<ApplicationUser>().CountAsync();
-        var organizationsBefore = await before.Set<Organization>().CountAsync();
-        var membershipsBefore = await before.Set<Membership>().CountAsync();
+        var organizationsBefore = await before.Set<Organization>().IgnoreQueryFilters().CountAsync();
+        var membershipsBefore = await before.Set<Membership>().IgnoreQueryFilters().CountAsync();
 
         var response = await RegisterAsync(client, uniqueEmail, password, organizationName, currency, timeZoneId);
 
@@ -124,8 +124,8 @@ public sealed class AuthApiTests : IClassFixture<PostgresDatabaseFixture>, IDisp
 
         await using var after = _database.CreateContext();
         Assert.Equal(usersBefore, await after.Set<ApplicationUser>().CountAsync());
-        Assert.Equal(organizationsBefore, await after.Set<Organization>().CountAsync());
-        Assert.Equal(membershipsBefore, await after.Set<Membership>().CountAsync());
+        Assert.Equal(organizationsBefore, await after.Set<Organization>().IgnoreQueryFilters().CountAsync());
+        Assert.Equal(membershipsBefore, await after.Set<Membership>().IgnoreQueryFilters().CountAsync());
     }
 
     [Fact]
@@ -146,14 +146,14 @@ public sealed class AuthApiTests : IClassFixture<PostgresDatabaseFixture>, IDisp
         var email = NewEmail();
         Assert.Equal(HttpStatusCode.Created, (await RegisterAsync(client, email)).StatusCode);
         await using var before = _database.CreateContext();
-        var organizationsBefore = await before.Set<Organization>().CountAsync();
+        var organizationsBefore = await before.Set<Organization>().IgnoreQueryFilters().CountAsync();
 
         var response = await RegisterAsync(client, email.ToUpperInvariant());
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Equal("identity.email_taken", (await ReadAsync(response)).GetProperty("code").GetString());
         await using var after = _database.CreateContext();
-        Assert.Equal(organizationsBefore, await after.Set<Organization>().CountAsync());
+        Assert.Equal(organizationsBefore, await after.Set<Organization>().IgnoreQueryFilters().CountAsync());
     }
 
     // ---- sign in, current user, sign out
@@ -168,6 +168,9 @@ public sealed class AuthApiTests : IClassFixture<PostgresDatabaseFixture>, IDisp
         var response = await LoginAsync(client, email.ToUpperInvariant());
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var signedIn = await ReadAsync(response);
+        Assert.Equal(registered.GetProperty("organizationId").GetGuid(), signedIn.GetProperty("organizationId").GetGuid());
+        Assert.Equal("Owner", signedIn.GetProperty("role").GetString());
         var cookie = Assert.Single(response.Headers.GetValues("Set-Cookie"), value => value.StartsWith("__Host-soforr.session=", StringComparison.Ordinal));
         Assert.Contains("httponly", cookie, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("secure", cookie, StringComparison.OrdinalIgnoreCase);

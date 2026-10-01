@@ -171,7 +171,7 @@ AI Assistant (EPIC 12)
 - **Testing:** integration tests for register/sign-in/failure/lockout; unit tests for membership rules.
 
 ### IDENTITY-002 — Authorization foundation
-- **Status:** In Review · **Priority:** P0 · **Agent:** Security / Backend
+- **Status:** Done · **Priority:** P0 · **Agent:** Security / Backend
 - **Description:** Roles (Owner, Manager, Staff) and permissions; permission checks declared per use case in Application; default-deny policy at the API; apply to organization endpoints.
 - **Acceptance criteria:** Unauthenticated → 401; authenticated without permission → 403; role/permission matrix documented; organization endpoints protected.
 - **Dependencies:** IDENTITY-001
@@ -179,7 +179,7 @@ AI Assistant (EPIC 12)
 - **Testing:** authorization tests for every protected operation (matrix-driven).
 
 ### IDENTITY-003 — Tenant isolation
-- **Status:** Backlog · **Priority:** P0 · **Agent:** Security / Backend
+- **Status:** In Review · **Priority:** P0 · **Agent:** Security / Backend
 - **Description:** Organization context derived from the authenticated principal; EF global query filters; write-side ownership checks; a reusable test harness for cross-tenant tests; 404 for foreign resources. **Design changes to this mechanism require human approval.**
 - **Acceptance criteria:** A test suite with two tenants proves that reads, writes and referenced-id injection across tenants fail for all existing tenant-owned entities; a new tenant-owned entity without a filter is caught by an architecture/convention test.
 - **Dependencies:** IDENTITY-002, ORG-002

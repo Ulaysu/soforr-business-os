@@ -95,6 +95,16 @@ These record how the decisions above were implemented; they do not change them.
 - **Antiforgery:** `RequireAntiforgery()` is applied to the authentication and organization groups; it checks only unsafe methods. A test requires it on every unsafe endpoint.
 - **Foreign organizations are 404, not 403:** the organization handlers compare the requested id with the caller's own organization and answer not found otherwise. The permission is checked first, so a role without the permission gets 403 whatever the id. The general mechanism (query filters on every tenant-owned entity) is IDENTITY-003.
 
+## Implementation notes (IDENTITY-003)
+
+These record how section 3 was implemented; the decisions are unchanged.
+
+- **Read isolation:** `AppDbContext` takes `IOrganizationContext` and gives `Organization` (by its own id) and `Membership` (by `OrganizationId`) a global query filter. With no organization the filter matches nothing, so it fails closed. A convention test reads the EF model and fails when an entity with an `OrganizationId` has no filter, and when any entity is neither filtered nor on a short reviewed list of non-tenant entities (the Identity credential tables).
+- **Write isolation:** `AppDbContext` refuses to save an added, changed or deleted tenant-owned row whose organization is not the current one (`TenantIsolationException`, a defect, not a client error). With **no** current organization nothing is restricted, because that is how registration creates a tenant; the architecture test already limits the handlers that run without a signed-in user to Register and SignIn.
+- **Sign-in lookups bypass the filter on purpose:** the claims factory and the sign-in response read the membership with `IgnoreQueryFilters()`, because they run before there is a current organization (they establish it). These are the only two such reads in the source, and an architecture test fails if another file uses `IgnoreQueryFilters`.
+- **Handlers** still compare the requested organization id with the caller's own and answer 404 (ADR 0002); the filter is the second line. Every future tenant-owned entity resolves foreign ids through the filtered queryable, so a foreign id behaves as not found.
+- **Not adopted:** PostgreSQL row-level security (unchanged; revisit before hosting many external tenants).
+
 ## Decisions approved by the owner
 
 1. Option A (cookie session) over B/C for the MVP.

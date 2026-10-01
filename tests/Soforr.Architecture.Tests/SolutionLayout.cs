@@ -10,6 +10,17 @@ internal static class SolutionLayout
 {
     private static readonly Lazy<string> RepositoryRoot = new(FindRepositoryRoot);
 
+    /// <summary>The repository-relative paths (forward slashes) of every C# source file under src/, excluding build output and migrations.</summary>
+    public static IEnumerable<(string RelativePath, string Text)> SourceFiles()
+    {
+        var src = Path.Combine(RepositoryRoot.Value, "src");
+
+        return Directory.EnumerateFiles(src, "*.cs", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(RepositoryRoot.Value, path).Replace('\\', '/'))
+            .Where(relative => !relative.Contains("/obj/", StringComparison.Ordinal) && !relative.Contains("/bin/", StringComparison.Ordinal) && !relative.Contains("/Migrations/", StringComparison.Ordinal))
+            .Select(relative => (relative, File.ReadAllText(Path.Combine(RepositoryRoot.Value, relative))));
+    }
+
     public static DeclaredReferences ForProject(string projectName)
     {
         var path = Path.Combine(RepositoryRoot.Value, "src", projectName, projectName + ".csproj");

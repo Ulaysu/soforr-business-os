@@ -60,7 +60,7 @@ Organization ─┬─ Membership ── User
 
 ## Multi-Tenancy Enforcement
 
-- EF Core global query filter on `OrganizationId` for tenant-owned entities, sourced from the authenticated context, never from request bodies.
+- EF Core global query filter on `OrganizationId` for tenant-owned entities (`Organization` by its id, `Membership` today), sourced from the authenticated context, never from request bodies. With no organization the filter matches nothing. A write to another organization's row is refused on save. A convention test fails when a tenant-owned entity has no filter.
 - Commands verify that referenced ids (e.g. `ProductId` on a sale line) belong to the caller's organization.
 - Integration tests must prove that cross-tenant reads and writes fail.
 
