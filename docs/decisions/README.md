@@ -30,3 +30,4 @@ Only **Accepted** ADRs are authoritative (see [AGENTS.md](../../AGENTS.md)). Age
 | [0003](0003-commands-and-queries-without-mediator.md) | Commands and queries without a mediator library | Accepted |
 | [0004](0004-inventory-concurrency.md) | Inventory concurrency | Accepted |
 | [0005](0005-testing-infrastructure.md) | Testing infrastructure | Accepted |
+| [0006](0006-sku-uniqueness.md) | SKU uniqueness | Accepted |
