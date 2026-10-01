@@ -16,7 +16,7 @@ public class InventoryMovementTests
     private static InventoryMovement Record(
         InventoryMovementReason reason = InventoryMovementReason.PurchaseReceived,
         string? note = null,
-        decimal delta = 10m,
+        decimal? delta = null,
         Guid? id = null,
         Guid? organizationId = null,
         Guid? productId = null,
@@ -28,13 +28,17 @@ public class InventoryMovementTests
             id ?? MovementId,
             organizationId ?? OrganizationId,
             productId ?? ProductId,
-            QuantityDelta.Create(delta),
+            QuantityDelta.Create(delta ?? ValidDeltaFor(reason)),
             reason,
             sourceType,
             sourceId ?? SourceId,
             actorId ?? ActorId,
             note,
             at ?? At);
+
+    // A valid amount for the reason: sales and damage remove stock, everything else adds it.
+    private static decimal ValidDeltaFor(InventoryMovementReason reason) =>
+        reason is InventoryMovementReason.SaleCompleted or InventoryMovementReason.Damage ? -10m : 10m;
 
     [Fact]
     public void Record_KeepsEveryFieldItWasGiven()
@@ -139,6 +143,72 @@ public class InventoryMovementTests
         var exception = Assert.Throws<DomainException>(() => Record(at: new DateTimeOffset(2026, 4, 2, 10, 0, 0, TimeSpan.FromHours(1))));
 
         Assert.Equal("inventory_movement.timestamp_not_utc", exception.Code);
+    }
+
+    // ---- the sign of the change follows its reason
+
+    [Theory]
+    [InlineData(InventoryMovementReason.PurchaseReceived, 5)]
+    [InlineData(InventoryMovementReason.SaleCompleted, -5)]
+    [InlineData(InventoryMovementReason.ManualAdjustment, 5)]
+    [InlineData(InventoryMovementReason.ManualAdjustment, -5)]
+    [InlineData(InventoryMovementReason.Return, 5)]
+    [InlineData(InventoryMovementReason.Damage, -5)]
+    public void Record_AcceptsTheAllowedSignForTheReason(InventoryMovementReason reason, int amount)
+    {
+        var movement = Record(reason, note: "reason for the change", delta: amount);
+
+        Assert.Equal(reason, movement.Reason);
+        Assert.Equal(amount, movement.QuantityDelta.Value);
+    }
+
+    [Theory]
+    [InlineData(InventoryMovementReason.PurchaseReceived, -5, "inventory_movement.delta_must_be_positive")]
+    [InlineData(InventoryMovementReason.Return, -5, "inventory_movement.delta_must_be_positive")]
+    [InlineData(InventoryMovementReason.SaleCompleted, 5, "inventory_movement.delta_must_be_negative")]
+    [InlineData(InventoryMovementReason.Damage, 5, "inventory_movement.delta_must_be_negative")]
+    public void Record_RejectsTheForbiddenSignForTheReason(InventoryMovementReason reason, int amount, string expectedCode)
+    {
+        var exception = Assert.Throws<DomainException>(() => Record(reason, note: "reason for the change", delta: amount));
+
+        Assert.Equal(expectedCode, exception.Code);
+    }
+
+    [Fact]
+    public void TheSignRule_AppliesToTheSmallestRepresentableChange()
+    {
+        Assert.Equal("inventory_movement.delta_must_be_positive", Assert.Throws<DomainException>(() => Record(InventoryMovementReason.PurchaseReceived, delta: -0.0001m)).Code);
+        Assert.Equal("inventory_movement.delta_must_be_negative", Assert.Throws<DomainException>(() => Record(InventoryMovementReason.SaleCompleted, delta: 0.0001m)).Code);
+        Assert.Equal(0.0001m, Record(InventoryMovementReason.Return, delta: 0.0001m).QuantityDelta.Value);
+        Assert.Equal(-0.0001m, Record(InventoryMovementReason.Damage, delta: -0.0001m).QuantityDelta.Value);
+    }
+
+    [Fact]
+    public void EveryReason_HasADefinedSignRule()
+    {
+        // Guards against adding a reason without deciding which sign it allows: each reason must either accept
+        // exactly one sign or be explicitly unrestricted.
+        foreach (var reason in Enum.GetValues<InventoryMovementReason>())
+        {
+            var acceptsPositive = Record_Accepts(reason, 5m);
+            var acceptsNegative = Record_Accepts(reason, -5m);
+
+            Assert.True(acceptsPositive || acceptsNegative, $"{reason} accepts neither sign");
+            Assert.Equal(reason == InventoryMovementReason.ManualAdjustment, acceptsPositive && acceptsNegative);
+        }
+    }
+
+    private static bool Record_Accepts(InventoryMovementReason reason, decimal delta)
+    {
+        try
+        {
+            _ = Record(reason, note: "reason for the change", delta: delta);
+            return true;
+        }
+        catch (DomainException)
+        {
+            return false;
+        }
     }
 
     [Fact]

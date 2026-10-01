@@ -7,6 +7,9 @@ namespace Soforr.Domain.Inventory;
 /// never deleted; a correction is a new movement with its own reason. There are therefore no setters and no
 /// mutating methods. Every movement says why stock changed (reason), where it came from (source type and id) and
 /// who caused it (actor).
+/// The reason gives the stock change its business meaning, so it fixes the sign of the change: a purchase receipt
+/// and a return add stock, a sale and damage remove it, and a manual adjustment may do either (it can discover an
+/// excess or a shortage).
 /// That the same source cannot record the same movement twice is a rule across movements, so the database enforces
 /// it (ADR 0004); the entity only carries the identifying fields.
 /// </summary>
@@ -65,7 +68,7 @@ public sealed class InventoryMovement
 
     public DateTimeOffset OccurredAtUtc { get; private set; }
 
-    /// <exception cref="DomainException">An invariant is violated.</exception>
+    /// <exception cref="DomainException">An invariant is violated, including a change whose sign does not match its reason.</exception>
     public static InventoryMovement Record(
         Guid id,
         Guid organizationId,
@@ -96,6 +99,8 @@ public sealed class InventoryMovement
             throw new DomainException("inventory_movement.source_type_invalid", "A movement must have a valid source type.");
         }
 
+        EnsureSignMatchesReason(quantityDelta, reason);
+
         if (occurredAtUtc.Offset != TimeSpan.Zero)
         {
             throw new DomainException("inventory_movement.timestamp_not_utc", "Timestamps must be in UTC.");
@@ -112,6 +117,34 @@ public sealed class InventoryMovement
             actorId,
             ValidNote(note, reason),
             occurredAtUtc);
+    }
+
+    private static void EnsureSignMatchesReason(QuantityDelta quantityDelta, InventoryMovementReason reason)
+    {
+        switch (reason)
+        {
+            case InventoryMovementReason.PurchaseReceived:
+            case InventoryMovementReason.Return:
+                if (quantityDelta.Value < 0m)
+                {
+                    throw new DomainException("inventory_movement.delta_must_be_positive", $"A {reason} movement must add stock.");
+                }
+
+                break;
+
+            case InventoryMovementReason.SaleCompleted:
+            case InventoryMovementReason.Damage:
+                if (quantityDelta.Value > 0m)
+                {
+                    throw new DomainException("inventory_movement.delta_must_be_negative", $"A {reason} movement must remove stock.");
+                }
+
+                break;
+
+            case InventoryMovementReason.ManualAdjustment:
+                // An adjustment can discover either an excess or a shortage, so either sign is valid.
+                break;
+        }
     }
 
     private static string? ValidNote(string? note, InventoryMovementReason reason)
