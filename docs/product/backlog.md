@@ -155,7 +155,7 @@ AI Assistant (EPIC 12)
 - **Testing:** integration test for persistence round-trip and constraints.
 
 ### ORG-003 — Organization API
-- **Status:** In Review · **Priority:** P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** P0 · **Agent:** Backend
 - **Description:** `CreateOrganization`, `UpdateOrganizationSettings`, `GetOrganization` commands/queries and thin endpoints, with validation and ProblemDetails errors. Authorization is added once IDENTITY-002 lands (until then endpoints are not exposed beyond Development).
 - **Acceptance criteria:** OpenAPI documents the endpoints; handler `Result` errors (ADR-0003) are mapped centrally to RFC 9457 responses with a stable `code` extension, and validation errors list field-level problems (the generic error pipeline itself exists from FOUNDATION-005); endpoints are mapped only in Development until IDENTITY-002 is Done, proven by a test that they are absent in other environments.
 - **Dependencies:** ORG-002, FOUNDATION-005
@@ -163,7 +163,7 @@ AI Assistant (EPIC 12)
 - **Testing:** handler unit tests; API integration tests.
 
 ### IDENTITY-001 — Authentication foundation
-- **Status:** Backlog · **Priority:** P0 · **Agent:** Security / Backend
+- **Status:** In Review · **Priority:** P0 · **Agent:** Security / Backend
 - **Description:** User registration/sign-in, credential storage, session/token model, membership of users in organizations, first user becomes Owner of a new organization. Implements [ADR 0002](../decisions/0002-authentication.md) (ASP.NET Core Identity, HttpOnly cookie session, one organization per user, antiforgery on unsafe methods, security-stamp revocation). Email verification and password reset are excluded (IDENTITY-004).
 - **Acceptance criteria:** Users can register (creating User + Organization + Owner membership atomically), sign in and out over HTTPS; passwords hashed; lockout in place; `ICurrentUser` and `IOrganizationContext` expose user id and organization; no secrets in source or `localStorage`.
 - **Dependencies:** ORG-003; ADR 0002 (Accepted)

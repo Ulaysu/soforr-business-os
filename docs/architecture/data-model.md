@@ -33,6 +33,12 @@ Organization ─┬─ Membership ── User
 
 `Organizations(Id uuid PK, Name varchar(200), Currency varchar(3), TimeZoneId varchar(100), CreatedAtUtc timestamptz, UpdatedAtUtc timestamptz)`, all columns required. Identifiers are generated in application code. The Domain enforces the invariants; CHECK constraints are a backstop for data written by anything else: the name is not blank, the currency is exactly three upper-case letters (`^[A-Z]{3}$`), the time zone is not blank. The currency is stored as the code and read back through `Currency.Create`, so a code removed from the supported snapshot would stop loading; the snapshot is only changed deliberately.
 
+## Identity Tables
+
+- `Users`, `UserClaims`, `UserLogins`, `UserTokens`: ASP.NET Core Identity's schema (credential records), renamed without the `AspNet` prefix. Identity roles are not used.
+- `Memberships(Id uuid PK, UserId uuid FK, OrganizationId uuid FK, Role varchar(20), CreatedAtUtc timestamptz)`: **unique index on `UserId`** (one organization per user, ADR 0002), an index on `OrganizationId`, `CHECK (Role IN ('Owner','Manager','Staff'))`, and `ON DELETE RESTRICT` to both the user and the organization.
+- A user's e-mail address is stored as entered and compared through Identity's normalized form (a unique index on `NormalizedUserName`, which equals the e-mail address), so `A@x.com` and `a@x.com` are the same account.
+
 ## Inventory Integrity Model
 
 - `InventoryMovement(Id, OrganizationId, ProductId, QuantityDelta, Reason, SourceType, SourceId, ActorId, OccurredAtUtc)`.

@@ -1,11 +1,13 @@
 # Security Principles
 
-This is the planning baseline. Nothing here is implemented yet; each area maps to backlog items (IDENTITY-*, SECURITY-*, FOUNDATION-*). Threats: [threat-model.md](threat-model.md). Rules originate in [CLAUDE.md](../../CLAUDE.md) §13–§17.
+This is the baseline. Authentication is implemented (IDENTITY-001, see below); the rest is planned, and each area maps to backlog items (IDENTITY-*, SECURITY-*, FOUNDATION-*). Threats: [threat-model.md](threat-model.md). Rules originate in [CLAUDE.md](../../CLAUDE.md) §13–§17.
 
 ## Authentication
 - Use the platform's mature mechanisms (ASP.NET Core Identity or equivalent; final choice is an ADR requiring approval per CLAUDE.md §21). No home-made crypto.
 - Passwords hashed with a modern adaptive algorithm; lockout/throttling on repeated failures; short-lived access tokens; refresh/session handling defined in the IDENTITY-001 design.
 - Secure cookie / token transport only over HTTPS; HSTS enabled outside development.
+- **Implemented (IDENTITY-001, [ADR 0002](../decisions/0002-authentication.md)):** ASP.NET Core Identity with an `HttpOnly`, `Secure`, `SameSite=Lax` `__Host-` cookie session (no token in JavaScript or storage); passwords hashed with Identity's adaptive hasher, minimum length 12, lockout after 5 failures; identical answers for unknown address, wrong password and locked account; sliding idle timeout plus an absolute lifetime; sessions re-validated every minute so a security-stamp change ends them; antiforgery token required on register, sign-in and sign-out.
+- **Not yet:** e-mail verification and password reset (IDENTITY-004), rate limiting (SECURITY-002), the CORS allowlist (with the web client). Until then the authentication endpoints are mapped only in Development.
 
 ## Authorization
 - Authenticated ≠ authorized. Every command and query checks a permission server-side.

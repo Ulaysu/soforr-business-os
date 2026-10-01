@@ -119,6 +119,9 @@ Configuration is bound to typed options classes and validated when the host star
 | Key | Required | Secret | Description |
 |---|---|---|---|
 | `ConnectionStrings:Database` | yes | **yes** | PostgreSQL connection string (Npgsql format). Application fails at startup if missing. |
+| `Session:IdleTimeout` | no | no | Sliding idle timeout of the sign-in cookie. Default `01:00:00`. |
+| `Session:AbsoluteLifetime` | no | no | Longest a session can last however active. Default `12:00:00`. |
+| `Session:SecurityStampValidationInterval` | no | no | How often a session is re-validated against the security stamp and membership. Default `00:01:00`. |
 
 ## Database Migrations
 
@@ -136,6 +139,15 @@ Configuration is bound to typed options classes and validated when the host star
   The `ef` commands start the Api host to discover the context, so `ConnectionStrings:Database` must be available (user secrets in Development, or the `ConnectionStrings__Database` environment variable). `migrations add` does not connect to the database; `database update` does.
 - Destructive migrations (drop column/table) and major redesigns require human approval.
 - No manual production schema changes.
+
+## Authentication in development
+
+The authentication endpoints exist only in Development (see [ADR 0002](../decisions/0002-authentication.md)). The session and antiforgery cookies are `Secure`, so use the `https` launch profile (`dotnet run --project src/Soforr.Api --launch-profile https`; trust the development certificate once with `dotnet dev-certs https --trust`). A client signs in like this:
+
+1. `GET /api/v1/auth/antiforgery` returns `{ "headerName": "X-CSRF-TOKEN", "token": "..." }` and sets the antiforgery cookie.
+2. `POST /api/v1/auth/register` (or `/login`) with that header. Registration creates the user, a new organization and the Owner membership; it does not sign in.
+3. The token is bound to the identity it was issued for: fetch a new one after signing in or out, before the next unsafe request.
+4. `GET /api/v1/auth/me` returns the user, organization and role, or `401`.
 
 ## Frontend (Soforr.Web)
 

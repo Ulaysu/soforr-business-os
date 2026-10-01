@@ -30,6 +30,7 @@ public static class ResultHttpExtensions
                 new Dictionary<string, string[]> { [error.Field ?? string.Empty] = [error.Message] },
                 title: "One or more validation errors occurred.",
                 extensions: extensions),
+            ErrorKind.Unauthenticated => Results.Problem(error.Message, statusCode: StatusCodes.Status401Unauthorized, title: "Unauthorized", extensions: extensions),
             ErrorKind.NotFound => Results.Problem(error.Message, statusCode: StatusCodes.Status404NotFound, title: "Not Found", extensions: extensions),
             ErrorKind.Forbidden => Results.Problem(error.Message, statusCode: StatusCodes.Status403Forbidden, title: "Forbidden", extensions: extensions),
             ErrorKind.Conflict => Results.Problem(error.Message, statusCode: StatusCodes.Status409Conflict, title: "Conflict", extensions: extensions),

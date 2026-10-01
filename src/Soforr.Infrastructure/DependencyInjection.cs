@@ -1,13 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Soforr.Application.Common;
-using Soforr.Application.Organizations;
 using Soforr.Application.Persistence;
 using Soforr.Infrastructure.Common;
 using Soforr.Infrastructure.Configuration;
+using Soforr.Infrastructure.Identity;
 using Soforr.Infrastructure.Persistence;
 
 namespace Soforr.Infrastructure;
@@ -24,13 +23,14 @@ public static class DependencyInjection
 
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IIdGenerator, GuidV7IdGenerator>();
-        services.TryAddScoped<IOrganizationContext, NoOrganizationContext>();
 
         services.AddValidatedOptions<ConnectionStringsOptions>(configuration, ConnectionStringsOptions.SectionName);
 
         services.AddDbContext<AppDbContext>((provider, options) =>
             options.UseNpgsql(provider.GetRequiredService<IOptions<ConnectionStringsOptions>>().Value.Database));
         services.AddScoped<IAppDbContext>(provider => provider.GetRequiredService<AppDbContext>());
+
+        services.AddIdentityAuthentication(configuration);
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>("database", tags: [HealthCheckTags.Ready]);
