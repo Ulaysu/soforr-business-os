@@ -111,7 +111,7 @@ AI Assistant (EPIC 12)
 - **Testing:** the tests themselves. Test-only packages: xUnit family, `Microsoft.NET.Test.Sdk`, `Microsoft.AspNetCore.Mvc.Testing`.
 
 ### FOUNDATION-008 — PostgreSQL integration test harness
-- **Status:** Backlog · **Priority:** P0 · **Agent:** QA / Backend
+- **Status:** In Review · **Priority:** P0 · **Agent:** QA / Backend
 - **Description:** Testcontainers PostgreSQL fixture (one container per run, one database per test class created from migrations), `Integration` category, two-tenant fixture stub (completed in IDENTITY-003).
 - **Acceptance criteria:** `dotnet test` needs only Docker; migrations apply to an empty database in a test; tests are order-independent; CI runs them.
 - **Dependencies:** FOUNDATION-003, FOUNDATION-006; ADR 0005
@@ -243,7 +243,7 @@ AI Assistant (EPIC 12)
 # EPIC 04 — Inventory
 
 ### INVENTORY-001 — Inventory domain model and design note
-- **Status:** In Review · **Priority:** P0 · **Agent:** Backend / Architecture
+- **Status:** Done · **Priority:** P0 · **Agent:** Backend / Architecture
 - **Description:** `InventoryMovement` (append-only), `StockLevel`, reasons, non-negative stock rule, `Quantity` value object. The concurrency mechanism is decided in [ADR 0004](../decisions/0004-inventory-concurrency.md) (optimistic token plus database backstops).
 - **Acceptance criteria:** Domain model reflects ADR 0004 (append-only movements, reasons, idempotency source reference); invariants covered in tests.
 - **Dependencies:** CATALOG-001; ADR 0004

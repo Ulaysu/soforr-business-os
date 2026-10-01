@@ -5,10 +5,11 @@ using Microsoft.Extensions.Configuration;
 namespace Soforr.Api.IntegrationTests;
 
 /// <summary>
-/// Hosts the API for tests with a test-only database connection string that points at a closed port,
-/// so tests that do not need a database never reach one. Real-PostgreSQL tests arrive with FOUNDATION-008.
+/// Hosts the real application for tests. By default the database connection string points at a closed port, so
+/// tests that do not need a database never reach one. Pass the connection string of a
+/// <see cref="Postgres.PostgresDatabaseFixture"/> to run against a real PostgreSQL database.
 /// </summary>
-internal sealed class ApiFactory : WebApplicationFactory<Program>
+internal sealed class ApiFactory(string? connectionString = null) : WebApplicationFactory<Program>
 {
     public const string UnreachableConnectionString =
         "Host=127.0.0.1;Port=1;Database=test;Username=test;Password=test;Timeout=1;Command Timeout=1";
@@ -20,7 +21,7 @@ internal sealed class ApiFactory : WebApplicationFactory<Program>
         builder.ConfigureAppConfiguration((_, configuration) =>
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:Database"] = UnreachableConnectionString,
+                ["ConnectionStrings:Database"] = connectionString ?? UnreachableConnectionString,
             }));
     }
 }

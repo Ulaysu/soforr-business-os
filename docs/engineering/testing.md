@@ -9,7 +9,7 @@ tests/
 ├── Soforr.Domain.Tests           unit tests, no I/O
 ├── Soforr.Application.Tests      handler tests with fakes/in-memory ports
 ├── Soforr.Architecture.Tests     dependency-direction rules
-└── Soforr.Api.IntegrationTests   WebApplicationFactory (+ real PostgreSQL from FOUNDATION-008); see API test hosts
+└── Soforr.Api.IntegrationTests   WebApplicationFactory + real PostgreSQL (Testcontainers); see API test hosts and the PostgreSQL harness
 ```
 
 xUnit v2 throughout. Created in FOUNDATION-006. `Soforr.Domain.Tests` received its first tests with ORG-001 (Currency, Money, Organization). Architecture tests check both the references declared in each `.csproj` and the compiled assembly references, because the compiler omits references that no code uses.
@@ -48,6 +48,33 @@ The API tests use three kinds of host. Each has one job; pick the one that match
 - It proves the pipeline components behave correctly; it cannot prove the application uses them. That wiring is confirmed by `ApiFactory` tests against the real `Program` (for example `/health/live` carries `X-Correlation-ID`).
 - New endpoints and workflows are tested through `ApiFactory`. Do not add real endpoints or business behavior to `PipelineTestHost`.
 - When a cross-cutting concern needs authentication, tenant context or the database (for example logging the organization, or error mapping from real handlers), test it through `ApiFactory`.
+
+## PostgreSQL Integration Harness
+
+Tests that need a real database use the harness in `tests/Soforr.Api.IntegrationTests/Postgres` ([ADR 0005](../decisions/0005-testing-infrastructure.md)). It needs Docker; the first run pulls the `postgres:17` image (the same image as `docker-compose.yml`).
+
+- **One container per test run.** `SharedPostgresContainer` starts PostgreSQL (Testcontainers) on first use and shares it between all test classes; it is removed when the test process exits.
+- **One database per test class.** `PostgresDatabaseFixture` creates a new, empty database, checks that it really is empty, applies the application's migrations with `MigrateAsync`, and drops the database when the class finishes. Using it therefore also proves that the migrations apply to an empty database. Because each class owns its database, classes run in parallel and in any order without sharing data. Tests inside one class do share that class's database, so they must create the data they need and not assume empty tables.
+- **Using it:**
+
+  ```csharp
+  [Trait("Category", "Integration")]
+  public class ProductPersistenceTests(PostgresDatabaseFixture database) : IClassFixture<PostgresDatabaseFixture>
+  {
+      [Fact]
+      public async Task Something()
+      {
+          await using var context = database.CreateContext();               // AppDbContext on this class's database
+          using var factory = new ApiFactory(database.ConnectionString);    // the real application on the same database
+          // ...
+      }
+  }
+  ```
+
+- **Category.** Tag every class that uses the harness `[Trait("Category", "Integration")]`. To run everything except these tests, for example without Docker: `dotnet test --filter "Category!=Integration"`.
+- **Two tenants.** `TestTenants` is a stub that provides two distinct organization ids. IDENTITY-003 completes it by creating both organizations and a user for each in the test database; tenant-isolation tests are written against it.
+- **No Docker.** If the container cannot be started, the tests fail with a message saying Docker is required; they are never skipped silently.
+- **Docker endpoint.** Testcontainers honors the standard `DOCKER_HOST` variable. If it cannot find your Docker engine although the `docker` CLI works, point it at the engine the CLI uses (see `docker context inspect --format '{{.Endpoints.docker.Host}}'`).
 
 ## Practices
 
