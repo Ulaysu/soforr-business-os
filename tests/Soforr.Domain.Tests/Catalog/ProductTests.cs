@@ -298,4 +298,55 @@ public class ProductTests
         Assert.True(product.IsActive);
         Assert.Equal(CreatedAt, product.UpdatedAtUtc);
     }
+
+    // ---- SKU casing (uniqueness itself is enforced by persistence, ADR 0006)
+
+    [Theory]
+    [InlineData("ABC-123")]
+    [InlineData("abc-123")]
+    [InlineData("Abc-123")]
+    public void Create_PreservesTheCasingOfTheSku(string sku)
+    {
+        var product = Product.Create(ProductId, OrganizationId, sku, "Name", "each", Price(1m), Price(1m), null, CreatedAt);
+
+        Assert.Equal(sku, product.Sku);
+    }
+
+    [Fact]
+    public void Update_PreservesTheCasingOfTheNewSku_AndTrimsIt()
+    {
+        var product = NewProduct();
+
+        product.Update("  Rice-25Kg  ", "Rice 25kg bag", "bag", Price(30m), Price(22.5m), null, LaterAt);
+
+        Assert.Equal("Rice-25Kg", product.Sku);
+    }
+
+    // ---- update guards
+
+    [Fact]
+    public void Update_WithANullPrice_ThrowsAndChangesNothing()
+    {
+        var product = NewProduct();
+
+        Assert.Throws<ArgumentNullException>(() => product.Update("NEW", "New", "box", null!, Price(1m), null, LaterAt));
+        Assert.Throws<ArgumentNullException>(() => product.Update("NEW", "New", "box", Price(1m), null!, null, LaterAt));
+
+        Assert.Equal("RICE-25KG", product.Sku);
+        Assert.Equal(Price(30m), product.SellingPrice);
+        Assert.Equal(Price(22.5m), product.CostPrice);
+        Assert.Equal(CreatedAt, product.UpdatedAtUtc);
+    }
+
+    [Fact]
+    public void Update_OnADeactivatedProduct_DoesNotReactivateIt()
+    {
+        var product = NewProduct();
+        product.Deactivate(LaterAt);
+
+        product.Update("RICE-25KG", "Rice 25kg bag (renamed)", "bag", Price(31m), Price(23m), null, LaterAt.AddDays(1));
+
+        Assert.False(product.IsActive);
+        Assert.Equal("Rice 25kg bag (renamed)", product.Name);
+    }
 }

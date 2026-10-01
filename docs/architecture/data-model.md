@@ -6,7 +6,7 @@ Conceptual model and conventions for the first vertical slice. Detailed schemas 
 
 - PostgreSQL via EF Core; **migrations only** for schema changes.
 - Primary keys: UUID, created in application code.
-- Every business-owned table has a non-null `OrganizationId` (FK) and indexes that lead with it. Uniqueness is scoped per organization, e.g. `(OrganizationId, Sku)`.
+- Every business-owned table has a non-null `OrganizationId` (FK) and indexes that lead with it. Uniqueness is scoped per organization, e.g. products by SKU. A SKU is compared case-insensitively while its entered casing is preserved ([ADR 0006](../decisions/0006-sku-uniqueness.md)); the database must enforce this, not only the handlers.
 - Timestamps in UTC (`timestamptz`): `CreatedAtUtc`, `UpdatedAtUtc`; actor columns where auditability matters.
 - Money: `numeric(19,4)` plus currency code. Quantities: `numeric(18,4)`. No floating point.
 - Soft-deactivation instead of deletion for entities with history.

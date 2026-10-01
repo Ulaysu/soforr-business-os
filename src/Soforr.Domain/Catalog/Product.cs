@@ -6,9 +6,9 @@ namespace Soforr.Domain.Catalog;
 /// Something an organization buys and sells. A product belongs to exactly one organization.
 /// A product is never deleted: once it has history it is deactivated, so past purchases, sales and stock
 /// movements keep a valid reference to it.
-/// SKU uniqueness within an organization is a rule across products, so it is enforced where products are stored
-/// and queried (persistence and the handlers), not by this entity. Likewise, that the prices are in the
-/// organization's currency is checked by the handler, which knows the organization.
+/// SKU uniqueness within an organization is a rule across products, so it is not enforced by this entity: it is
+/// case-insensitive and must be enforced by the database and reported by the handlers (ADR 0006). Likewise, that the
+/// prices are in the organization's currency is checked by the handler, which knows the organization.
 /// </summary>
 public sealed class Product
 {
@@ -54,6 +54,10 @@ public sealed class Product
 
     public Guid OrganizationId { get; private set; }
 
+    /// <summary>
+    /// The SKU as entered, trimmed, with its casing preserved for display. It is deliberately not normalized:
+    /// uniqueness is compared case-insensitively by persistence, not by changing the stored value (ADR 0006).
+    /// </summary>
     public string Sku { get; private set; }
 
     public string Name { get; private set; }
@@ -63,6 +67,10 @@ public sealed class Product
 
     public Money SellingPrice { get; private set; }
 
+    /// <summary>
+    /// Required. Zero is a valid stored cost; the model has no "unknown cost" state because no requirement
+    /// establishes one.
+    /// </summary>
     public Money CostPrice { get; private set; }
 
     /// <summary>Null when no reorder settings have been configured for the product.</summary>
