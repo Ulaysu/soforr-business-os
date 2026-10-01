@@ -72,6 +72,7 @@ Tests that need a real database use the harness in `tests/Soforr.Api.Integration
   ```
 
 - **Handlers.** Command and query handlers are tested on this harness (see `Organizations/OrganizationHandlerTests`): construct the handler with `database.CreateContext()`, a fixed `IClock` and predictable ids, then assert both the returned `Result` and what is stored. The real database matters because the handlers use LINQ and persistence.
+- **Authentication.** `Identity/AuthApiTests` drives the real application with a cookie-keeping https client: register, sign-in, sign-out, lockout, antiforgery, the absolute session lifetime and revocation. Settings such as `Session:AbsoluteLifetime` are overridden per test with `ConfigureAppConfiguration`, so the absolute-lifetime test waits seconds, not hours; the revocation tests set `Session:SecurityStampValidationInterval` to zero.
 - **Category.** Tag every class that uses the harness `[Trait("Category", "Integration")]`. To run everything except these tests, for example without Docker: `dotnet test --filter "Category!=Integration"`.
 - **Two tenants.** `TestTenants` is a stub that provides two distinct organization ids. IDENTITY-003 completes it by creating both organizations and a user for each in the test database; tenant-isolation tests are written against it.
 - **No Docker.** If the container cannot be started, the tests fail with a message saying Docker is required; they are never skipped silently.

@@ -73,6 +73,20 @@ Details:
 - JWT is deferred until a real mobile/external API requirement exists; adding such clients later needs Option C and a new ADR.
 - Identity's tables (users, stamps) live in Infrastructure; Domain owns `Membership`, `Role`.
 
+## Implementation notes (IDENTITY-001)
+
+These record how the decisions above were implemented; they do not change them.
+
+- **Cookie:** `__Host-soforr.session` (the prefix makes browsers accept it only if it is `Secure`, has `Path=/` and no `Domain`), `HttpOnly`, `Secure`, `SameSite=Lax`, not persistent.
+- **Session lifetime (defaults, configurable under `Session:`):** idle timeout 1 hour (sliding), absolute lifetime 12 hours. Identity's cookie only slides, so the sign-in time is kept in the ticket and checked on every request; a session older than the absolute lifetime is rejected however active it is.
+- **Revocation:** the security stamp and the membership are re-validated every minute (`Session:SecurityStampValidationInterval`). Re-validation regenerates the principal, so a changed role or a removed membership reaches an existing session within that interval; a changed security stamp ends it.
+- **Claims:** the user id, the organization id (`soforr.organization`) and the role come from the stored membership at sign-in and at every re-validation. They are never taken from the request.
+- **Passwords:** Identity's PBKDF2 hasher; minimum length 12, at most 128, no composition rules; lockout after 5 failed attempts for 15 minutes.
+- **Sign-in answers:** an unknown address, a wrong password and a locked-out account return the same `401 identity.invalid_credentials`, and an unknown address does the same hashing work as a wrong password, so neither the response nor its timing says which addresses exist. Registration necessarily reveals that an address is taken (`409 identity.email_taken`); e-mail verification (IDENTITY-004) is what addresses that.
+- **Antiforgery:** `GET /api/v1/auth/antiforgery` sets an `HttpOnly`, `SameSite=Strict` antiforgery cookie and returns the token and the header name to send (`X-CSRF-TOKEN`). The token is bound to the identity it was issued for, so the SPA fetches a new one after signing in or out. Register, sign-in and sign-out require it. IDENTITY-002 applies the same filter to every unsafe endpoint.
+- **Not yet in place:** the CORS allowlist (there is no web client yet; FOUNDATION-007), e-mail verification (IDENTITY-004), rate limiting (SECURITY-002). Until the last two exist the authentication endpoints are mapped only in Development, because they let anyone register.
+- **Infrastructure now references the ASP.NET Core shared framework** (a `FrameworkReference`), because Identity's sign-in and cookie handling live there. Application and Domain are unchanged and still reference no web or Identity type: Application sees only its own ports (`IUserAccounts`, `ISessionService`, `ICurrentUser`).
+
 ## Decisions approved by the owner
 
 1. Option A (cookie session) over B/C for the MVP.

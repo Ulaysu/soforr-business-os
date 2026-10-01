@@ -9,6 +9,7 @@ public class ErrorMappingTests
 {
     [Theory]
     [InlineData(ErrorKind.Validation, HttpStatusCode.BadRequest)]
+    [InlineData(ErrorKind.Unauthenticated, HttpStatusCode.Unauthorized)]
     [InlineData(ErrorKind.NotFound, HttpStatusCode.NotFound)]
     [InlineData(ErrorKind.Forbidden, HttpStatusCode.Forbidden)]
     [InlineData(ErrorKind.Conflict, HttpStatusCode.Conflict)]

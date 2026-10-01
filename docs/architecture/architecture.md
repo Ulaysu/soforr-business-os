@@ -28,6 +28,7 @@ Web            → Api over HTTP only
 - No circular references. The Domain has no reference to ASP.NET Core, EF Core, Npgsql, Vue or any AI SDK.
 - Application defines the interfaces it needs (`IClock`, `ICurrentUser`, `IAIModelClient`, file storage, ...); Infrastructure implements them.
 - [ADR 0001](../decisions/0001-dependency-model.md) (Accepted) defines how Application reaches the database (`IAppDbContext` port).
+- Infrastructure references the ASP.NET Core shared framework, because ASP.NET Core Identity's sign-in and cookie handling need it (IDENTITY-001). That does not extend to Application or Domain, which stay free of web and Identity types (architecture tests).
 - Api may reference Infrastructure solely to register services in `Program.cs`. Endpoints depend on Application, never on Infrastructure types.
 
 ## Layer Responsibilities

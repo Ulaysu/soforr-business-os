@@ -24,7 +24,17 @@ The model is deliberately minimal; entities are named for orientation and refine
 - **API (ORG-003):** `POST /api/v1/organizations` (201 with `Location`), `GET /api/v1/organizations/{id}`, `PUT /api/v1/organizations/{id}/settings`, documented in OpenAPI. They have no authentication or authorization yet, so they are mapped **only in Development** until IDENTITY-002; this is enforced by a test that they are absent in other environments.
 - **Invariants:** Every tenant-owned record in any module references exactly one organization. The name is required (at most 200 characters, trimmed); the time zone is an IANA identifier supported by the application's runtime time zone database; the currency is one of Soforr's supported ISO 4217 currencies (a maintained snapshot of the current set) and is fixed at creation, so it is never silently changed once transactions exist; timestamps are UTC.
 - **Depends on:** none.
-- **Tenant context:** `IOrganizationContext` (Application) exposes the current organization id, derived on the server from the authenticated membership and never from request data; null means no organization and consumers fail closed. Until IDENTITY-001 provides the real implementation, Infrastructure registers a default that always returns null. The query filters that use it arrive with IDENTITY-003.
+- **Tenant context:** `IOrganizationContext` (Application) exposes the current organization id, derived on the server from the authenticated membership (a claim written at sign-in from the stored membership) and never from request data; null means no organization and consumers fail closed. The query filters that use it arrive with IDENTITY-003.
+
+## Identity
+- **Responsibility:** Who is calling and which organization and role they act with ([ADR 0002](../decisions/0002-authentication.md)).
+- **Concepts:** Membership (user, organization, role; Domain) and Role (Owner, Manager, Staff). The credential record (`ApplicationUser`: password hash, lockout, security stamp) is ASP.NET Core Identity's and lives only in Infrastructure.
+- **Commands:** Register (creates the user, a new organization and the Owner membership in one transaction), SignIn.
+- **Queries:** GetCurrentUser.
+- **Ports (Application):** `ICurrentUser` (user id, organization id, role; null when not authenticated), `IUserAccounts` (stage a validated, hashed user without saving), `ISessionService` (start and end the cookie session).
+- **API (IDENTITY-001):** `GET /api/v1/auth/antiforgery`, `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/me`. Mapped **only in Development** until e-mail verification (IDENTITY-004) and rate limiting (SECURITY-002) exist.
+- **Invariants:** one membership per user (unique index); a membership has a known role; the registering user is the Owner. "An organization always keeps at least one Owner" is enforced when member management exists (IDENTITY-002). Permissions per role arrive with IDENTITY-002.
+- **Depends on:** Organizations.
 
 ## Catalog
 - **Responsibility:** What the business buys and sells.

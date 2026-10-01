@@ -26,7 +26,7 @@ Browser ↔ API · API ↔ database · API ↔ file storage · API ↔ AI provid
 |---|---|---|---|---|
 | T1 | User of tenant A reads/writes tenant B's data via id guessing (IDOR) | Info disclosure / Tampering | Global query filter, ownership checks, 404 on foreign ids, isolation tests | IDENTITY-003 |
 | T2 | Client supplies `organizationId` to escape scope | Elevation | Tenant from principal only; ignore body/route tenant ids | IDENTITY-003 |
-| T3 | Credential stuffing / brute force | Spoofing | Lockout, throttling, rate limits, strong hashing | IDENTITY-001, SECURITY-002 |
+| T3 | Credential stuffing / brute force | Spoofing | Strong hashing, lockout after 5 failures and uniform sign-in answers (IDENTITY-001); throttling and rate limits (SECURITY-002) | IDENTITY-001, SECURITY-002 |
 | T4 | Privilege escalation via missing permission check | Elevation | Default deny; permission per use case; authZ tests per endpoint | IDENTITY-002 |
 | T5 | Race conditions cause oversell / negative stock / double receive | Tampering | Transactions, concurrency tokens, idempotent receiving, concurrency tests | INVENTORY-001..003 |
 | T6 | Inventory or financial history silently altered | Repudiation / Tampering | Append-only movements, voids not edits, audit events | INVENTORY-001, AUDIT-001 |
@@ -38,7 +38,7 @@ Browser ↔ API · API ↔ database · API ↔ file storage · API ↔ AI provid
 | T12 | Secrets leaked in repo, logs or errors | Info disclosure | No secrets in source, secret scanning, log scrubbing, generic errors | FOUNDATION-004, SECURITY-001 |
 | T13 | Stack traces / SQL details reach clients | Info disclosure | Central ProblemDetails middleware | FOUNDATION-005 |
 | T14 | Injection (SQL, XSS, header) | Tampering | Parameterized EF queries, Vue output encoding, CSP, validation | ongoing |
-| T15 | CSRF / token theft | Spoofing | Decided in IDENTITY-001 (cookie vs. bearer), SameSite, CSP | IDENTITY-001 |
+| T15 | CSRF / token theft | Spoofing | HttpOnly cookie session so JavaScript cannot read a credential, SameSite=Lax, antiforgery token on unsafe methods (IDENTITY-001); CSP with the web client | IDENTITY-001, FOUNDATION-007 |
 | T16 | Denial of service via expensive queries/uploads/AI calls | DoS | Pagination bounds, request limits, rate limiting, AI cost caps | SECURITY-002 |
 | T17 | Vulnerable or malicious dependency | Supply chain | Minimal deps, Dependabot, vulnerability scan in CI | SECURITY-001 |
 | T18 | Tampering with audit logs | Repudiation | Append-only, no update/delete paths, restricted DB role | AUDIT-001 |

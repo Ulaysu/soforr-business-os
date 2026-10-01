@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Serilog;
@@ -42,6 +43,19 @@ public static class ApiHostingExtensions
                 }
             },
             preserveStaticLogger: true);
+    }
+
+    /// <summary>
+    /// Enums are written and read by name ("Owner"), not by number: names are the stable, readable API contract and
+    /// reordering an enum must not change what clients see. Applies to every endpoint.
+    /// </summary>
+    public static IServiceCollection AddApiJson(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+        return services;
     }
 
     /// <summary>

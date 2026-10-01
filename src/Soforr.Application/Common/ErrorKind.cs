@@ -4,6 +4,7 @@ namespace Soforr.Application.Common;
 public enum ErrorKind
 {
     Validation,
+    Unauthenticated,
     NotFound,
     Forbidden,
     Conflict,
