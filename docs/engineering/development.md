@@ -149,7 +149,10 @@ dotnet restore
 dotnet build
 dotnet test
 dotnet format --verify-no-changes
+dotnet test --filter "Category!=Integration"   # without Docker
 ```
+
+`dotnet test` runs the integration tests too, which start a PostgreSQL container and therefore need Docker (see [testing.md](testing.md#postgresql-integration-harness)).
 
 **Local database**
 
