@@ -108,6 +108,31 @@ public class ProductPersistenceTests(PostgresDatabaseFixture database) : IClassF
     }
 
     [Fact]
+    public async Task TheLargestMoneyTheDomainAccepts_IsStoredAndReadBackExactly()
+    {
+        var organization = await NewOrganizationAsync();
+        var largest = Product.Create(Guid.CreateVersion7(), organization, "MAX-MONEY", "Max", "each", Money.Create(Money.MaxAmount, Gmd), Money.Create(Money.MaxAmount, Gmd), null, Created);
+
+        await SaveAsync(organization, largest);
+
+        await using var reader = database.CreateContext(organization);
+        var loaded = await reader.Set<Product>().SingleAsync(product => product.Id == largest.Id);
+        Assert.Equal(Money.MaxAmount, loaded.SellingPrice.Amount);
+        Assert.Equal(Money.MaxAmount, loaded.CostPrice.Amount);
+        Assert.Equal(999_999_999_999_999.9999m, loaded.SellingPrice.Amount);
+    }
+
+    [Fact]
+    public async Task TheDatabaseColumn_RejectsTheFirstAmountTheDomainRejects_SoTheTwoLimitsAreOneContract()
+    {
+        var organization = await NewOrganizationAsync();
+
+        var exception = await Assert.ThrowsAsync<PostgresException>(() => InsertRawAsync(organization, Guid.CreateVersion7(), ("selling", "1000000000000000")));
+
+        Assert.Equal("22003", exception.SqlState);
+    }
+
+    [Fact]
     public async Task AnUpdateAndADeactivation_ArePersisted()
     {
         var organization = await NewOrganizationAsync();

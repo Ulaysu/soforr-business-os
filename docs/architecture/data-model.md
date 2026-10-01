@@ -8,7 +8,7 @@ Conceptual model and conventions for the first vertical slice. Detailed schemas 
 - Primary keys: UUID, created in application code.
 - Every business-owned table has a non-null `OrganizationId` (FK) and indexes that lead with it. Uniqueness is scoped per organization, e.g. products by SKU. A SKU is compared case-insensitively while its entered casing is preserved ([ADR 0006](../decisions/0006-sku-uniqueness.md)); the database must enforce this, not only the handlers.
 - Timestamps in UTC (`timestamptz`): `CreatedAtUtc`, `UpdatedAtUtc`; actor columns where auditability matters.
-- Money: `numeric(19,4)` plus currency code. Quantities: `numeric(18,4)`. No floating point.
+- Money: `numeric(19,4)` plus currency code. `Money` enforces the same range (at most 999,999,999,999,999.9999 in magnitude, `Money.MaxAmount`), so every Money the Domain accepts can be stored. Quantities: `numeric(18,4)`. No floating point.
 - Tables and columns use EF Core's default names (PascalCase, plural table names such as `Organizations`); no naming-convention package.
 - Soft-deactivation instead of deletion for entities with history.
 - Concurrency token on stock levels and on documents that change state (see [ADR 0004](../decisions/0004-inventory-concurrency.md)).
