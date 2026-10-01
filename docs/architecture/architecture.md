@@ -56,7 +56,7 @@ Web            → Api over HTTP only
 - **Tenancy:** every business-owned row carries `OrganizationId`. Tenant scoping is enforced server-side (EF global query filters plus command-level ownership checks), never trusted from the client. See [security.md](../security/security.md).
 - **Use cases:** explicit command/query objects and handlers, without a mediator library unless approved as a dependency. Each state-changing command is auditable.
 - **Transactions:** a command is one unit of work. A sale that decrements stock commits atomically or not at all. The concurrency mechanism for stock (optimistic token vs. row lock) is decided in INVENTORY-001's design note.
-- **Errors:** RFC 9457 `ProblemDetails` from centralized middleware; expected failures map to 4xx, unexpected errors to 500 with no internals leaked.
+- **Errors:** RFC 9457 `ProblemDetails` from centralized middleware. Unexpected errors return a generic 500 with no internals leaked (implemented, FOUNDATION-005). Expected failures returned by handlers map to 4xx through a central `Result`-to-HTTP mapping with a stable error `code` (ADR-0003); that mapping is planned with the first endpoints (ORG-003) and is not implemented yet.
 - **Time and IDs:** `IClock` abstraction; UUID primary keys generated in application code.
 - **Money and quantities:** `decimal` with explicit precision in dedicated value objects; currency stored with money. Never floating point.
 - **Persistence:** PostgreSQL via EF Core; schema changes by migrations only.

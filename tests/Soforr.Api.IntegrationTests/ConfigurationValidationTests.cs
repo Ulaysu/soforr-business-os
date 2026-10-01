@@ -1,71 +1,57 @@
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Soforr.Infrastructure.Configuration;
 
 namespace Soforr.Api.IntegrationTests;
 
+/// <summary>
+/// Startup validation is tested with a plain generic host rather than WebApplicationFactory: when the full
+/// application host fails to start, WebApplicationFactory's deferred host intermittently reports an
+/// ObjectDisposedException instead of the startup exception, which made these assertions flaky.
+/// </summary>
 public class ConfigurationValidationTests
 {
     private const string SectionName = "Sample";
 
     [Fact]
-    public void Host_Starts_WhenRequiredSettingIsProvided()
+    public async Task Host_Starts_WhenRequiredSettingIsProvided()
     {
-        using var factory = CreateFactory(new Dictionary<string, string?> { ["Sample:Name"] = "value" });
+        using var host = BuildHost(new Dictionary<string, string?> { ["Sample:Name"] = "value" });
 
-        using var client = factory.CreateClient();
+        await host.StartAsync();
 
-        var options = factory.Services.GetRequiredService<IOptions<SampleOptions>>().Value;
-        Assert.Equal("value", options.Name);
+        Assert.Equal("value", host.Services.GetRequiredService<IOptions<SampleOptions>>().Value.Name);
     }
 
     [Fact]
-    public void Host_FailsAtStartup_NamingTheMissingSetting_WhenRequiredSettingIsMissing()
+    public async Task Host_FailsAtStartup_NamingTheMissingSetting_WhenRequiredSettingIsMissing()
     {
-        using var factory = CreateFactory(new Dictionary<string, string?> { ["Sample:Other"] = "x" });
+        using var host = BuildHost(new Dictionary<string, string?> { ["Sample:Other"] = "x" });
 
-        var exception = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
+        var exception = await Assert.ThrowsAsync<OptionsValidationException>(() => host.StartAsync());
 
-        var message = Flatten(exception);
-        Assert.Contains(nameof(SampleOptions.Name), message, StringComparison.Ordinal);
+        Assert.Contains(nameof(SampleOptions.Name), exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Host_FailsAtStartup_NamingTheSection_WhenSectionIsMissing()
+    public async Task Host_FailsAtStartup_NamingTheSection_WhenSectionIsMissing()
     {
-        using var factory = CreateFactory(new Dictionary<string, string?>());
+        using var host = BuildHost(new Dictionary<string, string?>());
 
-        var exception = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
+        var exception = await Assert.ThrowsAsync<OptionsValidationException>(() => host.StartAsync());
 
-        Assert.Contains(SectionName, Flatten(exception), StringComparison.Ordinal);
+        Assert.Contains(SectionName, exception.Message, StringComparison.Ordinal);
     }
 
-    private static WebApplicationFactory<Program> CreateFactory(Dictionary<string, string?> settings) =>
-        new ApiFactory().WithWebHostBuilder(builder =>
-        {
-            builder.UseEnvironment("Development");
-            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(settings));
-            builder.ConfigureServices((context, services) =>
-                services.AddValidatedOptions<SampleOptions>(context.Configuration, SectionName));
-        });
-
-    private static string Flatten(Exception exception)
+    private static IHost BuildHost(Dictionary<string, string?> settings)
     {
-        var messages = new List<string>();
-        for (var current = exception; current is not null; current = current.InnerException!)
-        {
-            messages.Add(current.Message);
-            if (current.InnerException is null)
-            {
-                break;
-            }
-        }
-
-        return string.Join(" | ", messages);
+        var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings());
+        builder.Configuration.AddInMemoryCollection(settings);
+        builder.Services.AddValidatedOptions<SampleOptions>(builder.Configuration, SectionName);
+        return builder.Build();
     }
 
     private sealed class SampleOptions

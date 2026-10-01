@@ -9,7 +9,7 @@ tests/
 ├── Soforr.Domain.Tests           unit tests, no I/O
 ├── Soforr.Application.Tests      handler tests with fakes/in-memory ports
 ├── Soforr.Architecture.Tests     dependency-direction rules
-└── Soforr.Api.IntegrationTests   WebApplicationFactory + real PostgreSQL
+└── Soforr.Api.IntegrationTests   WebApplicationFactory (+ real PostgreSQL from FOUNDATION-008); see API test hosts
 ```
 
 xUnit v2 throughout. Created in FOUNDATION-006. `Soforr.Domain.Tests` has no tests until the Domain contains behavior (ORG-001). Architecture tests check both the references declared in each `.csproj` and the compiled assembly references, because the compiler omits references that no code uses.
@@ -33,6 +33,22 @@ xUnit v2 throughout. Created in FOUNDATION-006. `Soforr.Domain.Tests` has no tes
 5. **Tenant isolation:** for every tenant-owned endpoint, a user from organization B cannot read/modify organization A's data (404, not 403 leak).
 6. Financial calculations: rounding, currency, boundaries.
 
+## API Test Hosts
+
+The API tests use three kinds of host. Each has one job; pick the one that matches what the test must prove.
+
+| Host | Use it for | Do not use it for |
+|---|---|---|
+| `WebApplicationFactory<Program>` (via `ApiFactory`) | **The default for API tests.** The real application as composed by `Program.cs`: routing, endpoint mapping, DI wiring, options, authentication and authorization, tenant isolation, API workflows, and (from FOUNDATION-008) the real PostgreSQL database. | Asserting that the host *fails to start* (see the practice below). |
+| `PipelineTestHost` | Cross-cutting pipeline behavior in isolation: correlation ID handling, generic error responses, request logging. It runs the real `UseApiPipeline()`/`AddApiErrorHandling()` with test-only endpoints (for example one that throws) and an in-memory log sink, so behavior that no real endpoint can trigger yet can be asserted precisely. | Business endpoints, workflows, authorization, tenancy, database access, or anything that depends on how `Program.cs` wires things. |
+| Plain generic host (`Host.CreateEmptyApplicationBuilder`) | Startup validation (`ValidateOnStart`, missing configuration) for a registration extension. | HTTP behavior. |
+
+`PipelineTestHost` is a focused harness, **not a replacement for the `WebApplicationFactory` integration strategy** and it does not lower the bar for it:
+
+- It proves the pipeline components behave correctly; it cannot prove the application uses them. That wiring is confirmed by `ApiFactory` tests against the real `Program` (for example `/health/live` carries `X-Correlation-ID`).
+- New endpoints and workflows are tested through `ApiFactory`. Do not add real endpoints or business behavior to `PipelineTestHost`.
+- When a cross-cutting concern needs authentication, tenant context or the database (for example logging the organization, or error mapping from real handlers), test it through `ApiFactory`.
+
 ## Practices
 
 - Deterministic tests: inject `IClock` and id generators; no reliance on wall time or ordering.
@@ -41,6 +57,7 @@ xUnit v2 throughout. Created in FOUNDATION-006. `Soforr.Domain.Tests` has no tes
 - Test names describe behavior (`Sale_WithInsufficientStock_IsRejected_AndLeavesStockUnchanged`).
 - AI: tools are tested like any Application service; model calls are faked in tests; an evaluation set covers prompts (later).
 - Do not weaken or delete a test to make a build pass; fix the cause or raise it.
+- Startup-failure behavior (for example options validation) is tested with a plain generic host, not `WebApplicationFactory`: when the full application host fails to start, its deferred host intermittently reports an `ObjectDisposedException` instead of the real exception. See [API test hosts](#api-test-hosts).
 
 ## Commands
 
