@@ -23,7 +23,9 @@ internal sealed class MembershipClaimsPrincipalFactory(
     {
         var identity = await base.GenerateClaimsAsync(user);
 
+        // Signing in is what establishes the organization, so this lookup cannot be filtered by it.
         var membership = await db.Set<Membership>()
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .SingleOrDefaultAsync(candidate => candidate.UserId == user.Id);
 

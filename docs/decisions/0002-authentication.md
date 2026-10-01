@@ -95,6 +95,32 @@ These record how the decisions above were implemented; they do not change them.
 - **Antiforgery:** `RequireAntiforgery()` is applied to the authentication and organization groups; it checks only unsafe methods. A test requires it on every unsafe endpoint.
 - **Foreign organizations are 404, not 403:** the organization handlers compare the requested id with the caller's own organization and answer not found otherwise. The permission is checked first, so a role without the permission gets 403 whatever the id. The general mechanism (query filters on every tenant-owned entity) is IDENTITY-003.
 
+## Implementation notes and decisions (IDENTITY-003)
+
+Section 3 is implemented as written. Two choices inside it were confirmed by the project owner and are recorded here as decisions.
+
+**Mechanism**
+
+- **Read isolation:** `AppDbContext` takes `IOrganizationContext` and gives `Organization` (by its own id) and `Membership` (by `OrganizationId`) a global query filter. A convention test reads the EF model and fails when an entity with an `OrganizationId` has no filter, and when any entity is neither filtered nor on a short reviewed list of non-tenant entities (the Identity credential tables: users, claims, logins, tokens).
+- **Write isolation:** `AppDbContext` refuses to save an added, changed or deleted tenant-owned row whose organization is not the current one (`TenantIsolationException`, a defect, not a client error).
+- **Handlers** still compare the requested organization id with the caller's own and answer 404 (above); the filter is the second line. Every future tenant-owned entity resolves foreign ids through the filtered queryable, so a foreign id behaves as not found.
+- **Not adopted:** PostgreSQL row-level security (unchanged; revisit before hosting many external tenants).
+
+**Decision A: writes are not restricted when there is no current organization**
+
+- *Invariant:* **no organization context means no tenant data is readable through normal queries (the filters match nothing); once an organization context exists, every tenant-owned write must belong to that organization.**
+- Registration creates the first organization and its Owner membership before any tenant context exists, so a write guard that also rejected "no organization" would make registration impossible. The guard therefore applies only when a current organization exists, and it is not weakened in that case.
+- Why no explicit bypass or "registration scope" object: the only code that runs without a signed-in user is Register and SignIn, and an architecture test (`AuthorizationConventionTests`) fails when any other handler does not take `ICurrentUser`. An extra mechanism would add machinery without adding protection.
+- *Reconsider when:* a handler other than Register needs to run without an organization and write tenant-owned data (for example a background job or an invitation-acceptance flow); that should then get an explicit, narrowly scoped mechanism through a new decision, not a widening of this one.
+
+**Decision B: `Organization` keeps its own query filter (`Id == current organization`)**
+
+- *Why:* the `Organization` is itself tenant-scoped. The handlers check ownership explicitly, but the filter is defense in depth: it makes sure an ordinary EF query cannot return another tenant's organization, including from code written later that forgets the handler check.
+- It **does not replace** the permission check and the own-organization check at the application boundary; those remain required (ADR 0003, and the `AuthorizationConventionTests` rule).
+- *Reconsider when:* the Organization needs to be read without a current organization other than for sign-in (for example a public organization page, or platform administration across tenants). That is a new use case and needs its own decision.
+
+**Sign-in lookups bypass the filter on purpose.** The claims factory and the sign-in response read the membership with `IgnoreQueryFilters()` because they are what establishes the organization, so there is none to filter by yet. These are the only two such reads in the source, and an architecture test (`TenantFilterBypassTests`) fails if any other file uses `IgnoreQueryFilters`.
+
 ## Decisions approved by the owner
 
 1. Option A (cookie session) over B/C for the MVP.

@@ -31,6 +31,7 @@ Outcomes: not signed in → 401; signed in without a membership or without the p
 - Cross-tenant access returns 404. Automated tests for every tenant-owned endpoint are mandatory.
 - Files, cached data, background jobs and AI tools are tenant-scoped too.
 - Changing this design requires human approval.
+- **Implemented (IDENTITY-003):** the global query filter, the write guard on save, the convention tests and the two-tenant fixture, as described in [ADR 0002](../decisions/0002-authentication.md). Only the sign-in lookup of the membership bypasses the filter. Writes are unrestricted only while there is no organization (registration creates the tenant); the Organization keeps its own filter as defense in depth (ADR 0002, decisions A and B).
 
 ## Input Validation
 - Validate all input at the API boundary (shape) and in Application (rules); Domain enforces invariants.

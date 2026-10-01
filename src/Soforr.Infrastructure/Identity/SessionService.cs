@@ -47,7 +47,9 @@ internal sealed partial class SessionService(
         properties.Items[SessionPolicy.SessionStartKey] = SessionPolicy.Format(clock.UtcNow);
         await signInManager.SignInWithClaimsAsync(user, properties, []);
 
+        // Signing in is what establishes the organization, so this lookup cannot be filtered by it.
         var membership = await db.Set<Membership>()
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .SingleOrDefaultAsync(candidate => candidate.UserId == user.Id, cancellationToken);
 

@@ -73,10 +73,10 @@ internal static class AuthClient
         JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.Clone();
 
     /// <summary>Registers a user (a new organization they own) and signs them in. Returns the user's and organization's ids.</summary>
-    public static async Task<(Guid UserId, Guid OrganizationId, string Email)> RegisterAndSignInAsync(HttpClient client)
+    public static async Task<(Guid UserId, Guid OrganizationId, string Email)> RegisterAndSignInAsync(HttpClient client, string organizationName = "Soforr Trading")
     {
         var email = NewEmail();
-        var registered = await RegisterAsync(client, email);
+        var registered = await RegisterAsync(client, email, organizationName: organizationName);
         registered.EnsureSuccessStatusCode();
         var account = await ReadAsync(registered);
         (await LoginAsync(client, email)).EnsureSuccessStatusCode();

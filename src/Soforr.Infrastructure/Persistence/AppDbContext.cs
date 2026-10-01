@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Soforr.Application.Organizations;
 using Soforr.Application.Persistence;
+using Soforr.Domain.Identity;
+using Soforr.Domain.Organizations;
 using Soforr.Infrastructure.Identity;
 
 namespace Soforr.Infrastructure.Persistence;
@@ -10,10 +13,16 @@ namespace Soforr.Infrastructure.Persistence;
 /// The application's database. It is also the Identity store (users, claims, logins, tokens; no Identity roles,
 /// because a user's role is the Domain's membership, ADR 0002), so the credential record, the organization and the
 /// membership can be saved in one transaction.
+/// It also enforces tenant isolation (ADR 0002): every tenant-owned entity has a global query filter on the current
+/// organization, and a save that would write another organization's row is refused. With no organization (an
+/// anonymous request, a job without one) the filters match nothing, so the context fails closed.
 /// </summary>
-public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
+public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IOrganizationContext organizationContext)
     : IdentityUserContext<ApplicationUser, Guid>(options), IAppDbContext
 {
+    // Read by the query filters; EF evaluates it per query for the context instance that runs the query.
+    private Guid? CurrentOrganizationId => organizationContext.OrganizationId;
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
@@ -27,6 +36,52 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         builder.Entity<IdentityUserToken<Guid>>().ToTable("UserTokens");
 
         builder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        // Tenant-owned entities. Each entity with an OrganizationId needs a filter here; a convention test fails if one
+        // is missing. The Organization is the tenant itself, so its own id is the key. Its filter is defense in depth
+        // (ADR 0002, decision B): the handlers also check ownership, and must keep doing so.
+        builder.Entity<Organization>().HasQueryFilter(organization => CurrentOrganizationId != null && organization.Id == CurrentOrganizationId);
+        builder.Entity<Membership>().HasQueryFilter(membership => CurrentOrganizationId != null && membership.OrganizationId == CurrentOrganizationId);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        EnsureWritesStayInTheCurrentOrganization();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        EnsureWritesStayInTheCurrentOrganization();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    /// <summary>
+    /// Write-side isolation: when the request acts for an organization, no tenant-owned row of another organization
+    /// may be added, changed or deleted, whatever id the caller supplied. Without an organization nothing is
+    /// restricted here, because that is the situation of registration, which creates the tenant; only handlers that
+    /// run before sign-in may do that (architecture test).
+    /// </summary>
+    private void EnsureWritesStayInTheCurrentOrganization()
+    {
+        if (CurrentOrganizationId is not { } current)
+        {
+            return;
+        }
+
+        foreach (var entry in ChangeTracker.Entries().Where(entry => entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted))
+        {
+            var property = entry.Metadata.FindProperty("OrganizationId") ?? (entry.Entity is Organization ? entry.Metadata.FindProperty("Id") : null);
+            if (property is null || entry.Metadata.GetDeclaredQueryFilters().Count == 0)
+            {
+                continue;
+            }
+
+            if (entry.Property(property.Name).CurrentValue is not Guid owner || owner != current)
+            {
+                throw new TenantIsolationException($"A write to a {entry.Metadata.ClrType.Name} outside the current organization was refused.");
+            }
+        }
     }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)

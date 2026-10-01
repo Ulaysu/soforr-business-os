@@ -71,7 +71,7 @@ public sealed class RegisterHandlerTests(PostgresDatabaseFixture database) : ICl
 
         await using var db = database.CreateContext();
         await using var verify = database.CreateContext();
-        var organizationsBefore = await verify.Set<Organization>().CountAsync();
+        var organizationsBefore = await verify.Set<Organization>().IgnoreQueryFilters().CountAsync();
         var handler = new RegisterHandler(db, new UncheckedAccounts(db, email), new FixedClock(), new SequentialIds());
 
         var result = await handler.HandleAsync(new RegisterCommand(email, "correct horse battery staple", "Soforr", "GMD", "UTC"), CancellationToken.None);
@@ -80,7 +80,7 @@ public sealed class RegisterHandlerTests(PostgresDatabaseFixture database) : ICl
         Assert.Equal("identity.email_taken", result.Error!.Code);
         Assert.Equal(ErrorKind.Conflict, result.Error.Kind);
         await using var after = database.CreateContext();
-        Assert.Equal(organizationsBefore, await after.Set<Organization>().CountAsync());
+        Assert.Equal(organizationsBefore, await after.Set<Organization>().IgnoreQueryFilters().CountAsync());
         Assert.Equal(1, await after.Set<ApplicationUser>().CountAsync(user => user.Email == email));
     }
 }

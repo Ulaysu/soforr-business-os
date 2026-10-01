@@ -51,7 +51,7 @@ public class OrganizationHandlerTests(PostgresDatabaseFixture database) : IClass
     {
         var id = await CreateAsync();
         var later = Now.AddDays(3);
-        await using var db = database.CreateContext();
+        await using var db = database.CreateContext(id);
 
         var result = await new UpdateOrganizationSettingsHandler(db, new FixedClock(later), FakeUser.In(id, Role.Owner))
             .HandleAsync(new UpdateOrganizationSettingsCommand(id, "Soforr Group", "UTC"), CancellationToken.None);
@@ -63,7 +63,7 @@ public class OrganizationHandlerTests(PostgresDatabaseFixture database) : IClass
         Assert.Equal(Now, result.Value.CreatedAtUtc);
         Assert.Equal(later, result.Value.UpdatedAtUtc);
 
-        await using var verify = database.CreateContext();
+        await using var verify = database.CreateContext(id);
         var stored = await verify.Set<Organization>().SingleAsync(o => o.Id == id);
         Assert.Equal("Soforr Group", stored.Name);
         Assert.Equal(later, stored.UpdatedAtUtc);
@@ -79,7 +79,7 @@ public class OrganizationHandlerTests(PostgresDatabaseFixture database) : IClass
         string expectedField)
     {
         var id = await CreateAsync();
-        await using var db = database.CreateContext();
+        await using var db = database.CreateContext(id);
 
         var result = await new UpdateOrganizationSettingsHandler(db, new FixedClock(Now.AddDays(1)), FakeUser.In(id, Role.Owner))
             .HandleAsync(new UpdateOrganizationSettingsCommand(id, name, timeZoneId), CancellationToken.None);
@@ -87,7 +87,7 @@ public class OrganizationHandlerTests(PostgresDatabaseFixture database) : IClass
         Assert.Equal(expectedCode, result.Error!.Code);
         Assert.Equal(expectedField, result.Error.Field);
 
-        await using var verify = database.CreateContext();
+        await using var verify = database.CreateContext(id);
         var stored = await verify.Set<Organization>().SingleAsync(o => o.Id == id);
         Assert.Equal("Soforr Trading", stored.Name);
         Assert.Equal("Europe/London", stored.TimeZoneId);
@@ -100,14 +100,14 @@ public class OrganizationHandlerTests(PostgresDatabaseFixture database) : IClass
     public async Task Update_WithoutThePermission_IsForbidden_AndChangesNothing(Role role)
     {
         var id = await CreateAsync();
-        await using var db = database.CreateContext();
+        await using var db = database.CreateContext(id);
 
         var result = await new UpdateOrganizationSettingsHandler(db, new FixedClock(Now.AddDays(1)), FakeUser.In(id, role))
             .HandleAsync(new UpdateOrganizationSettingsCommand(id, "Hijacked", "UTC"), CancellationToken.None);
 
         Assert.Equal("identity.forbidden", result.Error!.Code);
         Assert.Equal(ErrorKind.Forbidden, result.Error.Kind);
-        await using var verify = database.CreateContext();
+        await using var verify = database.CreateContext(id);
         Assert.Equal("Soforr Trading", (await verify.Set<Organization>().SingleAsync(o => o.Id == id)).Name);
     }
 
@@ -115,7 +115,7 @@ public class OrganizationHandlerTests(PostgresDatabaseFixture database) : IClass
     public async Task Update_WithoutBeingSignedIn_IsNotAuthenticated()
     {
         var id = await CreateAsync();
-        await using var db = database.CreateContext();
+        await using var db = database.CreateContext(id);
 
         var result = await new UpdateOrganizationSettingsHandler(db, new FixedClock(Now), new FakeUser(null, null, null))
             .HandleAsync(new UpdateOrganizationSettingsCommand(id, "Name", "UTC"), CancellationToken.None);
@@ -128,7 +128,7 @@ public class OrganizationHandlerTests(PostgresDatabaseFixture database) : IClass
     public async Task Update_WithoutAMembership_IsForbidden()
     {
         var id = await CreateAsync();
-        await using var db = database.CreateContext();
+        await using var db = database.CreateContext(id);
 
         var result = await new UpdateOrganizationSettingsHandler(db, new FixedClock(Now), new FakeUser(Guid.CreateVersion7(), null, null))
             .HandleAsync(new UpdateOrganizationSettingsCommand(id, "Name", "UTC"), CancellationToken.None);
@@ -141,14 +141,14 @@ public class OrganizationHandlerTests(PostgresDatabaseFixture database) : IClass
     {
         var mine = await CreateAsync("Mine");
         var theirs = await CreateAsync("Theirs");
-        await using var db = database.CreateContext();
+        await using var db = database.CreateContext(mine);
 
         var result = await new UpdateOrganizationSettingsHandler(db, new FixedClock(Now.AddDays(1)), FakeUser.In(mine, Role.Owner))
             .HandleAsync(new UpdateOrganizationSettingsCommand(theirs, "Hijacked", "UTC"), CancellationToken.None);
 
         Assert.Equal("organization.not_found", result.Error!.Code);
         Assert.Equal(ErrorKind.NotFound, result.Error.Kind);
-        await using var verify = database.CreateContext();
+        await using var verify = database.CreateContext(theirs);
         Assert.Equal("Theirs", (await verify.Set<Organization>().SingleAsync(o => o.Id == theirs)).Name);
     }
 
@@ -156,7 +156,7 @@ public class OrganizationHandlerTests(PostgresDatabaseFixture database) : IClass
     public async Task Update_OfAnOrganizationThatDoesNotExist_IsNotFound()
     {
         var missing = Guid.CreateVersion7();
-        await using var db = database.CreateContext();
+        await using var db = database.CreateContext(missing);
 
         var result = await new UpdateOrganizationSettingsHandler(db, new FixedClock(Now), FakeUser.In(missing, Role.Owner))
             .HandleAsync(new UpdateOrganizationSettingsCommand(missing, "Name", "UTC"), CancellationToken.None);
@@ -173,7 +173,7 @@ public class OrganizationHandlerTests(PostgresDatabaseFixture database) : IClass
     public async Task Get_ReturnsTheCallersOrganization_ToEveryRole(Role role)
     {
         var id = await CreateAsync("Get Me Ltd", "EUR", "Europe/London");
-        await using var db = database.CreateContext();
+        await using var db = database.CreateContext(id);
 
         var result = await new GetOrganizationHandler(db, FakeUser.In(id, role)).HandleAsync(new GetOrganizationQuery(id), CancellationToken.None);
 
@@ -187,7 +187,7 @@ public class OrganizationHandlerTests(PostgresDatabaseFixture database) : IClass
     public async Task Get_WithoutBeingSignedIn_IsNotAuthenticated()
     {
         var id = await CreateAsync();
-        await using var db = database.CreateContext();
+        await using var db = database.CreateContext(id);
 
         var result = await new GetOrganizationHandler(db, new FakeUser(null, null, null)).HandleAsync(new GetOrganizationQuery(id), CancellationToken.None);
 
@@ -199,7 +199,7 @@ public class OrganizationHandlerTests(PostgresDatabaseFixture database) : IClass
     {
         var mine = await CreateAsync("Mine");
         var theirs = await CreateAsync("Theirs");
-        await using var db = database.CreateContext();
+        await using var db = database.CreateContext(mine);
 
         var result = await new GetOrganizationHandler(db, FakeUser.In(mine, Role.Owner)).HandleAsync(new GetOrganizationQuery(theirs), CancellationToken.None);
 

@@ -24,8 +24,8 @@ Browser ↔ API · API ↔ database · API ↔ file storage · API ↔ AI provid
 
 | # | Threat | Category | Mitigation | Backlog |
 |---|---|---|---|---|
-| T1 | User of tenant A reads/writes tenant B's data via id guessing (IDOR) | Info disclosure / Tampering | Global query filter, ownership checks, 404 on foreign ids, isolation tests | IDENTITY-003 |
-| T2 | Client supplies `organizationId` to escape scope | Elevation | Tenant from principal only; ignore body/route tenant ids | IDENTITY-003 |
+| T1 | User of tenant A reads/writes tenant B's data via id guessing (IDOR) | Info disclosure / Tampering | Global query filter and write guard on every tenant-owned entity (convention-tested), ownership checks, 404 on foreign ids, two-tenant isolation tests | IDENTITY-003 |
+| T2 | Client supplies `organizationId` to escape scope | Elevation | Tenant from the session's membership only; ids in the body or route never choose the tenant (tested) | IDENTITY-003 |
 | T3 | Credential stuffing / brute force | Spoofing | Strong hashing, lockout after 5 failures and uniform sign-in answers (IDENTITY-001); throttling and rate limits (SECURITY-002) | IDENTITY-001, SECURITY-002 |
 | T4 | Privilege escalation via missing permission check | Elevation | Default-deny fallback policy; a permission check at the top of every handler (architecture test); role matrix and per-operation authorization tests | IDENTITY-002 |
 | T5 | Race conditions cause oversell / negative stock / double receive | Tampering | Transactions, concurrency tokens, idempotent receiving, concurrency tests | INVENTORY-001..003 |

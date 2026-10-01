@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using Soforr.Application.Organizations;
 using Soforr.Infrastructure.Persistence;
 
 namespace Soforr.Api.IntegrationTests.Postgres;
@@ -54,9 +55,18 @@ public sealed class PostgresDatabaseFixture : IAsyncLifetime
         await drop.ExecuteNonQueryAsync();
     }
 
-    /// <summary>A new context on this class's database. The caller disposes it.</summary>
-    public AppDbContext CreateContext() =>
-        new(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(ConnectionString).Options);
+    /// <summary>
+    /// A new context on this class's database, acting for <paramref name="organizationId"/>. Without one the context has
+    /// no organization, so the tenant query filters match nothing: read test data with <c>IgnoreQueryFilters()</c>.
+    /// The caller disposes it.
+    /// </summary>
+    public AppDbContext CreateContext(Guid? organizationId = null) =>
+        new(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(ConnectionString).Options, new FixedOrganizationContext(organizationId));
+
+    private sealed class FixedOrganizationContext(Guid? organizationId) : IOrganizationContext
+    {
+        public Guid? OrganizationId { get; } = organizationId;
+    }
 
     private static async Task EnsureEmptyAsync(AppDbContext context)
     {

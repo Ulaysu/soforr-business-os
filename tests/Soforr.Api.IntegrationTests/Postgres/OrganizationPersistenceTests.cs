@@ -32,7 +32,7 @@ public class OrganizationPersistenceTests(PostgresDatabaseFixture database) : IC
             await writer.SaveChangesAsync();
         }
 
-        await using var reader = database.CreateContext();
+        await using var reader = database.CreateContext(original.Id);
         var loaded = await reader.Set<Organization>().SingleAsync(organization => organization.Id == original.Id);
 
         Assert.Equal("Soforr Trading", loaded.Name);
@@ -54,14 +54,14 @@ public class OrganizationPersistenceTests(PostgresDatabaseFixture database) : IC
         }
 
         var later = Created.AddDays(2);
-        await using (var updater = database.CreateContext())
+        await using (var updater = database.CreateContext(id))
         {
             var organization = await updater.Set<Organization>().SingleAsync(o => o.Id == id);
             organization.UpdateSettings("Soforr Group", "UTC", later);
             await updater.SaveChangesAsync();
         }
 
-        await using var reader = database.CreateContext();
+        await using var reader = database.CreateContext(id);
         var loaded = await reader.Set<Organization>().SingleAsync(o => o.Id == id);
         Assert.Equal("Soforr Group", loaded.Name);
         Assert.Equal("UTC", loaded.TimeZoneId);
@@ -100,7 +100,9 @@ public class OrganizationPersistenceTests(PostgresDatabaseFixture database) : IC
 
         using var readScope = factory.Services.CreateScope();
         var reader = readScope.ServiceProvider.GetRequiredService<IAppDbContext>();
-        var loaded = await reader.Set<Organization>().AsNoTracking().SingleAsync(o => o.Id == organization.Id);
+        // The application has no signed-in user here, so the tenant filter would hide the row: this only proves the
+        // port is wired to the real database.
+        var loaded = await reader.Set<Organization>().IgnoreQueryFilters().AsNoTracking().SingleAsync(o => o.Id == organization.Id);
 
         Assert.Equal(organization.Name, loaded.Name);
     }
@@ -213,7 +215,7 @@ public class OrganizationPersistenceTests(PostgresDatabaseFixture database) : IC
         var id = Guid.CreateVersion7();
         await InsertRawAsync(id, "Raw Insert Ltd", "EUR", "Europe/London");
 
-        await using var reader = database.CreateContext();
+        await using var reader = database.CreateContext(id);
         var loaded = await reader.Set<Organization>().SingleAsync(o => o.Id == id);
 
         Assert.Equal("Raw Insert Ltd", loaded.Name);
