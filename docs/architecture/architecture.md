@@ -56,7 +56,7 @@ Web            → Api over HTTP only
 - **Tenancy:** every business-owned row carries `OrganizationId`. Tenant scoping is enforced server-side (EF global query filters plus command-level ownership checks), never trusted from the client. See [security.md](../security/security.md).
 - **Use cases:** explicit command/query objects and handlers, without a mediator library unless approved as a dependency. Each state-changing command is auditable.
 - **Transactions:** a command is one unit of work. A sale that decrements stock commits atomically or not at all. The concurrency mechanism for stock (optimistic token vs. row lock) is decided in INVENTORY-001's design note.
-- **Errors:** RFC 9457 `ProblemDetails` from centralized middleware. Unexpected errors return a generic 500 with no internals leaked (implemented, FOUNDATION-005). Expected failures returned by handlers map to 4xx through a central `Result`-to-HTTP mapping with a stable error `code` (ADR-0003); that mapping is planned with the first endpoints (ORG-003) and is not implemented yet.
+- **Errors:** RFC 9457 `ProblemDetails`. Unexpected errors return a generic 500 with no internals leaked (FOUNDATION-005). Expected failures returned by handlers map to 4xx through one central `Result`-to-HTTP mapping (`ResultHttpExtensions`) that adds a stable error `code`; validation failures also list the problem per field (ORG-003).
 - **Time and IDs:** `IClock` abstraction; UUID primary keys generated in application code.
 - **Money and quantities:** `decimal` with explicit precision in dedicated value objects; currency stored with money. Never floating point.
 - **Persistence:** PostgreSQL via EF Core; schema changes by migrations only.
@@ -96,8 +96,8 @@ The handler pattern is defined by [ADR 0003](../decisions/0003-commands-and-quer
 
 - `ICommandHandler<TCommand, TResult>` and `IQueryHandler<TQuery, TResult>` each have one method returning `Task<Result<TResult>>`. There is no mediator: endpoints call the handler directly.
 - `AddApplication()` scans the Application assembly and registers each handler (scoped) as its concrete type and its interface. Two handlers for the same command or query fail at startup.
-- `Result<T>` carries a value or an `Error(Code, Kind, Message)` for expected failures. The mapping from `ErrorKind` to HTTP is central and arrives with the first endpoints (ORG-003).
-- Domain invariants are enforced by Domain constructors and methods, which throw `DomainException` with a stable `Code`. Handlers translate it to an `Error` rather than letting it escape; that translation is written with the first handlers (ORG-003), once, in the Application layer.
+- `Result<T>` carries a value or an `Error(Code, Kind, Message, Field?)` for expected failures. `ErrorKind` maps to HTTP in one place, `Soforr.Api.Http.ResultHttpExtensions`: Validation 400 (an RFC 9457 validation problem with `errors` per field), NotFound 404, Forbidden 403, Conflict 409, RuleViolation 422; every problem carries `code` and `correlationId`.
+- Domain invariants are enforced by Domain constructors and methods, which throw `DomainException` with a stable `Code`. Handlers call the Domain through `DomainErrors.Run`, the one place that translates it to a Validation `Error` (with the field it is about, supplied by the module) instead of letting it escape.
 - The Domain never reads a clock or creates ids: time and ids are passed in. Handlers get them from `IClock` and `IIdGenerator` (implemented in Infrastructure), which keeps behavior deterministic in tests.
 
 ## Modules and Data

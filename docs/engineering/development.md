@@ -57,15 +57,16 @@ See [architecture.md](../architecture/architecture.md#dependency-direction). Enf
 - REST, JSON, OpenAPI documented; routes under `/api/v1/...`; resource-oriented nouns, plural.
 - Request/response models are separate from domain entities.
 - Status codes: 200/201 (with `Location`)/204, 400 validation, 401 unauthenticated, 403 unauthorized, 404 not found **(also for other tenants' resources, to avoid leaking existence)**, 409 conflict/concurrency, 422 business-rule violation, 500 unexpected.
-- Errors are RFC 9457 `application/problem+json`.
-  - **Implemented (FOUNDATION-005):** unhandled exceptions return a generic 500, and other error status codes (for example an unknown route's 404) use the same format; every problem response carries `correlationId`.
-  - **Not yet implemented (planned with the first endpoints, ORG-003):** a stable machine-readable `code` extension, field-level validation errors, and the central mapping from handler `Result` errors (ADR-0003) to these responses. Until then no endpoint returns a `code` or a field-error list, and clients must not depend on one.
+- Errors are RFC 9457 `application/problem+json`, written once, centrally. Every problem response carries `correlationId`; every error returned by a handler also carries a stable machine-readable `code` (for example `organization.not_found`), and clients should rely on `code`, not on the message.
+  - Handler errors map by `ErrorKind` (`Soforr.Api.Http.ResultHttpExtensions`): Validation 400, NotFound 404, Forbidden 403, Conflict 409, RuleViolation 422. A Validation error is a validation problem whose `errors` object lists the message under the input field it is about (camelCase, for example `errors.name`); a failure that is not about one field is listed under the empty key.
+  - Unhandled exceptions return a generic 500 (FOUNDATION-005).
+  - A request the framework cannot read (for example a malformed JSON body) is a 400 problem in every environment. Minimal APIs throw `BadHttpRequestException` for it in Development; `ClientErrorExceptionHandler` turns it into the 400 it carries, without echoing the exception message.
 - Lists are paginated with a bounded page size. Mutating endpoints that must be retry-safe accept an idempotency key.
 - Breaking changes require approval and a new version.
 
 ## Error Handling
 
-- Expected failures (validation, not found, rule violations) return `Result<T>` errors from handlers; no exceptions for control flow. Domain invariant violations are thrown as `DomainException` (with a stable `Code`) by the Domain and translated to an `Error` by the handler; see the handler pattern in [architecture.md](../architecture/architecture.md#module-layout-and-handler-pattern).
+- Expected failures (validation, not found, rule violations) return `Result<T>` errors from handlers; no exceptions for control flow. Domain invariant violations are thrown as `DomainException` (with a stable `Code`) by the Domain and translated to an `Error` by the handler through `DomainErrors.Run`; see the handler pattern in [architecture.md](../architecture/architecture.md#module-layout-and-handler-pattern).
 - Unexpected exceptions are handled once, by `UseApiPipeline` (exception handler + status-code pages + `AddApiErrorHandling`): the exception is logged with its correlation ID, and the client receives a generic RFC 9457 `application/problem+json` response (`500`, title "An unexpected error occurred.", no detail, no exception or stack trace, in every environment including Development) carrying `correlationId`. Errors from unknown routes (404) and other status codes use the same format.
 - No stack traces, connection strings or SQL in responses.
 
