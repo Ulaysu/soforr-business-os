@@ -57,7 +57,9 @@ See [architecture.md](../architecture/architecture.md#dependency-direction). Enf
 - REST, JSON, OpenAPI documented; routes under `/api/v1/...`; resource-oriented nouns, plural.
 - Request/response models are separate from domain entities.
 - Status codes: 200/201 (with `Location`)/204, 400 validation, 401 unauthenticated, 403 unauthorized, 404 not found **(also for other tenants' resources, to avoid leaking existence)**, 409 conflict/concurrency, 422 business-rule violation, 500 unexpected.
-- Errors are RFC 9457 `ProblemDetails` with a stable `code`. Validation errors list field problems.
+- Errors are RFC 9457 `application/problem+json`.
+  - **Implemented (FOUNDATION-005):** unhandled exceptions return a generic 500, and other error status codes (for example an unknown route's 404) use the same format; every problem response carries `correlationId`.
+  - **Not yet implemented (planned with the first endpoints, ORG-003):** a stable machine-readable `code` extension, field-level validation errors, and the central mapping from handler `Result` errors (ADR-0003) to these responses. Until then no endpoint returns a `code` or a field-error list, and clients must not depend on one.
 - Lists are paginated with a bounded page size. Mutating endpoints that must be retry-safe accept an idempotency key.
 - Breaking changes require approval and a new version.
 

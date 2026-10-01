@@ -96,7 +96,7 @@ AI Assistant (EPIC 12)
 
 ### FOUNDATION-005 — Logging, error handling and correlation IDs
 - **Status:** In Review · **Priority:** P0 · **Agent:** Backend
-- **Description:** Serilog (console + structured), request logging, correlation ID middleware, centralized `ProblemDetails` exception handling, liveness/readiness health endpoints.
+- **Description:** Serilog (console + structured), request logging, correlation ID middleware, centralized `ProblemDetails` exception handling, liveness/readiness health endpoints. Out of scope here (deferred to ORG-003, the first item with handlers and endpoints): the stable error `code`, field-level validation errors, and the `Result`-to-HTTP mapping.
 - **Acceptance criteria:** Each request has a correlation ID in logs and response header; unhandled exceptions return generic RFC 9457 responses without internals; health endpoints work.
 - **Dependencies:** FOUNDATION-004, FOUNDATION-006
 - **Affected area:** Api
@@ -157,7 +157,7 @@ AI Assistant (EPIC 12)
 ### ORG-003 — Organization API
 - **Status:** Backlog · **Priority:** P0 · **Agent:** Backend
 - **Description:** `CreateOrganization`, `UpdateOrganizationSettings`, `GetOrganization` commands/queries and thin endpoints, with validation and ProblemDetails errors. Authorization is added once IDENTITY-002 lands (until then endpoints are not exposed beyond Development).
-- **Acceptance criteria:** OpenAPI documents the endpoints; validation errors are structured; endpoints are mapped only in Development until IDENTITY-002 is Done, proven by a test that they are absent in other environments.
+- **Acceptance criteria:** OpenAPI documents the endpoints; handler `Result` errors (ADR-0003) are mapped centrally to RFC 9457 responses with a stable `code` extension, and validation errors list field-level problems (the generic error pipeline itself exists from FOUNDATION-005); endpoints are mapped only in Development until IDENTITY-002 is Done, proven by a test that they are absent in other environments.
 - **Dependencies:** ORG-002, FOUNDATION-005
 - **Affected area:** Application, Api
 - **Testing:** handler unit tests; API integration tests.
