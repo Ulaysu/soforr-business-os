@@ -139,7 +139,7 @@ AI Assistant (EPIC 12)
 # EPIC 02 — Identity & Organizations
 
 ### ORG-001 — Organization domain model
-- **Status:** In Review · **Priority:** P0 · **Agent:** Backend / Architecture
+- **Status:** Done · **Priority:** P0 · **Agent:** Backend / Architecture
 - **Description:** `Organization` entity (name, currency, timezone), invariants, `Money`/currency value objects placed in Domain, `IClock` and id-generation abstractions. Establish the module folder layout and the handler pattern of [ADR 0003](../decisions/0003-commands-and-queries-without-mediator.md) (`ICommandHandler`/`IQueryHandler`, `Result<T>`/`Error`, registration scan) that later modules copy. No mediator dependency.
 - **Acceptance criteria:** Domain has no external dependencies; invariants (non-empty name, valid ISO currency) enforced and tested; handler pattern in place and covered by tests with test-defined handlers (the Organization commands and queries themselves, and the `DomainException`-to-`Error` translation, arrive with ORG-003).
 - **Dependencies:** FOUNDATION-002, FOUNDATION-006; ADR 0003
@@ -207,7 +207,7 @@ AI Assistant (EPIC 12)
 # EPIC 03 — Product Catalog
 
 ### CATALOG-001 — Product domain model
-- **Status:** Backlog · **Priority:** P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** P0 · **Agent:** Backend
 - **Description:** `Product` (SKU, name, unit of measure, selling price, cost price, reorder point/lead time fields, active flag) with invariants from [modules.md](../architecture/modules.md#catalog).
 - **Acceptance criteria:** Invariants enforced in Domain; no persistence or framework references.
 - **Dependencies:** ORG-001 (shared `Money`/`Quantity` value objects)

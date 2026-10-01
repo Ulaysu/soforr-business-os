@@ -78,7 +78,7 @@ Modules are folders and namespaces inside the existing projects (see [modules.md
 
 ```text
 src/Soforr.Domain/
-  Common/                shared kernel: DomainException, Currency, Money
+  Common/                shared kernel: DomainException, Currency, Money, Quantity
   <Module>/              entities and value objects of one module (e.g. Organizations/Organization.cs)
 src/Soforr.Application/
   Common/                Result<T>, Error, ErrorKind, ICommandHandler, IQueryHandler, handler registration, IClock, IIdGenerator

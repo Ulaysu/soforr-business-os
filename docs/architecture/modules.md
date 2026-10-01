@@ -26,10 +26,10 @@ The model is deliberately minimal; entities are named for orientation and refine
 
 ## Catalog
 - **Responsibility:** What the business buys and sells.
-- **Concepts:** Product (SKU, name, unit of measure, selling price, cost price, reorder settings, active flag).
+- **Concepts:** Product (SKU, name, unit of measure, selling price, cost price, optional reorder settings, active flag), owned by exactly one organization. Reorder settings are a reorder point (a non-negative `Quantity`) and a lead time in days.
 - **Commands:** CreateProduct, UpdateProduct, DeactivateProduct.
 - **Queries:** GetProduct, SearchProducts.
-- **Invariants:** SKU unique within organization; prices ≥ 0; a product with history is deactivated, never hard-deleted.
+- **Invariants:** SKU, name and unit of measure are required (trimmed; at most 64, 200 and 32 characters); prices are ≥ 0 and in the same currency; reorder point ≥ 0 and lead time ≥ 0 days; a product with history is deactivated, never hard-deleted (the Domain offers no delete). The `Product` entity enforces these. Two rules need more than one entity and are enforced elsewhere: SKU unique within the organization (unique index in persistence, checked by the handlers), and prices in the organization's currency (checked by the handlers, which know the organization).
 - **Depends on:** Organizations.
 
 ## Inventory
