@@ -34,10 +34,10 @@ The model is deliberately minimal; entities are named for orientation and refine
 
 ## Inventory
 - **Responsibility:** Stock quantities, derived from movements.
-- **Concepts:** InventoryMovement (append-only: product, signed quantity, reason, source reference, actor, timestamp), StockLevel (current quantity per product, maintained transactionally with movements).
+- **Concepts:** InventoryMovement (append-only: product, signed non-zero quantity delta, reason, source type and source id, actor, optional note, UTC time) and StockLevel (current non-negative quantity of one product in one organization, changed only by applying a movement, maintained transactionally with the movements). Reasons in the MVP: PurchaseReceived, SaleCompleted, ManualAdjustment, Return, Damage; Transfer arrives with multiple stock locations.
 - **Commands:** AdjustInventory (manual, requires reason); RecordMovement (internal, called by Purchasing/Sales handlers).
 - **Queries:** GetStockLevel, ListLowStock, GetMovementHistory.
-- **Invariants:** Every change has a reason and a movement; movements are immutable (corrections are new movements); stock level equals the sum of movements; stock cannot go negative by default; updates are concurrency-safe.
+- **Invariants:** Every change has a reason and a movement; movements are immutable, with no setters and no mutating methods (corrections are new movements); a manual adjustment requires a note; stock level equals the sum of movements; stock cannot go negative by default, and a movement that would make it negative is rejected and changes nothing; updates are concurrency-safe. The Domain enforces everything above except concurrency-safety and "the same source cannot record the same movement twice", which need the database (ADR 0004, INVENTORY-002). No rule yet ties the sign of a delta to its reason (for example that a sale must remove stock); that is decided with the Purchasing and Sales items.
 - **Depends on:** Catalog, Organizations.
 
 ## Purchasing
