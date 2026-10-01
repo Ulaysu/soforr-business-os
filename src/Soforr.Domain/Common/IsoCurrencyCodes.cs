@@ -4,7 +4,8 @@ namespace Soforr.Domain.Common;
 /// A maintained snapshot of the current ISO 4217 currency set used by Soforr, not a complete ISO 4217 table and not
 /// derived from the host's culture data (which differs between operating systems and containers).
 /// Intentionally excluded: fund codes (for example CHE, CLF, USN), precious metals (XAU, XAG, XPT, XPD), test and
-/// "no currency" codes (XTS, XXX), and withdrawn or historical currencies (for example HRK, ZWL, SLL, DEM).
+/// "no currency" codes (XTS, XXX), special-purpose accounting units that are not a country's currency (XAD, XBA to XBD,
+/// XDR, XSU, XUA), and withdrawn or historical currencies (for example HRK, ZWL, SLL, DEM).
 /// Update the list when ISO 4217 changes.
 /// </summary>
 internal static class IsoCurrencyCodes
@@ -32,7 +33,7 @@ internal static class IsoCurrencyCodes
         "SAR", "SBD", "SCR", "SDG", "SEK", "SGD", "SHP", "SLE", "SOS", "SRD", "SSP", "STN", "SVC", "SYP", "SZL",
         "THB", "TJS", "TMT", "TND", "TOP", "TRY", "TTD", "TWD", "TZS",
         "UAH", "UGX", "USD", "UYU", "UZS",
-        "VES", "VND", "VUV",
+        "VED", "VES", "VND", "VUV",
         "WST",
         "XAF", "XCD", "XCG", "XOF", "XPF",
         "YER",

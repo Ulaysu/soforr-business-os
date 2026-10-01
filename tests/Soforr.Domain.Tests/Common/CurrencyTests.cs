@@ -67,6 +67,7 @@ public class CurrencyTests
     [InlineData("XCG")]
     [InlineData("ZWG")]
     [InlineData("SLE")]
+    [InlineData("VED")]
     [InlineData("VES")]
     [InlineData("MRU")]
     [InlineData("STN")]
