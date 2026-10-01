@@ -38,7 +38,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IOrgani
         builder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
         // Tenant-owned entities. Each entity with an OrganizationId needs a filter here; a convention test fails if one
-        // is missing. The Organization is the tenant itself, so its own id is the key.
+        // is missing. The Organization is the tenant itself, so its own id is the key. Its filter is defense in depth
+        // (ADR 0002, decision B): the handlers also check ownership, and must keep doing so.
         builder.Entity<Organization>().HasQueryFilter(organization => CurrentOrganizationId != null && organization.Id == CurrentOrganizationId);
         builder.Entity<Membership>().HasQueryFilter(membership => CurrentOrganizationId != null && membership.OrganizationId == CurrentOrganizationId);
     }
