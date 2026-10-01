@@ -9,6 +9,7 @@ using Soforr.Api.IntegrationTests.Postgres;
 using Soforr.Domain.Identity;
 using Soforr.Domain.Organizations;
 using Soforr.Infrastructure.Identity;
+using static Soforr.Api.IntegrationTests.Identity.AuthClient;
 
 namespace Soforr.Api.IntegrationTests.Identity;
 
@@ -19,8 +20,6 @@ namespace Soforr.Api.IntegrationTests.Identity;
 [Trait("Category", "Integration")]
 public sealed class AuthApiTests : IClassFixture<PostgresDatabaseFixture>, IDisposable
 {
-    private const string Password = "correct horse battery staple";
-
     private readonly PostgresDatabaseFixture _database;
     private readonly List<IDisposable> _disposables = [];
 
@@ -37,59 +36,14 @@ public sealed class AuthApiTests : IClassFixture<PostgresDatabaseFixture>, IDisp
         }
     }
 
-    private static Uri Relative(string path) => new(path, UriKind.Relative);
-
-    private static string NewEmail() => $"owner-{Guid.NewGuid():N}@example.com";
-
     private HttpClient CreateClient(Dictionary<string, string?>? settings = null)
     {
-        var factory = new ApiFactory(_database.ConnectionString).WithWebHostBuilder(builder =>
-        {
-            builder.UseEnvironment("Development");
-            if (settings is not null)
-            {
-                builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(settings));
-            }
-        });
-        var client = factory.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            BaseAddress = new Uri("https://localhost"),
-            HandleCookies = true,
-            AllowAutoRedirect = false,
-        });
-
+        var factory = AuthClient.CreateFactory(_database.ConnectionString, settings);
+        var client = AuthClient.NewClient(factory);
         _disposables.Add(client);
         _disposables.Add(factory);
         return client;
     }
-
-    /// <summary>Sends an unsafe request with a fresh antiforgery token (the token is bound to the current identity).</summary>
-    private static async Task<HttpResponseMessage> PostAsync(HttpClient client, string path, object? body, bool withToken = true)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, Relative(path));
-        if (body is not null)
-        {
-            request.Content = JsonContent.Create(body);
-        }
-
-        if (withToken)
-        {
-            using var tokenResponse = await client.GetAsync(Relative("/api/v1/auth/antiforgery"));
-            using var token = JsonDocument.Parse(await tokenResponse.Content.ReadAsStringAsync());
-            request.Headers.Add(token.RootElement.GetProperty("headerName").GetString()!, token.RootElement.GetProperty("token").GetString());
-        }
-
-        return await client.SendAsync(request);
-    }
-
-    private static Task<HttpResponseMessage> RegisterAsync(HttpClient client, string email, string password = Password, string organizationName = "Soforr Trading", string currency = "GMD", string timeZoneId = "Europe/London") =>
-        PostAsync(client, "/api/v1/auth/register", new { email, password, organizationName, currency, timeZoneId });
-
-    private static Task<HttpResponseMessage> LoginAsync(HttpClient client, string email, string password = Password) =>
-        PostAsync(client, "/api/v1/auth/login", new { email, password });
-
-    private static async Task<JsonElement> ReadAsync(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.Clone();
 
     private async Task<(HttpClient Client, string Email)> RegisteredAndSignedInAsync(Dictionary<string, string?>? settings = null)
     {

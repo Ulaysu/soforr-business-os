@@ -23,27 +23,34 @@ app.UseApiPipeline();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Development only for now. The organization endpoints have no access control until IDENTITY-002. The
-// authentication endpoints allow anyone to register, which ADR 0002 permits only after e-mail verification
-// (IDENTITY-004) and rate limiting (SECURITY-002) exist, so neither group is reachable in any other environment.
+// The authentication endpoints let anyone register, which ADR 0002 permits only after e-mail verification
+// (IDENTITY-004) and rate limiting (SECURITY-002) exist, so they (and the OpenAPI document) are mapped only in
+// Development. The organization endpoints require a signed-in user with the right permission, so they are mapped
+// everywhere; where no one can sign in they answer 401.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.MapOpenApi().AllowAnonymous();
     app.MapAuthEndpoints();
-    app.MapOrganizationEndpoints();
 }
+
+app.MapOrganizationEndpoints();
+
+// The default-deny policy also applies to requests that match no endpoint, which would answer 401 for every
+// unknown path. A route that does not exist must stay a 404 (it is not a secret and it is not a sign-in problem),
+// so a catch-all endpoint answers those requests.
+app.MapFallback("/{**path}", () => Results.NotFound()).AllowAnonymous();
 
 app.UseHttpsRedirection();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
     Predicate = _ => false,
-});
+}).AllowAnonymous();
 
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains(HealthCheckTags.Ready),
-});
+}).AllowAnonymous();
 
 app.Run();
 

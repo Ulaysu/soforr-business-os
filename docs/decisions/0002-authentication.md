@@ -87,6 +87,14 @@ These record how the decisions above were implemented; they do not change them.
 - **Not yet in place:** the CORS allowlist (there is no web client yet; FOUNDATION-007), e-mail verification (IDENTITY-004), rate limiting (SECURITY-002). Until the last two exist the authentication endpoints are mapped only in Development, because they let anyone register.
 - **Infrastructure now references the ASP.NET Core shared framework** (a `FrameworkReference`), because Identity's sign-in and cookie handling live there. Application and Domain are unchanged and still reference no web or Identity type: Application sees only its own ports (`IUserAccounts`, `ISessionService`, `ICurrentUser`).
 
+## Implementation notes (IDENTITY-002)
+
+- **Permissions** are the `Permission` enum and the role mapping is `RolePermissions` (both in Application, in code). The matrix is documented in [security.md](../security/security.md) and a test fails if a role or permission is added without a decision in it.
+- **The check** is `ICurrentUser.Require(permission)` at the top of each handler, returning `identity.not_authenticated` (401) or `identity.forbidden` (403). Signed in without a membership is 403. An architecture test fails when a handler does not take `ICurrentUser`, except the two that run before sign-in.
+- **Default deny:** the API has a fallback policy `RequireAuthenticatedUser`. Anonymous endpoints are an explicit allowlist guarded by a test (the authentication endpoints, the health checks, the OpenAPI document). A catch-all endpoint keeps unknown routes a 404, because the fallback policy would otherwise answer 401 to every unknown path.
+- **Antiforgery:** `RequireAntiforgery()` is applied to the authentication and organization groups; it checks only unsafe methods. A test requires it on every unsafe endpoint.
+- **Foreign organizations are 404, not 403:** the organization handlers compare the requested id with the caller's own organization and answer not found otherwise. The permission is checked first, so a role without the permission gets 403 whatever the id. The general mechanism (query filters on every tenant-owned entity) is IDENTITY-003.
+
 ## Decisions approved by the owner
 
 1. Option A (cookie session) over B/C for the MVP.

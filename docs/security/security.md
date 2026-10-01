@@ -12,7 +12,18 @@ This is the baseline. Authentication is implemented (IDENTITY-001, see below); t
 ## Authorization
 - Authenticated ≠ authorized. Every command and query checks a permission server-side.
 - Roles map to permissions (Owner, Manager, Staff initially); permission checks live in Application, declared per use case.
-- Default deny. Frontend hiding of controls is cosmetic only.
+- Default deny. Frontend hiding of controls is cosmetic only. The API has a fallback policy that requires a signed-in user; the anonymous endpoints are an allowlist guarded by a test, and every unsafe endpoint requires an antiforgery token (also tested).
+
+### Role and permission matrix (IDENTITY-002)
+
+Fixed roles, granted in code (`RolePermissions`). Anything not granted is denied. A permission is added with the use case that needs it, and the matrix test requires every role and permission to be decided.
+
+| Permission | Use cases | Owner | Manager | Staff |
+|---|---|---|---|---|
+| `OrganizationView` | GetOrganization | yes | yes | yes |
+| `OrganizationManageSettings` | UpdateOrganizationSettings | yes | no | no |
+
+Outcomes: not signed in → 401; signed in without a membership or without the permission → 403; another organization's resource → 404 (after the permission check). Registration, sign-in and sign-out are the only operations that need no permission. Planned permissions (`Products.Manage`, `Inventory.Adjust`, `Purchasing.Receive`, `Sales.Create`, `Sales.Void`, `Members.Manage`) are added with their features.
 
 ## Tenant Isolation (critical boundary)
 - Organization identity derives from the authenticated principal, never from client-supplied ids.

@@ -19,9 +19,9 @@ The model is deliberately minimal; entities are named for orientation and refine
 ## Organizations
 - **Responsibility:** Tenants and their settings.
 - **Concepts:** Organization (name, currency, timezone).
-- **Commands:** CreateOrganization, UpdateOrganizationSettings (name and time zone; the currency cannot change).
+- **Commands:** UpdateOrganizationSettings (name and time zone; the currency cannot change). (`CreateOrganization` exists but is not exposed, see API.)
 - **Queries:** GetOrganization.
-- **API (ORG-003):** `POST /api/v1/organizations` (201 with `Location`), `GET /api/v1/organizations/{id}`, `PUT /api/v1/organizations/{id}/settings`, documented in OpenAPI. They have no authentication or authorization yet, so they are mapped **only in Development** until IDENTITY-002; this is enforced by a test that they are absent in other environments.
+- **API:** `GET /api/v1/organizations/{id}` (permission `OrganizationView`: every role) and `PUT /api/v1/organizations/{id}/settings` (`OrganizationManageSettings`: Owner only), documented in OpenAPI. A signed-in user is required; the id must be the caller's own organization, otherwise the answer is 404. There is no create endpoint: an organization is created by registering (Identity). The `CreateOrganization` handler from ORG-003 remains in Application, unexposed and without a permission check, and is flagged in the architecture test for removal.
 - **Invariants:** Every tenant-owned record in any module references exactly one organization. The name is required (at most 200 characters, trimmed); the time zone is an IANA identifier supported by the application's runtime time zone database; the currency is one of Soforr's supported ISO 4217 currencies (a maintained snapshot of the current set) and is fixed at creation, so it is never silently changed once transactions exist; timestamps are UTC.
 - **Depends on:** none.
 - **Tenant context:** `IOrganizationContext` (Application) exposes the current organization id, derived on the server from the authenticated membership (a claim written at sign-in from the stored membership) and never from request data; null means no organization and consumers fail closed. The query filters that use it arrive with IDENTITY-003.
@@ -32,6 +32,7 @@ The model is deliberately minimal; entities are named for orientation and refine
 - **Commands:** Register (creates the user, a new organization and the Owner membership in one transaction), SignIn.
 - **Queries:** GetCurrentUser.
 - **Ports (Application):** `ICurrentUser` (user id, organization id, role; null when not authenticated), `IUserAccounts` (stage a validated, hashed user without saving), `ISessionService` (start and end the cookie session).
+- **Authorization (IDENTITY-002):** `Permission` and `RolePermissions` (fixed role matrix in code, see [security.md](../security/security.md)); handlers call `ICurrentUser.Require(permission)` first.
 - **API (IDENTITY-001):** `GET /api/v1/auth/antiforgery`, `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/me`. Mapped **only in Development** until e-mail verification (IDENTITY-004) and rate limiting (SECURITY-002) exist.
 - **Invariants:** one membership per user (unique index); a membership has a known role; the registering user is the Owner. "An organization always keeps at least one Owner" is enforced when member management exists (IDENTITY-002). Permissions per role arrive with IDENTITY-002.
 - **Depends on:** Organizations.
