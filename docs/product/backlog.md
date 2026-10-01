@@ -179,7 +179,7 @@ AI Assistant (EPIC 12)
 - **Testing:** authorization tests for every protected operation (matrix-driven).
 
 ### IDENTITY-003 — Tenant isolation
-- **Status:** In Review · **Priority:** P0 · **Agent:** Security / Backend
+- **Status:** Done · **Priority:** P0 · **Agent:** Security / Backend
 - **Description:** Organization context derived from the authenticated principal; EF global query filters; write-side ownership checks; a reusable test harness for cross-tenant tests; 404 for foreign resources. **Design changes to this mechanism require human approval.**
 - **Acceptance criteria:** A test suite with two tenants proves that reads, writes and referenced-id injection across tenants fail for all existing tenant-owned entities; a new tenant-owned entity without a filter is caught by an architecture/convention test.
 - **Dependencies:** IDENTITY-002, ORG-002
@@ -215,7 +215,7 @@ AI Assistant (EPIC 12)
 - **Testing:** unit tests for invariants (price ≥ 0, SKU rules, deactivation).
 
 ### CATALOG-002 — Product persistence
-- **Status:** Backlog · **Priority:** P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** P0 · **Agent:** Backend
 - **Description:** EF configuration, migration, tenant filter, per-organization unique SKU compared case-insensitively with the entered casing preserved ([ADR 0006](../decisions/0006-sku-uniqueness.md)), indexes.
 - **Acceptance criteria:** Migration applies cleanly; SKU uniqueness per organization is enforced by the database with a case-insensitive strategy (not only by handler checks); the stored SKU keeps its entered casing; no exception for deactivated products without a decision.
 - **Dependencies:** CATALOG-001, IDENTITY-003

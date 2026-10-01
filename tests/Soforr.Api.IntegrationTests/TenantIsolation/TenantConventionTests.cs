@@ -51,6 +51,9 @@ public class TenantConventionTests
         using var context = CreateContext();
 
         var undecided = context.Model.GetEntityTypes()
+            // An owned type (for example a product's prices) is stored with its owner and is reached only through it,
+            // so the owner's filter covers it.
+            .Where(entity => !entity.IsOwned())
             .Where(entity => entity.GetDeclaredQueryFilters().Count == 0)
             .Select(entity => entity.ClrType.Name == "IdentityUserClaim`1" ? "IdentityUserClaim<Guid>" : entity.DisplayName())
             .Where(name => !NotTenantOwned.Contains(name, StringComparer.Ordinal))

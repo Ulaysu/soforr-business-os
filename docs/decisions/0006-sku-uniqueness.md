@@ -25,7 +25,15 @@ Whether a deactivated product keeps its SKU reserved. The rule as documented has
 
 - The Domain model is unchanged. This record, `data-model.md`, `modules.md` and the CATALOG-002/003 backlog items state the requirement so the persistence work cannot silently implement case-sensitive uniqueness.
 - CATALOG-002 must prove the rule with integration tests against real PostgreSQL (FOUNDATION-008), including case variants within an organization and the same SKU in two organizations.
-- Nothing enforces this rule yet: persistence does not exist.
+- CATALOG-002 implements it (see below).
+
+## Implementation (CATALOG-002)
+
+- The database keeps a **stored generated column `SkuKey` = `lower("Sku")`**, and a **unique index `IX_Products_OrganizationId_SkuKey` on `(OrganizationId, SkuKey)`**. EF Core cannot declare an expression index in the model, and a generated column keeps the model and the snapshot truthful. The stored `Sku` keeps the entered casing; the Domain has no copy of the key.
+- A save that violates it fails with SQLSTATE `23505` and constraint name `IX_Products_OrganizationId_SkuKey` (surfaced by EF Core as a `DbUpdateException` whose inner exception is a `PostgresException`). CATALOG-003's handler maps exactly that to a conflict, after its own friendly pre-check.
+- **Lookups** compare the lowercased input with `EF.Property<string>(product, "SkuKey")`, the very column behind the index, so the lookup and the rule cannot differ. (`ToLower()` on the column also translates, but trips the culture analyzers; `ToLowerInvariant()` does not translate.) `lower()` follows the database's character classification: it is exact for ASCII and follows the database locale for other characters, so the production database must use a UTF-8 database with a real locale (the `postgres:17` image does).
+- No exception for deactivated products: they keep their SKU reserved, proven by a test.
+- Proven against real PostgreSQL: `ABC-123` vs `abc-123` (and other case variants) are rejected within an organization, allowed across organizations, and four concurrent inserts of case variants leave exactly one row.
 
 ## Alternatives considered
 
