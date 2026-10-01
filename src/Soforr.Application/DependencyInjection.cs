@@ -1,14 +1,17 @@
 using Microsoft.Extensions.DependencyInjection;
+using Soforr.Application.Common;
 
 namespace Soforr.Application;
 
 public static class DependencyInjection
 {
     /// <summary>
-    /// Registers Application-layer services. Command/query handlers are registered here as modules arrive.
+    /// Registers Application-layer services: every command and query handler in this assembly.
     /// </summary>
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        return services;
+        ArgumentNullException.ThrowIfNull(services);
+
+        return services.AddHandlers(typeof(DependencyInjection).Assembly);
     }
 }

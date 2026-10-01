@@ -65,7 +65,7 @@ See [architecture.md](../architecture/architecture.md#dependency-direction). Enf
 
 ## Error Handling
 
-- Expected failures (validation, not found, rule violations) return typed results from handlers; no exceptions for control flow.
+- Expected failures (validation, not found, rule violations) return `Result<T>` errors from handlers; no exceptions for control flow. Domain invariant violations are thrown as `DomainException` (with a stable `Code`) by the Domain and translated to an `Error` by the handler; see the handler pattern in [architecture.md](../architecture/architecture.md#module-layout-and-handler-pattern).
 - Unexpected exceptions are handled once, by `UseApiPipeline` (exception handler + status-code pages + `AddApiErrorHandling`): the exception is logged with its correlation ID, and the client receives a generic RFC 9457 `application/problem+json` response (`500`, title "An unexpected error occurred.", no detail, no exception or stack trace, in every environment including Development) carrying `correlationId`. Errors from unknown routes (404) and other status codes use the same format.
 - No stack traces, connection strings or SQL in responses.
 

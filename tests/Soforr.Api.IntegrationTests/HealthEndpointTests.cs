@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Soforr.Application.Common;
 using Soforr.Application.Persistence;
 
 namespace Soforr.Api.IntegrationTests;
@@ -29,6 +30,23 @@ public class HealthEndpointTests
         var response = await client.GetAsync(new Uri("/health/ready", UriKind.Relative));
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+    }
+
+    [Fact]
+    public void ClockAndIdGeneratorPorts_AreProvidedByInfrastructure()
+    {
+        using var factory = new ApiFactory().WithWebHostBuilder(builder => builder.UseEnvironment("Development"));
+        using var scope = factory.Services.CreateScope();
+
+        var clock = scope.ServiceProvider.GetRequiredService<IClock>();
+        var ids = scope.ServiceProvider.GetRequiredService<IIdGenerator>();
+
+        Assert.Equal(TimeSpan.Zero, clock.UtcNow.Offset);
+        Assert.InRange(clock.UtcNow, DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow.AddMinutes(1));
+        var generated = Enumerable.Range(0, 100).Select(_ => ids.NewId()).ToArray();
+        Assert.DoesNotContain(Guid.Empty, generated);
+        Assert.Equal(generated.Length, generated.Distinct().Count());
+        Assert.All(generated, id => Assert.Equal(7, id.Version));
     }
 
     [Fact]
