@@ -19,9 +19,9 @@ The model is deliberately minimal; entities are named for orientation and refine
 ## Organizations
 - **Responsibility:** Tenants and their settings.
 - **Concepts:** Organization (name, currency, timezone).
-- **Commands:** UpdateOrganizationSettings (name and time zone; the currency cannot change). (`CreateOrganization` exists but is not exposed, see API.)
+- **Commands:** UpdateOrganizationSettings (name and time zone; the currency cannot change).
 - **Queries:** GetOrganization.
-- **API:** `GET /api/v1/organizations/{id}` (permission `OrganizationView`: every role) and `PUT /api/v1/organizations/{id}/settings` (`OrganizationManageSettings`: Owner only), documented in OpenAPI. A signed-in user is required; the id must be the caller's own organization, otherwise the answer is 404. There is no create endpoint: an organization is created by registering (Identity). The `CreateOrganization` handler from ORG-003 remains in Application, unexposed and without a permission check, and is flagged in the architecture test for removal.
+- **API:** `GET /api/v1/organizations/{id}` (permission `OrganizationView`: every role) and `PUT /api/v1/organizations/{id}/settings` (`OrganizationManageSettings`: Owner only), documented in OpenAPI. A signed-in user is required; the id must be the caller's own organization, otherwise the answer is 404. There is no create endpoint: an organization is created by registering (Identity).
 - **Invariants:** Every tenant-owned record in any module references exactly one organization. The name is required (at most 200 characters, trimmed); the time zone is an IANA identifier supported by the application's runtime time zone database; the currency is one of Soforr's supported ISO 4217 currencies (a maintained snapshot of the current set) and is fixed at creation, so it is never silently changed once transactions exist; timestamps are UTC.
 - **Depends on:** none.
 - **Tenant context:** `IOrganizationContext` (Application) exposes the current organization id, derived on the server from the authenticated membership (a claim written at sign-in from the stored membership) and never from request data; null means no organization and consumers fail closed. The query filters that use it arrive with IDENTITY-003.

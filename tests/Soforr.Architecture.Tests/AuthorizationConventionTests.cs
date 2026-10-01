@@ -15,10 +15,6 @@ public class AuthorizationConventionTests
         // Run before anyone is signed in.
         "Soforr.Application.Identity.Register.RegisterHandler",
         "Soforr.Application.Identity.SignIn.SignInHandler",
-
-        // Not exposed by any endpoint since organizations are created by registering (IDENTITY-002); it has no
-        // permission check, so it must not be exposed as it is. Remove it, or give it a permission, before use.
-        "Soforr.Application.Organizations.CreateOrganization.CreateOrganizationHandler",
     ];
 
     [Fact]
