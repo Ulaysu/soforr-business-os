@@ -207,7 +207,7 @@ AI Assistant (EPIC 12)
 # EPIC 03 — Product Catalog
 
 ### CATALOG-001 — Product domain model
-- **Status:** In Review · **Priority:** P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** P0 · **Agent:** Backend
 - **Description:** `Product` (SKU, name, unit of measure, selling price, cost price, reorder point/lead time fields, active flag) with invariants from [modules.md](../architecture/modules.md#catalog).
 - **Acceptance criteria:** Invariants enforced in Domain; no persistence or framework references.
 - **Dependencies:** ORG-001 (shared `Money`/`Quantity` value objects)
@@ -243,7 +243,7 @@ AI Assistant (EPIC 12)
 # EPIC 04 — Inventory
 
 ### INVENTORY-001 — Inventory domain model and design note
-- **Status:** Backlog · **Priority:** P0 · **Agent:** Backend / Architecture
+- **Status:** In Review · **Priority:** P0 · **Agent:** Backend / Architecture
 - **Description:** `InventoryMovement` (append-only), `StockLevel`, reasons, non-negative stock rule, `Quantity` value object. The concurrency mechanism is decided in [ADR 0004](../decisions/0004-inventory-concurrency.md) (optimistic token plus database backstops).
 - **Acceptance criteria:** Domain model reflects ADR 0004 (append-only movements, reasons, idempotency source reference); invariants covered in tests.
 - **Dependencies:** CATALOG-001; ADR 0004
