@@ -23,6 +23,7 @@ The model is deliberately minimal; entities are named for orientation and refine
 - **Queries:** GetOrganization.
 - **Invariants:** Every tenant-owned record in any module references exactly one organization. The name is required (at most 200 characters, trimmed); the time zone is an IANA identifier supported by the application's runtime time zone database; the currency is one of Soforr's supported ISO 4217 currencies (a maintained snapshot of the current set) and is fixed at creation, so it is never silently changed once transactions exist; timestamps are UTC.
 - **Depends on:** none.
+- **Tenant context:** `IOrganizationContext` (Application) exposes the current organization id, derived on the server from the authenticated membership and never from request data; null means no organization and consumers fail closed. Until IDENTITY-001 provides the real implementation, Infrastructure registers a default that always returns null. The query filters that use it arrive with IDENTITY-003.
 
 ## Catalog
 - **Responsibility:** What the business buys and sells.

@@ -111,7 +111,7 @@ AI Assistant (EPIC 12)
 - **Testing:** the tests themselves. Test-only packages: xUnit family, `Microsoft.NET.Test.Sdk`, `Microsoft.AspNetCore.Mvc.Testing`.
 
 ### FOUNDATION-008 — PostgreSQL integration test harness
-- **Status:** In Review · **Priority:** P0 · **Agent:** QA / Backend
+- **Status:** Done · **Priority:** P0 · **Agent:** QA / Backend
 - **Description:** Testcontainers PostgreSQL fixture (one container per run, one database per test class created from migrations), `Integration` category, two-tenant fixture stub (completed in IDENTITY-003).
 - **Acceptance criteria:** `dotnet test` needs only Docker; migrations apply to an empty database in a test; tests are order-independent; CI runs them.
 - **Dependencies:** FOUNDATION-003, FOUNDATION-006; ADR 0005
@@ -147,7 +147,7 @@ AI Assistant (EPIC 12)
 - **Testing:** domain unit tests.
 
 ### ORG-002 — Organization persistence
-- **Status:** Backlog · **Priority:** P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** P0 · **Agent:** Backend
 - **Description:** EF Core configuration and migration for organizations; tenant-scoping infrastructure hooks (an `IOrganizationContext` abstraction in Application; filter wiring completed in IDENTITY-003).
 - **Acceptance criteria:** Migration applies to clean DB; constraints (required name, currency length) in place.
 - **Dependencies:** ORG-001, FOUNDATION-003, FOUNDATION-008
