@@ -12,20 +12,31 @@ namespace Soforr.Api.IntegrationTests.Postgres;
 public class MigrationReversibilityTests(PostgresDatabaseFixture database) : IClassFixture<PostgresDatabaseFixture>
 {
     [Fact]
-    public async Task TheOrganizationsMigration_CanBeRolledBack_AndAppliedAgain()
+    public async Task EveryMigration_CanBeRolledBackToAnEmptyDatabase_AndAppliedAgain()
     {
         await using var context = database.CreateContext();
         var migrator = context.GetService<IMigrator>();
-        var first = context.Database.GetMigrations().First();
+        var known = context.Database.GetMigrations().ToArray();
 
+        // The fixture has already applied every migration.
+        Assert.True(known.Length >= 2);
+        Assert.Equal(known, (await context.Database.GetAppliedMigrationsAsync()).ToArray());
         Assert.True(await TableExistsAsync("Organizations"));
 
-        await migrator.MigrateAsync(first);
+        // One step back: migrating to the oldest migration reverts every later one.
+        await migrator.MigrateAsync(known[0]);
         Assert.False(await TableExistsAsync("Organizations"));
-        Assert.Equal([first], (await context.Database.GetAppliedMigrationsAsync()).ToArray());
+        Assert.Equal([known[0]], (await context.Database.GetAppliedMigrationsAsync()).ToArray());
 
+        // All the way back: migration "0" reverts the oldest migration too, so no application migration remains.
+        await migrator.MigrateAsync(Migration.InitialDatabase);
+        Assert.False(await TableExistsAsync("Organizations"));
+        Assert.Empty(await context.Database.GetAppliedMigrationsAsync());
+
+        // And forward again, from nothing to everything.
         await context.Database.MigrateAsync();
         Assert.True(await TableExistsAsync("Organizations"));
+        Assert.Equal(known, (await context.Database.GetAppliedMigrationsAsync()).ToArray());
         Assert.Empty(await context.Database.GetPendingMigrationsAsync());
     }
 
