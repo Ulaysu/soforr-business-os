@@ -35,7 +35,7 @@ public sealed class Organization
 
     public Currency Currency { get; private set; }
 
-    /// <summary>An IANA time zone identifier, for example <c>Europe/London</c>.</summary>
+    /// <summary>An IANA time zone identifier supported by the runtime's time zone database, for example <c>Europe/London</c>.</summary>
     public string TimeZoneId { get; private set; }
 
     public DateTimeOffset CreatedAtUtc { get; private set; }
@@ -88,20 +88,31 @@ public sealed class Organization
     {
         var trimmed = timeZoneId?.Trim();
 
-        if (string.IsNullOrEmpty(trimmed) || !Exists(trimmed))
+        if (string.IsNullOrEmpty(trimmed) || !IsSupportedIanaId(trimmed))
         {
-            throw new DomainException("organization.timezone_invalid", "The time zone must be a valid IANA time zone identifier.");
+            throw new DomainException("organization.timezone_invalid", "The time zone must be a supported IANA time zone identifier.");
         }
 
         return trimmed;
     }
 
-    private static bool Exists(string timeZoneId)
+    /// <summary>
+    /// Soforr stores IANA time zone identifiers and validates that the identifier is supported by the application's
+    /// runtime time zone database. The runtime lookup alone is not enough: it also accepts Windows identifiers, and
+    /// it matches case-insensitively once a zone has been cached, so the same input could pass or fail depending on
+    /// earlier lookups. Requiring an IANA-shaped identifier that equals the identifier the runtime reports keeps the
+    /// result deterministic and the stored value canonical.
+    /// </summary>
+    private static bool IsSupportedIanaId(string timeZoneId)
     {
+        if (!HasIanaShape(timeZoneId))
+        {
+            return false;
+        }
+
         try
         {
-            _ = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
-            return true;
+            return string.Equals(TimeZoneInfo.FindSystemTimeZoneById(timeZoneId).Id, timeZoneId, StringComparison.Ordinal);
         }
         catch (TimeZoneNotFoundException)
         {
@@ -112,6 +123,14 @@ public sealed class Organization
             return false;
         }
     }
+
+    // Letters, digits, '/', '_', '-' and '+' only: this excludes spaces (Windows identifiers), dots, backslashes and
+    // control characters, so no path-like value can reach the runtime lookup.
+    private static bool HasIanaShape(string timeZoneId) =>
+        timeZoneId.All(character => char.IsAsciiLetterOrDigit(character) || character is '/' or '_' or '-' or '+')
+        && !timeZoneId.StartsWith('/')
+        && !timeZoneId.EndsWith('/')
+        && !timeZoneId.Contains("//", StringComparison.Ordinal);
 
     private static DateTimeOffset RequireUtc(DateTimeOffset value)
     {

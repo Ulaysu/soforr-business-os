@@ -87,4 +87,32 @@ public class MoneyTests
 
         Assert.Equal(Money.Create(1m, Usd), sum);
     }
+
+    [Fact]
+    public void Zero_RequiresACurrency()
+    {
+        Assert.Throws<ArgumentNullException>(() => Money.Zero(null!));
+    }
+
+    [Fact]
+    public void Add_And_Subtract_RejectANullOperand()
+    {
+        var money = Money.Create(1m, Usd);
+
+        Assert.Throws<ArgumentNullException>(() => money.Add(null!));
+        Assert.Throws<ArgumentNullException>(() => money.Subtract(null!));
+    }
+
+    [Fact]
+    public void Arithmetic_DoesNotModifyTheOperands()
+    {
+        var left = Money.Create(5m, Usd);
+        var right = Money.Create(2m, Usd);
+
+        _ = left.Add(right);
+        _ = left.Subtract(right);
+
+        Assert.Equal(Money.Create(5m, Usd), left);
+        Assert.Equal(Money.Create(2m, Usd), right);
+    }
 }

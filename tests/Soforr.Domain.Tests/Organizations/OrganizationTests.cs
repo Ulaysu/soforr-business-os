@@ -142,4 +142,74 @@ public class OrganizationTests
         Assert.Equal("organization.timestamp_not_utc", exception.Code);
         Assert.Equal("Soforr", organization.Name);
     }
+
+    [Theory]
+    [InlineData("Etc/GMT+1")]
+    [InlineData("America/Argentina/Buenos_Aires")]
+    [InlineData("Asia/Kolkata")]
+    public void Create_AcceptsOtherCanonicalIanaIdentifiers(string timeZoneId)
+    {
+        Assert.Equal(timeZoneId, Organization.Create(SomeId, "Soforr", Gmd, timeZoneId, CreatedAt).TimeZoneId);
+    }
+
+    [Theory]
+    [InlineData("GMT Standard Time")]
+    [InlineData("Pacific Standard Time")]
+    [InlineData("Eastern Standard Time")]
+    public void Create_RejectsWindowsTimeZoneIdentifiers_SoStoredValuesAreIana(string timeZoneId)
+    {
+        var exception = Assert.Throws<DomainException>(() => Organization.Create(SomeId, "Soforr", Gmd, timeZoneId, CreatedAt));
+
+        Assert.Equal("organization.timezone_invalid", exception.Code);
+    }
+
+    [Fact]
+    public void Create_RejectsNonCanonicalCasing_EvenAfterTheZoneHasBeenLoaded()
+    {
+        // The runtime matches case-insensitively once a zone is cached; validation must not depend on that.
+        _ = Organization.Create(SomeId, "Soforr", Gmd, "Europe/London", CreatedAt);
+
+        foreach (var variant in new[] { "europe/london", "EUROPE/LONDON", "utc" })
+        {
+            var exception = Assert.Throws<DomainException>(() => Organization.Create(SomeId, "Soforr", Gmd, variant, CreatedAt));
+            Assert.Equal("organization.timezone_invalid", exception.Code);
+        }
+    }
+
+    [Theory]
+    [InlineData("../Europe/London")]
+    [InlineData("Europe/../Europe/London")]
+    [InlineData("../../etc/hostname")]
+    [InlineData("/Europe/London")]
+    [InlineData("Europe/London/")]
+    [InlineData("Europe//London")]
+    [InlineData("Europe\\London")]
+    [InlineData("Europe/London\0")]
+    [InlineData("Europe/Lon don")]
+    public void Create_RejectsPathLikeAndMalformedTimeZoneIdentifiers(string timeZoneId)
+    {
+        var exception = Assert.Throws<DomainException>(() => Organization.Create(SomeId, "Soforr", Gmd, timeZoneId, CreatedAt));
+
+        Assert.Equal("organization.timezone_invalid", exception.Code);
+    }
+
+    [Fact]
+    public void UpdateSettings_RejectsAWindowsTimeZoneIdentifier_AndChangesNothing()
+    {
+        var organization = Organization.Create(SomeId, "Soforr", Gmd, "UTC", CreatedAt);
+
+        Assert.Throws<DomainException>(() => organization.UpdateSettings("New name", "GMT Standard Time", CreatedAt.AddDays(1)));
+
+        Assert.Equal("Soforr", organization.Name);
+        Assert.Equal("UTC", organization.TimeZoneId);
+    }
+
+    [Fact]
+    public void Create_RequiresAUtcTimestamp_ForBothCreatedAndUpdated()
+    {
+        var organization = Organization.Create(SomeId, "Soforr", Gmd, "UTC", CreatedAt);
+
+        Assert.Equal(TimeSpan.Zero, organization.CreatedAtUtc.Offset);
+        Assert.Equal(TimeSpan.Zero, organization.UpdatedAtUtc.Offset);
+    }
 }
