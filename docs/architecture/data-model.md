@@ -9,6 +9,7 @@ Conceptual model and conventions for the first vertical slice. Detailed schemas 
 - Every business-owned table has a non-null `OrganizationId` (FK) and indexes that lead with it. Uniqueness is scoped per organization, e.g. products by SKU. A SKU is compared case-insensitively while its entered casing is preserved ([ADR 0006](../decisions/0006-sku-uniqueness.md)); the database must enforce this, not only the handlers.
 - Timestamps in UTC (`timestamptz`): `CreatedAtUtc`, `UpdatedAtUtc`; actor columns where auditability matters.
 - Money: `numeric(19,4)` plus currency code. Quantities: `numeric(18,4)`. No floating point.
+- Tables and columns use EF Core's default names (PascalCase, plural table names such as `Organizations`); no naming-convention package.
 - Soft-deactivation instead of deletion for entities with history.
 - Concurrency token on stock levels and on documents that change state (see [ADR 0004](../decisions/0004-inventory-concurrency.md)).
 - Database constraints as a second line of defense (CHECK for non-negative amounts, FKs, unique indexes).
@@ -27,6 +28,10 @@ Organization ─┬─ Membership ── User
               ├─ ReorderRecommendation ── Product
               └─ AuditEvent
 ```
+
+## Organizations Table
+
+`Organizations(Id uuid PK, Name varchar(200), Currency varchar(3), TimeZoneId varchar(100), CreatedAtUtc timestamptz, UpdatedAtUtc timestamptz)`, all columns required. Identifiers are generated in application code. The Domain enforces the invariants; CHECK constraints are a backstop for data written by anything else: the name is not blank, the currency is exactly three upper-case letters (`^[A-Z]{3}$`), the time zone is not blank. The currency is stored as the code and read back through `Currency.Create`, so a code removed from the supported snapshot would stop loading; the snapshot is only changed deliberately.
 
 ## Inventory Integrity Model
 
