@@ -1,7 +1,7 @@
 using Soforr.Api.Http;
+using Soforr.Api.Identity;
 using Soforr.Application.Common;
 using Soforr.Application.Organizations;
-using Soforr.Application.Organizations.CreateOrganization;
 using Soforr.Application.Organizations.GetOrganization;
 using Soforr.Application.Organizations.UpdateOrganizationSettings;
 
@@ -9,8 +9,9 @@ namespace Soforr.Api.Organizations;
 
 /// <summary>
 /// The Organization endpoints. They only translate HTTP to a command or query and a result to a response; the rules
-/// live in the Domain and the handlers. Authentication and authorization are not in place yet, so these endpoints
-/// are mapped only in Development (see Program.cs) until IDENTITY-002.
+/// live in the Domain and the handlers. Signing in is required (default-deny), each handler checks its permission,
+/// and an organization other than the caller's is not found (ADR 0002). Organizations are created by registering
+/// (<c>POST /api/v1/auth/register</c>), so there is no create endpoint.
 /// </summary>
 public static class OrganizationEndpoints
 {
@@ -20,19 +21,7 @@ public static class OrganizationEndpoints
     {
         ArgumentNullException.ThrowIfNull(app);
 
-        var group = app.MapGroup(BasePath).WithTags("Organizations");
-
-        group.MapPost(
-                "/",
-                async (CreateOrganizationRequest request, ICommandHandler<CreateOrganizationCommand, OrganizationDto> handler, CancellationToken cancellationToken) =>
-                {
-                    var result = await handler.HandleAsync(new CreateOrganizationCommand(request.Name, request.Currency, request.TimeZoneId), cancellationToken);
-                    return result.ToHttpResult(organization => Results.Created($"{BasePath}/{organization.Id}", organization));
-                })
-            .WithName("CreateOrganization")
-            .WithSummary("Creates an organization.")
-            .Produces<OrganizationDto>(StatusCodes.Status201Created)
-            .ProducesValidationProblem();
+        var group = app.MapGroup(BasePath).WithTags("Organizations").RequireAntiforgery();
 
         group.MapGet(
                 "/{id:guid}",
@@ -44,6 +33,8 @@ public static class OrganizationEndpoints
             .WithName("GetOrganization")
             .WithSummary("Gets an organization.")
             .Produces<OrganizationDto>()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPut(
@@ -57,14 +48,13 @@ public static class OrganizationEndpoints
             .WithSummary("Changes an organization's name and time zone. The currency cannot be changed.")
             .Produces<OrganizationDto>()
             .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         return app;
     }
 }
-
-/// <summary>The request body of <c>POST /api/v1/organizations</c>.</summary>
-public sealed record CreateOrganizationRequest(string? Name, string? Currency, string? TimeZoneId);
 
 /// <summary>The request body of <c>PUT /api/v1/organizations/{id}/settings</c>.</summary>
 public sealed record UpdateOrganizationSettingsRequest(string? Name, string? TimeZoneId);

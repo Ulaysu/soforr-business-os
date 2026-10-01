@@ -148,6 +148,7 @@ The authentication endpoints exist only in Development (see [ADR 0002](../decisi
 2. `POST /api/v1/auth/register` (or `/login`) with that header. Registration creates the user, a new organization and the Owner membership; it does not sign in.
 3. The token is bound to the identity it was issued for: fetch a new one after signing in or out, before the next unsafe request.
 4. `GET /api/v1/auth/me` returns the user, organization and role, or `401`.
+5. Every other endpoint requires the session cookie (`401` otherwise) and, for unsafe methods, the antiforgery header. `403` means signed in but not allowed; a resource of another organization is `404`.
 
 ## Frontend (Soforr.Web)
 

@@ -11,6 +11,9 @@ public static class IdentityErrors
     public static Error NotAuthenticated { get; } =
         new("identity.not_authenticated", ErrorKind.Unauthenticated, "You must sign in to do this.");
 
+    public static Error Forbidden { get; } =
+        new("identity.forbidden", ErrorKind.Forbidden, "You are not allowed to do this.");
+
     public static Error EmailTaken { get; } =
         new("identity.email_taken", ErrorKind.Conflict, "An account with this e-mail address already exists.", "email");
 

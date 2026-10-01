@@ -163,7 +163,7 @@ AI Assistant (EPIC 12)
 - **Testing:** handler unit tests; API integration tests.
 
 ### IDENTITY-001 — Authentication foundation
-- **Status:** In Review · **Priority:** P0 · **Agent:** Security / Backend
+- **Status:** Done · **Priority:** P0 · **Agent:** Security / Backend
 - **Description:** User registration/sign-in, credential storage, session/token model, membership of users in organizations, first user becomes Owner of a new organization. Implements [ADR 0002](../decisions/0002-authentication.md) (ASP.NET Core Identity, HttpOnly cookie session, one organization per user, antiforgery on unsafe methods, security-stamp revocation). Email verification and password reset are excluded (IDENTITY-004).
 - **Acceptance criteria:** Users can register (creating User + Organization + Owner membership atomically), sign in and out over HTTPS; passwords hashed; lockout in place; `ICurrentUser` and `IOrganizationContext` expose user id and organization; no secrets in source or `localStorage`.
 - **Dependencies:** ORG-003; ADR 0002 (Accepted)
@@ -171,7 +171,7 @@ AI Assistant (EPIC 12)
 - **Testing:** integration tests for register/sign-in/failure/lockout; unit tests for membership rules.
 
 ### IDENTITY-002 — Authorization foundation
-- **Status:** Backlog · **Priority:** P0 · **Agent:** Security / Backend
+- **Status:** In Review · **Priority:** P0 · **Agent:** Security / Backend
 - **Description:** Roles (Owner, Manager, Staff) and permissions; permission checks declared per use case in Application; default-deny policy at the API; apply to organization endpoints.
 - **Acceptance criteria:** Unauthenticated → 401; authenticated without permission → 403; role/permission matrix documented; organization endpoints protected.
 - **Dependencies:** IDENTITY-001

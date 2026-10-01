@@ -22,7 +22,8 @@ public static class AuthEndpoints
     {
         ArgumentNullException.ThrowIfNull(app);
 
-        var group = app.MapGroup(BasePath).WithTags("Authentication");
+        // These endpoints are how anyone signs in, so they are the anonymous exceptions to the default-deny policy.
+        var group = app.MapGroup(BasePath).WithTags("Authentication").AllowAnonymous().RequireAntiforgery();
 
         group.MapGet(
                 "/antiforgery",
@@ -45,7 +46,6 @@ public static class AuthEndpoints
                         cancellationToken);
                     return result.ToHttpResult(account => Results.Created($"{BasePath}/me", account));
                 })
-            .AddEndpointFilter<AntiforgeryFilter>()
             .WithName("Register")
             .WithSummary("Registers a user and a new organization that the user owns. The user must then sign in.")
             .Produces<AccountDto>(StatusCodes.Status201Created)
@@ -59,7 +59,6 @@ public static class AuthEndpoints
                     var result = await handler.HandleAsync(new SignInCommand(request.Email, request.Password), cancellationToken);
                     return result.ToHttpResult(Results.Ok);
                 })
-            .AddEndpointFilter<AntiforgeryFilter>()
             .WithName("SignIn")
             .WithSummary("Signs in with e-mail and password and starts a cookie session.")
             .Produces<AccountDto>()
@@ -72,7 +71,6 @@ public static class AuthEndpoints
                     await sessions.SignOutAsync();
                     return Results.NoContent();
                 })
-            .AddEndpointFilter<AntiforgeryFilter>()
             .WithName("SignOut")
             .WithSummary("Ends the cookie session.")
             .Produces(StatusCodes.Status204NoContent);

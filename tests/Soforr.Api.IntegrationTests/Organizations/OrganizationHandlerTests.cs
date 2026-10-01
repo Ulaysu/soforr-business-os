@@ -1,16 +1,18 @@
 using Microsoft.EntityFrameworkCore;
 using Soforr.Api.IntegrationTests.Postgres;
 using Soforr.Application.Common;
-using Soforr.Application.Organizations.CreateOrganization;
+using Soforr.Application.Identity;
 using Soforr.Application.Organizations.GetOrganization;
 using Soforr.Application.Organizations.UpdateOrganizationSettings;
+using Soforr.Domain.Common;
+using Soforr.Domain.Identity;
 using Soforr.Domain.Organizations;
 
 namespace Soforr.Api.IntegrationTests.Organizations;
 
 /// <summary>
 /// The Organization handlers on real PostgreSQL (ADR 0005: handler tests use the real database where LINQ and
-/// persistence matter), with a fixed clock and predictable ids so results are deterministic.
+/// persistence matter), with a fixed clock and a stand-in caller so results are deterministic.
 /// </summary>
 [Trait("Category", "Integration")]
 public class OrganizationHandlerTests(PostgresDatabaseFixture database) : IClassFixture<PostgresDatabaseFixture>
@@ -22,96 +24,36 @@ public class OrganizationHandlerTests(PostgresDatabaseFixture database) : IClass
         public DateTimeOffset UtcNow { get; set; } = now;
     }
 
-    private sealed class FixedIds(Guid id) : IIdGenerator
+    private sealed class FakeUser(Guid? userId, Guid? organizationId, Role? role) : ICurrentUser
     {
-        public Guid NewId() => id;
+        public Guid? UserId { get; } = userId;
+
+        public Guid? OrganizationId { get; } = organizationId;
+
+        public Role? Role { get; } = role;
+
+        public static FakeUser In(Guid organizationId, Role role) => new(Guid.CreateVersion7(), organizationId, role);
     }
 
     private async Task<Guid> CreateAsync(string name = "Soforr Trading", string currency = "GMD", string timeZoneId = "Europe/London")
     {
         var id = Guid.CreateVersion7();
         await using var db = database.CreateContext();
-        var result = await new CreateOrganizationHandler(db, new FixedClock(Now), new FixedIds(id))
-            .HandleAsync(new CreateOrganizationCommand(name, currency, timeZoneId), CancellationToken.None);
-        Assert.True(result.IsSuccess);
+        db.Set<Organization>().Add(Organization.Create(id, name, Currency.Create(currency), timeZoneId, Now));
+        await db.SaveChangesAsync();
         return id;
-    }
-
-    // ---- create
-
-    [Fact]
-    public async Task Create_StoresTheOrganization_AndReturnsItWithTheGeneratedIdAndTheClockTime()
-    {
-        var id = Guid.CreateVersion7();
-        await using var db = database.CreateContext();
-
-        var result = await new CreateOrganizationHandler(db, new FixedClock(Now), new FixedIds(id))
-            .HandleAsync(new CreateOrganizationCommand("  Soforr Trading ", "gmd", "Europe/London"), CancellationToken.None);
-
-        Assert.True(result.IsSuccess);
-        Assert.Equal(id, result.Value.Id);
-        Assert.Equal("Soforr Trading", result.Value.Name);
-        Assert.Equal("GMD", result.Value.Currency);
-        Assert.Equal("Europe/London", result.Value.TimeZoneId);
-        Assert.Equal(Now, result.Value.CreatedAtUtc);
-        Assert.Equal(Now, result.Value.UpdatedAtUtc);
-
-        await using var verify = database.CreateContext();
-        Assert.Equal(1, await verify.Set<Organization>().CountAsync(o => o.Id == id));
-    }
-
-    [Theory]
-    [InlineData(null, "GMD", "UTC", "organization.name_required", "name")]
-    [InlineData("   ", "GMD", "UTC", "organization.name_required", "name")]
-    [InlineData("Name", null, "UTC", "currency.invalid", "currency")]
-    [InlineData("Name", "XXX", "UTC", "currency.invalid", "currency")]
-    [InlineData("Name", "GMD", null, "organization.timezone_invalid", "timeZoneId")]
-    [InlineData("Name", "GMD", "Mars/Olympus_Mons", "organization.timezone_invalid", "timeZoneId")]
-    [InlineData("Name", "GMD", "GMT Standard Time", "organization.timezone_invalid", "timeZoneId")]
-    public async Task Create_ReturnsAValidationError_NamingTheField_AndStoresNothing(
-        string? name,
-        string? currency,
-        string? timeZoneId,
-        string expectedCode,
-        string expectedField)
-    {
-        var id = Guid.CreateVersion7();
-        await using var db = database.CreateContext();
-
-        var result = await new CreateOrganizationHandler(db, new FixedClock(Now), new FixedIds(id))
-            .HandleAsync(new CreateOrganizationCommand(name, currency, timeZoneId), CancellationToken.None);
-
-        Assert.True(result.IsFailure);
-        Assert.Equal(expectedCode, result.Error!.Code);
-        Assert.Equal(ErrorKind.Validation, result.Error.Kind);
-        Assert.Equal(expectedField, result.Error.Field);
-
-        await using var verify = database.CreateContext();
-        Assert.Equal(0, await verify.Set<Organization>().CountAsync(o => o.Id == id));
-    }
-
-    [Fact]
-    public async Task Create_RejectsANameThatIsTooLong()
-    {
-        await using var db = database.CreateContext();
-
-        var result = await new CreateOrganizationHandler(db, new FixedClock(Now), new FixedIds(Guid.CreateVersion7()))
-            .HandleAsync(new CreateOrganizationCommand(new string('n', Organization.MaxNameLength + 1), "GMD", "UTC"), CancellationToken.None);
-
-        Assert.Equal("organization.name_too_long", result.Error!.Code);
-        Assert.Equal("name", result.Error.Field);
     }
 
     // ---- update
 
     [Fact]
-    public async Task Update_ChangesNameAndTimeZone_AndKeepsCurrencyAndCreationTime()
+    public async Task Update_ByTheOwner_ChangesNameAndTimeZone_AndKeepsCurrencyAndCreationTime()
     {
         var id = await CreateAsync();
         var later = Now.AddDays(3);
         await using var db = database.CreateContext();
 
-        var result = await new UpdateOrganizationSettingsHandler(db, new FixedClock(later))
+        var result = await new UpdateOrganizationSettingsHandler(db, new FixedClock(later), FakeUser.In(id, Role.Owner))
             .HandleAsync(new UpdateOrganizationSettingsCommand(id, "Soforr Group", "UTC"), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
@@ -139,7 +81,7 @@ public class OrganizationHandlerTests(PostgresDatabaseFixture database) : IClass
         var id = await CreateAsync();
         await using var db = database.CreateContext();
 
-        var result = await new UpdateOrganizationSettingsHandler(db, new FixedClock(Now.AddDays(1)))
+        var result = await new UpdateOrganizationSettingsHandler(db, new FixedClock(Now.AddDays(1)), FakeUser.In(id, Role.Owner))
             .HandleAsync(new UpdateOrganizationSettingsCommand(id, name, timeZoneId), CancellationToken.None);
 
         Assert.Equal(expectedCode, result.Error!.Code);
@@ -152,27 +94,88 @@ public class OrganizationHandlerTests(PostgresDatabaseFixture database) : IClass
         Assert.Equal(Now, stored.UpdatedAtUtc);
     }
 
-    [Fact]
-    public async Task Update_OfAnUnknownOrganization_ReturnsNotFound()
+    [Theory]
+    [InlineData(Role.Manager)]
+    [InlineData(Role.Staff)]
+    public async Task Update_WithoutThePermission_IsForbidden_AndChangesNothing(Role role)
     {
+        var id = await CreateAsync();
         await using var db = database.CreateContext();
 
-        var result = await new UpdateOrganizationSettingsHandler(db, new FixedClock(Now))
-            .HandleAsync(new UpdateOrganizationSettingsCommand(Guid.CreateVersion7(), "Name", "UTC"), CancellationToken.None);
+        var result = await new UpdateOrganizationSettingsHandler(db, new FixedClock(Now.AddDays(1)), FakeUser.In(id, role))
+            .HandleAsync(new UpdateOrganizationSettingsCommand(id, "Hijacked", "UTC"), CancellationToken.None);
+
+        Assert.Equal("identity.forbidden", result.Error!.Code);
+        Assert.Equal(ErrorKind.Forbidden, result.Error.Kind);
+        await using var verify = database.CreateContext();
+        Assert.Equal("Soforr Trading", (await verify.Set<Organization>().SingleAsync(o => o.Id == id)).Name);
+    }
+
+    [Fact]
+    public async Task Update_WithoutBeingSignedIn_IsNotAuthenticated()
+    {
+        var id = await CreateAsync();
+        await using var db = database.CreateContext();
+
+        var result = await new UpdateOrganizationSettingsHandler(db, new FixedClock(Now), new FakeUser(null, null, null))
+            .HandleAsync(new UpdateOrganizationSettingsCommand(id, "Name", "UTC"), CancellationToken.None);
+
+        Assert.Equal("identity.not_authenticated", result.Error!.Code);
+        Assert.Equal(ErrorKind.Unauthenticated, result.Error.Kind);
+    }
+
+    [Fact]
+    public async Task Update_WithoutAMembership_IsForbidden()
+    {
+        var id = await CreateAsync();
+        await using var db = database.CreateContext();
+
+        var result = await new UpdateOrganizationSettingsHandler(db, new FixedClock(Now), new FakeUser(Guid.CreateVersion7(), null, null))
+            .HandleAsync(new UpdateOrganizationSettingsCommand(id, "Name", "UTC"), CancellationToken.None);
+
+        Assert.Equal("identity.forbidden", result.Error!.Code);
+    }
+
+    [Fact]
+    public async Task Update_OfAnotherOrganization_IsNotFound_AndChangesNothing()
+    {
+        var mine = await CreateAsync("Mine");
+        var theirs = await CreateAsync("Theirs");
+        await using var db = database.CreateContext();
+
+        var result = await new UpdateOrganizationSettingsHandler(db, new FixedClock(Now.AddDays(1)), FakeUser.In(mine, Role.Owner))
+            .HandleAsync(new UpdateOrganizationSettingsCommand(theirs, "Hijacked", "UTC"), CancellationToken.None);
 
         Assert.Equal("organization.not_found", result.Error!.Code);
         Assert.Equal(ErrorKind.NotFound, result.Error.Kind);
+        await using var verify = database.CreateContext();
+        Assert.Equal("Theirs", (await verify.Set<Organization>().SingleAsync(o => o.Id == theirs)).Name);
+    }
+
+    [Fact]
+    public async Task Update_OfAnOrganizationThatDoesNotExist_IsNotFound()
+    {
+        var missing = Guid.CreateVersion7();
+        await using var db = database.CreateContext();
+
+        var result = await new UpdateOrganizationSettingsHandler(db, new FixedClock(Now), FakeUser.In(missing, Role.Owner))
+            .HandleAsync(new UpdateOrganizationSettingsCommand(missing, "Name", "UTC"), CancellationToken.None);
+
+        Assert.Equal("organization.not_found", result.Error!.Code);
     }
 
     // ---- get
 
-    [Fact]
-    public async Task Get_ReturnsTheStoredOrganization()
+    [Theory]
+    [InlineData(Role.Owner)]
+    [InlineData(Role.Manager)]
+    [InlineData(Role.Staff)]
+    public async Task Get_ReturnsTheCallersOrganization_ToEveryRole(Role role)
     {
         var id = await CreateAsync("Get Me Ltd", "EUR", "Europe/London");
         await using var db = database.CreateContext();
 
-        var result = await new GetOrganizationHandler(db).HandleAsync(new GetOrganizationQuery(id), CancellationToken.None);
+        var result = await new GetOrganizationHandler(db, FakeUser.In(id, role)).HandleAsync(new GetOrganizationQuery(id), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.Equal("Get Me Ltd", result.Value.Name);
@@ -181,11 +184,24 @@ public class OrganizationHandlerTests(PostgresDatabaseFixture database) : IClass
     }
 
     [Fact]
-    public async Task Get_OfAnUnknownOrganization_ReturnsNotFound()
+    public async Task Get_WithoutBeingSignedIn_IsNotAuthenticated()
     {
+        var id = await CreateAsync();
         await using var db = database.CreateContext();
 
-        var result = await new GetOrganizationHandler(db).HandleAsync(new GetOrganizationQuery(Guid.CreateVersion7()), CancellationToken.None);
+        var result = await new GetOrganizationHandler(db, new FakeUser(null, null, null)).HandleAsync(new GetOrganizationQuery(id), CancellationToken.None);
+
+        Assert.Equal("identity.not_authenticated", result.Error!.Code);
+    }
+
+    [Fact]
+    public async Task Get_OfAnotherOrganization_IsNotFound_NotForbidden()
+    {
+        var mine = await CreateAsync("Mine");
+        var theirs = await CreateAsync("Theirs");
+        await using var db = database.CreateContext();
+
+        var result = await new GetOrganizationHandler(db, FakeUser.In(mine, Role.Owner)).HandleAsync(new GetOrganizationQuery(theirs), CancellationToken.None);
 
         Assert.Equal("organization.not_found", result.Error!.Code);
         Assert.Equal(ErrorKind.NotFound, result.Error.Kind);

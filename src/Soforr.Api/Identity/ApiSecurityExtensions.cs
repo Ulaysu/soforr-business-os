@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authorization;
+
 namespace Soforr.Api.Identity;
 
 /// <summary>Api-side security configuration. The sign-in cookie itself is configured in Infrastructure (ADR 0002).</summary>
@@ -17,7 +19,8 @@ public static class ApiSecurityExtensions
             options.Cookie.Path = "/";
         });
 
-        services.AddAuthorization();
+        // Default deny: an endpoint without an explicit AllowAnonymous requires a signed-in user (ADR 0002).
+        services.AddAuthorization(options => options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
         return services;
     }
