@@ -51,6 +51,14 @@ public sealed class UpdateProductHandler(IAppDbContext db, IClock clock, ICurren
 
         var (selling, cost, reorder) = built.Value;
 
+        // An expected conflict must not leave the tracked product half-changed, so the SKU is checked before the
+        // product is touched. A blank or too-long SKU is skipped here: the Domain rejects it below with its own error.
+        if (command.Sku?.Trim() is { Length: > 0 and <= Product.MaxSkuLength } sku
+            && await ProductDetails.SkuInUseAsync(db, sku, exceptProductId: product.Id, cancellationToken))
+        {
+            return Result.Failure<ProductDto>(ProductErrors.SkuTaken);
+        }
+
         // The Domain validates everything before changing anything, so a rejected update leaves the entity untouched.
         var updated = DomainErrors.Run(
             () =>
@@ -64,17 +72,14 @@ public sealed class UpdateProductHandler(IAppDbContext db, IClock clock, ICurren
             return Result.Failure<ProductDto>(updated.Error!);
         }
 
-        if (await ProductDetails.SkuInUseAsync(db, product.Sku, exceptProductId: product.Id, cancellationToken))
-        {
-            return Result.Failure<ProductDto>(ProductErrors.SkuTaken);
-        }
-
         try
         {
             await db.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateException)
         {
+            // Two requests can pass the check above together; the unique index then decides. Only a SKU that is now
+            // taken by another product is a conflict; any other save failure is not ours to hide.
             if (!await ProductDetails.SkuInUseAsync(db, product.Sku, exceptProductId: product.Id, cancellationToken))
             {
                 throw;

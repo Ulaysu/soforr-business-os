@@ -46,6 +46,7 @@ The model is deliberately minimal; entities are named for orientation and refine
 - **Commands (CATALOG-003):** CreateProduct, UpdateProduct (replaces the details, including the SKU), DeactivateProduct (idempotent). **Queries:** GetProduct, SearchProducts (paginated: page size 1 to 100, default 25; text matches part of the SKU or name without regard to case; inactive products only on request).
 - **API:** `POST /api/v1/products` (201 + `Location`), `GET /api/v1/products?q=&includeInactive=&page=&pageSize=`, `GET /api/v1/products/{id}`, `PUT /api/v1/products/{id}`, `POST /api/v1/products/{id}/deactivate`, documented in OpenAPI. There is no delete and no reactivate (products are never deleted; reactivation is an open question). Permissions: see the matrix in [security.md](../security/security.md). Another organization's product is a 404.
 - **Rules in the handlers:** prices are amounts in the **organization's currency** (the request has no currency, so a product cannot be priced in another one); selling and cost price are required (a zero cost is entered as 0); reorder point and lead time are both given or both omitted; a duplicate SKU in any letter case is `409 product.sku_taken`, first by a check and then, if two requests race, by the unique index (ADR 0006); the cost price is `null` for callers without `ProductViewCost`.
+- **Future considerations (decided not to build now):** (1) **Reactivation** of a product is a lifecycle decision still to be made: whether it returns to normal search, SKU preservation (it keeps its SKU today), pricing validity, existing stock, audit. Until then a deactivated product can be updated but not reactivated, and keeps its SKU reserved until an authorized update changes it. (2) **Concurrent edits** of one product are last-write-wins; product-level optimistic concurrency is not introduced and can be added if it becomes a problem. (3) **Audit history** of changes to the SKU, prices and activation is business-sensitive and belongs to the audit work (AUDIT-001 and after). (4) `ProductViewCost` is the one permission for everything cost-derived (cost price now; later cost of goods, margins, stock valuation): new cost-derived output must use it.
 - **Persistence (CATALOG-002):** table `Products`, tenant query filter, per-organization case-insensitive unique SKU enforced by the database (ADR 0006), CHECK constraints. The Domain is unchanged. No handlers or endpoints yet (CATALOG-003).
 - **Depends on:** Organizations.
 
@@ -63,6 +64,7 @@ The model is deliberately minimal; entities are named for orientation and refine
 - **Commands:** CreateSupplier, CreatePurchaseOrder, PlacePurchaseOrder, ReceivePurchase, CancelPurchaseOrder, ApproveReorder (creates a purchase order from a recommendation).
 - **Queries:** GetPurchaseOrder, ListPurchaseOrders, ListSuppliers.
 - **Invariants:** Receiving is idempotent per receipt (no double stock); received quantity cannot exceed what the order allows; totals computed by deterministic code; receiving writes Inventory movements in the same transaction.
+- **Snapshots:** a purchase order line must record the product's name, SKU and the price at the time, not read them from the product later; the Catalog describes the current state and a purchase describes what happened.
 - **Depends on:** Catalog, Inventory, Organizations.
 
 ## Sales
@@ -71,6 +73,7 @@ The model is deliberately minimal; entities are named for orientation and refine
 - **Commands:** CreateSale, VoidSale, RecordReturn (after the first slice).
 - **Queries:** GetSale, ListSales, GetSalesSummary.
 - **Invariants:** Prices and totals computed server-side; completing a sale writes Inventory movements atomically; a completed sale is never edited, only voided/returned via new records.
+- **Snapshots:** a sale line must record the product's name and SKU, the unit price, the cost price and the currency at the time of the sale (and not refer to the product's current values), because products stay editable, including inactive ones. Margin reporting reads the snapshot and requires `ProductViewCost`.
 - **Depends on:** Catalog, Inventory, Customers (optional reference), Organizations.
 
 ## Customers

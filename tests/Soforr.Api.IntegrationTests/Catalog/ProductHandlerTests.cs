@@ -399,6 +399,102 @@ public sealed class ProductHandlerTests(PostgresDatabaseFixture database) : ICla
         Assert.Equal("Rice 25kg", (await verify.Set<Product>().SingleAsync(p => p.Id == id)).Name);
     }
 
+    [Fact]
+    public async Task Update_ToATakenSku_ReturnsTheConflictBeforeTouchingTheProduct_AndNeverSaves()
+    {
+        var organization = await NewOrganizationAsync();
+        await SeedAsync(organization, "ONE", "One");
+        var two = await SeedAsync(organization, "TWO", "Two");
+        var saves = 0;
+        await using var db = CreateContextWithInterceptor(organization, new BeforeSaveInterceptor(() =>
+        {
+            saves++;
+            return Task.CompletedTask;
+        }));
+
+        var result = await new UpdateProductHandler(db, new FixedClock(Now.AddDays(1)), FakeUser.In(organization, Role.Owner))
+            .HandleAsync(new UpdateProductCommand(two, "one", "Renamed", "sack", 99m, 98m, 1m, 1), CancellationToken.None);
+
+        Assert.Equal("product.sku_taken", result.Error!.Code);
+        Assert.Equal(0, saves);
+
+        // The unit of work is left clean: the tracked product is unchanged, not half-updated.
+        var tracked = Assert.Single(db.ChangeTracker.Entries<Product>());
+        Assert.Equal(EntityState.Unchanged, tracked.State);
+        Assert.Equal("TWO", tracked.Entity.Sku);
+        Assert.Equal("Two", tracked.Entity.Name);
+        Assert.Equal("bag", tracked.Entity.UnitOfMeasure);
+        Assert.Equal(125.5m, tracked.Entity.SellingPrice.Amount);
+        Assert.Equal(Now, tracked.Entity.UpdatedAtUtc);
+
+        await using var verify = database.CreateContext(organization);
+        var stored = await verify.Set<Product>().SingleAsync(p => p.Id == two);
+        Assert.Equal("TWO", stored.Sku);
+        Assert.Equal("Two", stored.Name);
+    }
+
+    [Fact]
+    public async Task Update_WhenTheSaveFailsForAnotherReason_TheErrorIsNotHiddenAsAConflict()
+    {
+        var organization = await NewOrganizationAsync();
+        var id = await SeedAsync(organization);
+
+        // The product row disappears between the handler's checks and its save: a failure that is not a duplicate SKU.
+        var interceptor = new BeforeSaveInterceptor(async () =>
+        {
+            await using var admin = database.CreateContext();
+            await admin.Database.ExecuteSqlRawAsync("DELETE FROM \"Products\" WHERE \"Id\" = {0}", id);
+        });
+        await using var db = CreateContextWithInterceptor(organization, interceptor);
+        var handler = new UpdateProductHandler(db, new FixedClock(Now.AddDays(1)), FakeUser.In(organization, Role.Owner));
+
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(
+            () => handler.HandleAsync(new UpdateProductCommand(id, "OTHER-SKU", "Renamed", "bag", 1m, 1m, null, null), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Update_OfADeactivatedProduct_IsAllowed_AndItStaysInactive()
+    {
+        var organization = await NewOrganizationAsync();
+        var id = await SeedAsync(organization);
+        await using (var db = database.CreateContext(organization))
+        {
+            await new DeactivateProductHandler(db, new FixedClock(Now), FakeUser.In(organization, Role.Owner)).HandleAsync(new DeactivateProductCommand(id), CancellationToken.None);
+        }
+
+        await using var update = database.CreateContext(organization);
+        var result = await new UpdateProductHandler(update, new FixedClock(Now.AddDays(1)), FakeUser.In(organization, Role.Manager))
+            .HandleAsync(new UpdateProductCommand(id, "ABC-123", "Renamed while inactive", "bag", 2m, 1m, null, null), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Renamed while inactive", result.Value.Name);
+        Assert.False(result.Value.IsActive);
+    }
+
+    [Fact]
+    public async Task ADeactivatedProductKeepsItsSku_UntilAnAuthorizedUpdateChangesIt()
+    {
+        var organization = await NewOrganizationAsync();
+        var id = await SeedAsync(organization, "OLD-SKU", "Old");
+        await using (var db = database.CreateContext(organization))
+        {
+            await new DeactivateProductHandler(db, new FixedClock(Now), FakeUser.In(organization, Role.Owner)).HandleAsync(new DeactivateProductCommand(id), CancellationToken.None);
+        }
+
+        var whileReserved = await CreateAsync(organization, Valid("old-sku", "Reuse"));
+        await using (var db = database.CreateContext(organization))
+        {
+            var renamed = await new UpdateProductHandler(db, new FixedClock(Now.AddDays(1)), FakeUser.In(organization, Role.Owner))
+                .HandleAsync(new UpdateProductCommand(id, "NEW-SKU", "Old", "bag", 1m, 1m, null, null), CancellationToken.None);
+            Assert.True(renamed.IsSuccess);
+        }
+
+        var afterRename = await CreateAsync(organization, Valid("old-sku", "Reuse"));
+
+        Assert.Equal("product.sku_taken", whileReserved.Error!.Code);
+        Assert.True(afterRename.IsSuccess);
+    }
+
     // ---- deactivate
 
     [Fact]
