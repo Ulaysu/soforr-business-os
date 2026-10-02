@@ -14,6 +14,7 @@ Conceptual model and conventions for the first vertical slice. Detailed schemas 
 - Concurrency token on stock levels and on documents that change state (see [ADR 0004](../decisions/0004-inventory-concurrency.md)).
 - Database constraints as a second line of defense (CHECK for non-negative amounts, FKs, unique indexes).
 - Append-only audit events for important business actions.
+- **Transaction lines snapshot product data.** A sale or purchase line stores the product's name, SKU, unit price or cost and currency at the time, never only a reference to the product's current values, so history (and the intelligence computed from it) does not change when a product is edited.
 
 ## Core Entities (first slice)
 

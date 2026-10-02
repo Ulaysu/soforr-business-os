@@ -63,9 +63,20 @@ IAITool          A controlled tool the model may request
 
 The Domain contains no AI types. Changing provider means changing Infrastructure registration and configuration only.
 
-## Sequencing
+## Sequencing: the Intelligence Layers
 
-MVP intelligence (Phase 3) is deterministic: velocity-based forecasting and reorder recommendations, no LLM required. The LLM assistant (EPIC 12, Phase 5) is layered on the same tools. Connecting an external AI provider is a paid service and needs human approval first.
+Intelligence grows in layers, each over the same authoritative data ([sellable-v1.md](../product/sellable-v1.md#intelligence-layers)).
+
+| Layer | What | When |
+|---|---|---|
+| 1. Deterministic | Explicit rules, calculations, thresholds, comparisons, derived metrics, rule-based alerts, explainable recommendations. Reproducible, no model. | **Sellable V1** |
+| 2. Statistical | Forecasting, demand prediction, seasonality, statistical anomaly detection | After customer validation |
+| 3. AI-assisted | LLM explanations, natural-language summaries, contextual recommendations, conversational analysis | After Layer 2 or earlier if a customer need proves it; **paid provider needs approval** |
+| 4. Approved automation | Applying approved actions (draft purchase orders, reminders, workflows) under explicit policy and human approval | Later |
+
+V1 intelligence is deterministic: no LLM is required, and none is built. The tools above are the later AI layer's controlled interface; they are thin wrappers over the **same deterministic services V1 ships** ([architecture.md](architecture.md#deterministic-intelligence)), so adding the assistant later changes nothing about how numbers are produced. The AI explains and phrases verified results; it never produces the figures and never becomes the source of truth. Business data (products, movements, purchases, sales, customers, payments) is the system of record; insights, explanations and cached recommendations never override it.
+
+Do not build an "AI platform" (agents, vector stores, embeddings, RAG, ML pipelines) ahead of a concrete requirement.
 
 ## Guardrails
 
