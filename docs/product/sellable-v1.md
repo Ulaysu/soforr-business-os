@@ -12,11 +12,20 @@ Sellable V1 is **Business Operations + Deterministic Operational Intelligence**.
 
 ## Target customer and market position
 
-V1 is designed for **small and growing, single-location or single-stock-pool retail and wholesale businesses** that need one operational source of truth for products, purchasing, stock, sales and customer balances.
+V1 is designed for **small and growing retail and light-wholesale businesses globally** that need one operational source of truth for products, purchasing, stock, sales and customer balances. The first implementation intentionally starts with a **single location or single stock pool**, but that is a scope boundary for V1—not a geographic or long-term product limitation.
 
-The product is intentionally **retail-and-light-wholesale**, not a full enterprise POS/ERP or B2B commerce portal. Retail software commonly combines inventory, sales, customer data and analytics; wholesale systems add account-specific pricing, quantity rules and payment terms.
+Soforr is a **global business product**, not an Africa-specific POS. A business in Banjul, London, New York, Toronto, Lagos, Dubai or elsewhere should recognize the same core product: a simple operating system for running a growing product-based business. Regional currencies, payment methods, tax rules, address conventions and other local requirements belong in configuration or integrations rather than assumptions embedded in the core domain.
 
-For the first release, Soforr assumes a connected web environment. Offline-first synchronization, multi-branch inventory and advanced wholesale pricing are deliberately deferred because they materially increase complexity. African retail products commonly compete on offline selling, barcode checkout and local payment support, so these are explicit later considerations rather than hidden gaps in the V1 promise.
+The product is intentionally **retail-and-light-wholesale**, not a full enterprise POS/ERP or B2B commerce portal. Retail software commonly combines inventory, sales, customer data and analytics; wholesale systems add account-specific pricing, quantity rules and payment terms. Soforr competes through a simpler experience and a stronger operational-intelligence layer rather than by copying every feature of mature enterprise suites.
+
+For the first release, Soforr is **connected-first** and web-based. Offline-first synchronization, multi-location inventory, native mobile POS, payment-terminal integrations and advanced wholesale pricing are deliberately deferred because they materially increase complexity. They are product boundaries for V1, not permanent limitations or regional omissions.
+
+## Global product principles
+
+- **Global by default.** Product language, core workflows and domain concepts must make sense across markets; regional behavior is configuration or integration unless it is truly universal.
+- **Global-ready, not globally bloated.** V1 should leave sound architectural seams for currencies, locales, time zones, taxes, payment providers, locations and integrations without implementing every market before customer validation.
+- **Simple enough to love.** Soforr should feel substantially easier to understand and operate than a traditional ERP while still being trustworthy enough to run real business operations.
+- **Intelligence is part of the product experience.** The owner should not have to interpret a wall of reports to discover important operational problems; deterministic insights should surface what deserves attention and show why.
 
 ## Strategy
 
@@ -123,7 +132,7 @@ V1 includes the minimum controls needed to sell credibly to both sides of the ma
 - **Retail reality without a full POS stack:** the web sale screen is designed for rapid product lookup and barcode-scanner input, but V1 does not promise offline checkout, payment-terminal integration, receipt-printer integration or a native mobile app.
 - **Returns:** ordinary corrections use void. A proper merchandise-return/refund workflow is Product P1 because it requires explicit refund, stock disposition and fraud-control rules rather than pretending a void is a return.
 
-This makes the commercial claim honest: **Soforr V1 is a connected operations system for small retail and light wholesale businesses, not yet a complete offline POS or full B2B commerce suite.**
+This makes the commercial claim honest: **Soforr V1 is a global, connected operations system for growing retail and light-wholesale businesses—not yet a complete offline POS, multi-location platform or full B2B commerce suite.**
 
 ## Production readiness (Gate C)
 
