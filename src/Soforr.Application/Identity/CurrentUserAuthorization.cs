@@ -26,4 +26,15 @@ public static class CurrentUserAuthorization
 
         return null;
     }
+
+    /// <summary>
+    /// Whether the caller holds the permission, for a use case that shows less to a caller without it instead of
+    /// refusing (for example hiding a cost price). It never replaces <see cref="Require"/> for the use case itself.
+    /// </summary>
+    public static bool Has(this ICurrentUser user, Permission permission)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+
+        return user.UserId is not null && user.OrganizationId is not null && user.Role is { } role && RolePermissions.IsGranted(role, permission);
+    }
 }

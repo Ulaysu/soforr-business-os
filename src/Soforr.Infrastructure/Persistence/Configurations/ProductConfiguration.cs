@@ -22,7 +22,7 @@ internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
     /// can forget to normalize. Handlers that look up a SKU must compare with the same function
     /// (<c>sku.ToLower()</c> in a query translates to it).
     /// </summary>
-    public const string SkuKeyColumn = "SkuKey";
+    public const string SkuKeyColumn = Application.Catalog.ProductSkuKey.PropertyName;
 
     public void Configure(EntityTypeBuilder<Product> builder)
     {

@@ -27,6 +27,15 @@ public class AuthorizationTests
         { Role.Manager, Permission.OrganizationManageSettings, false },
         { Role.Staff, Permission.OrganizationView, true },
         { Role.Staff, Permission.OrganizationManageSettings, false },
+        { Role.Owner, Permission.ProductView, true },
+        { Role.Owner, Permission.ProductViewCost, true },
+        { Role.Owner, Permission.ProductManage, true },
+        { Role.Manager, Permission.ProductView, true },
+        { Role.Manager, Permission.ProductViewCost, true },
+        { Role.Manager, Permission.ProductManage, true },
+        { Role.Staff, Permission.ProductView, true },
+        { Role.Staff, Permission.ProductViewCost, false },
+        { Role.Staff, Permission.ProductManage, false },
     };
 
     [Theory]
@@ -50,6 +59,15 @@ public class AuthorizationTests
     [Fact]
     public void AnUnknownRole_HasNoPermission() =>
         Assert.All(Enum.GetValues<Permission>(), permission => Assert.False(RolePermissions.IsGranted((Role)99, permission)));
+
+    [Fact]
+    public void Has_IsFalseWithoutAMembership_AndTrueOnlyForAGrantedPermission()
+    {
+        Assert.False(new FakeUser(null, null, null).Has(Permission.ProductView));
+        Assert.False(new FakeUser(Someone, null, Role.Owner).Has(Permission.ProductView));
+        Assert.False(new FakeUser(Someone, SomeOrganization, Role.Staff).Has(Permission.ProductViewCost));
+        Assert.True(new FakeUser(Someone, SomeOrganization, Role.Manager).Has(Permission.ProductViewCost));
+    }
 
     [Fact]
     public void Require_WhenNotSignedIn_IsNotAuthenticated()
