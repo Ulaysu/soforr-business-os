@@ -1,6 +1,14 @@
 # Roadmap
 
-The roadmap is sequenced by one constraint: **sellability**. The first goal is [Sellable V1](sellable-v1.md): a small, coherent, production-quality Business OS with deterministic operational intelligence that a real customer can use. Everything after it is chosen from real customer use.
+The roadmap is sequenced by one constraint: **global sellability**. The first goal is [Sellable V1](sellable-v1.md): a small, coherent, production-quality Business OS with deterministic operational intelligence that a real customer can use. Everything after it is chosen from real customer use.
+
+## Product Strategy: Global from Day One
+
+V1 is globally positioned while deliberately narrow in operational scope. The first customer-ready release targets growing retail and light-wholesale businesses anywhere in the world, using a connected web workflow and a single location or stock pool. The domain should not assume Africa, a particular payment rail, a particular tax regime or a particular currency.
+
+Regional capabilities are added through configuration and integrations as customer demand requires them. Global readiness does **not** mean implementing every country, payment provider, tax system, language or enterprise workflow in V1; it means avoiding architecture and product language that make those future markets expensive or unnatural to support.
+
+The product experience is a differentiator: Soforr should combine the simplicity of a focused operations product with deterministic intelligence that tells an owner what needs attention and why.
 
 ## Horizon 1: Sellable V1
 
@@ -46,7 +54,7 @@ Do not immediately build dozens of features. Real usage decides what comes next.
 
 ## Market boundary
 
-V1 is aimed at connected, small and growing single-location/single-stock-pool retail and light-wholesale businesses. Barcode lookup, controlled price overrides and customer credit make the first release useful across both retail checkout and basic wholesale selling. Full B2B pricing catalogs, volume tiers, MOQs, sales orders/quotes, returns/refunds, multi-location inventory and offline-first POS are deliberately later.
+V1 is aimed at **growing retail and light-wholesale businesses globally**, with a deliberately focused first operating model: connected web, single location/single stock pool, and no full B2B commerce or offline POS complexity. Barcode lookup, controlled price overrides and customer credit make the first release useful across both retail checkout and basic wholesale selling. Full B2B pricing catalogs, volume tiers, MOQs, sales orders/quotes, returns/refunds, multi-location inventory and offline-first POS are deliberately later.
 
 ## Note on Customers
 
