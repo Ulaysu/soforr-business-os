@@ -9,7 +9,7 @@ Backlog → Ready → Agent claims task → Inspect → Plan → Implement → T
 → Review → Security check → Verification → Pull Request → Human approval → Merge → Done
 ```
 
-- Agents take the **highest-priority Ready item whose dependencies are Done** from [backlog.md](../product/backlog.md).
+- Agents take the **highest-priority Ready item whose dependencies are Done** from [backlog.md](../product/backlog.md): **SELLABLE-P0** before PRODUCT-P1 before FUTURE, and within SELLABLE-P0 in the [sequence to Sellable V1](../product/backlog.md#sequence-to-sellable-v1). Sellability is the sequencing constraint; quality is never traded for speed (cut scope, not corners).
 - Claiming = set the item's status to `In Progress` (in the backlog, or the linked GitHub issue) and work on a branch `feat/<ID>-slug` (or `fix/`, `chore/`, `docs/`).
 - Missing work discovered mid-task is documented and proposed as a new backlog item; continue only if it is required to finish the current task safely.
 - Nothing merges without human approval of the pull request.

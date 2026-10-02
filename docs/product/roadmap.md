@@ -1,69 +1,61 @@
 # Roadmap
 
-Epics are grouped into phases. A usable first product exists at the end of Phase 2; later phases are not prerequisites for it.
+The roadmap is sequenced by one constraint: **global sellability**. The first goal is [Sellable V1](sellable-v1.md): a small, coherent, production-quality Business OS with deterministic operational intelligence that a real customer can use. Everything after it is chosen from real customer use.
 
-## Phase 0 — Foundation
+## Product Strategy: Global from Day One
+
+V1 is globally positioned while deliberately narrow in operational scope. The first customer-ready release targets growing retail and light-wholesale businesses anywhere in the world, using a connected web workflow and a single location or stock pool. The domain should not assume Africa, a particular payment rail, a particular tax regime or a particular currency.
+
+Regional capabilities are added through configuration and integrations as customer demand requires them. Global readiness does **not** mean implementing every country, payment provider, tax system, language or enterprise workflow in V1; it means avoiding architecture and product language that make those future markets expensive or unnatural to support.
+
+The product experience is a differentiator: Soforr should combine the simplicity of a focused operations product with deterministic intelligence that tells an owner what needs attention and why.
+
+## Horizon 1: Sellable V1
+
+| Phase | Epics and outcome |
+|---|---|
+| **0. Foundation** | EPIC 01: solution, persistence, configuration, logging, test infrastructure, CI. *Done except the Web scaffold and the security baseline.* |
+| **1. Tenancy and access** | EPIC 02: organizations, authentication, authorization, tenant isolation. *Done.* Audit events, e-mail verification and password reset, inviting users, rate limiting and API hardening complete the phase. |
+| **2. Core operations** | EPIC 03 Catalog (*API done; UI to do*), EPIC 04 Inventory (*persistence and recording done; API and UI to do*), EPIC 05 Purchasing, EPIC 06 Sales. The first vertical slice: Product → Purchase → Receive stock → Inventory → Sale → Inventory update. |
+| **3. Deterministic intelligence** | EPIC 09: the intelligence foundation, inventory risk, sales comparisons, then margin, purchasing cost and (with EPIC 07) customer balance and aging, then the actionable insights screen. **Required for V1, not an add-on.** |
+| **4. Customers and balances** | EPIC 07: customers, credit sales, recorded payments, balances. Feeds customer intelligence. |
+| **5. Screens** | The Vue screens that run the workflow end to end and show the insights. |
+| **6. Production readiness** | Deployment, configuration, observability, backup and recovery, security hardening. |
+| **7. Commercial readiness** | The first complete journey test, demonstration data, onboarding and pilot readiness. |
+
+Phases 2 to 5 overlap by dependency; the order inside them is in the [backlog sequence](backlog.md#sequence-to-sellable-v1). Complete one strong vertical slice before widening.
+
+**Sellable V1 is complete only when every exit criterion in [sellable-v1.md](sellable-v1.md#v1-exit-criteria) holds.**
+
+## After V1: the Operating Loop
+
+```text
+Build → Verify → Deploy → Demonstrate → Sell → Observe → Learn → Improve
+```
+
+Do not immediately build dozens of features. Real usage decides what comes next. Then, progressively:
+
+| Stage | Capability | Class |
+|---|---|---|
+| Product P1 | Expenses, receipts and files, broader reporting, notifications, stored and approvable reorder recommendations, returns/refunds, persistent wholesale pricing, product lifecycle gaps | PRODUCT-P1 |
+| Stage 2 | Statistical intelligence: forecasting, demand prediction, anomaly detection beyond simple rules, richer trend analysis | FUTURE |
+| Stage 3 | AI-assisted explanations and recommendations; natural-language access through controlled tools (needs approval: paid provider) | FUTURE |
+| Stage 4 | Approved automation of routine operations, with human approval for high-impact actions | FUTURE |
+| Stage 5 | More autonomous intelligent workflows | FUTURE |
+| Commercialization | SaaS billing (needs approval) | FUTURE |
+
+## Cross-cutting (progressive: start early, finish late)
 
 | Epic | Notes |
 |---|---|
-| EPIC 01 — Engineering Foundation | Solution, persistence, config, logging, test infra, CI |
+| EPIC 16: Security and compliance | Baseline in Phase 1; hardening (rate limiting, audit review) before any external user |
+| EPIC 17: Observability | Logging in Phase 0; correlation IDs and health checks done; production diagnostics in Phase 6 |
+| EPIC 18: Deployment and infrastructure | Docker for local development early; **production deployment requires human approval** |
 
-## Phase 1 — Tenancy and Access
+## Market boundary
 
-| Epic | Notes |
-|---|---|
-| EPIC 02 — Identity & Organizations | Organizations, authentication, authorization, tenant isolation |
-
-## Phase 2 — Core Operations (first usable product)
-
-The first vertical slice: Product → Purchase → Inventory → Sale → Inventory Update.
-
-| Epic | Notes |
-|---|---|
-| EPIC 03 — Product Catalog | |
-| EPIC 04 — Inventory | Movement-based stock |
-| EPIC 05 — Purchasing | Purchase orders, receiving |
-| EPIC 06 — Sales | Sales that decrement stock atomically |
-
-A minimal Vue UI for these flows is part of each epic's backlog items (Web project is created in FOUNDATION-007).
-
-## Phase 3 — Intelligence
-
-| Epic | Notes |
-|---|---|
-| EPIC 09 — Business Intelligence | Stock forecast, reorder recommendation, owner approval |
-| EPIC 10 — Notifications | Surfacing recommendations to the owner |
-
-## Phase 4 — Broader Business Operations
-
-| Epic | Notes |
-|---|---|
-| EPIC 07 — Customers | |
-| EPIC 08 — Expenses | |
-| EPIC 13 — Files & Receipts | |
-| EPIC 14 — Reporting | |
-
-## Phase 5 — Automation and AI
-
-| Epic | Notes |
-|---|---|
-| EPIC 11 — Automation | Safe routine operations with execution history |
-| EPIC 12 — AI Assistant | Natural-language access via controlled tools |
-
-## Cross-cutting (progressive, start early, finish late)
-
-| Epic | Notes |
-|---|---|
-| EPIC 16 — Security & Compliance | Baseline in Phase 1; hardening (rate limiting, audit review) before any external users |
-| EPIC 17 — Observability | Logging in Phase 0; correlation IDs, health checks, audit events progressively |
-| EPIC 18 — Deployment & Infrastructure | Docker for local dev early; production deployment requires human approval |
-
-## Phase 6 — Commercialization
-
-| Epic | Notes |
-|---|---|
-| EPIC 15 — SaaS Billing | After the product proves value; needs approval (paid external services) |
+V1 is aimed at **growing retail and light-wholesale businesses globally**, with a deliberately focused first operating model: connected web, single location/single stock pool, and no full B2B commerce or offline POS complexity. Barcode lookup, controlled price overrides and customer credit make the first release useful across both retail checkout and basic wholesale selling. Full B2B pricing catalogs, volume tiers, MOQs, sales orders/quotes, returns/refunds, multi-location inventory and offline-first POS are deliberately later.
 
 ## Note on Customers
 
-The first slice records sales without a customer requirement (walk-in sale). Customers (EPIC 07) attach to sales later without changing the slice.
+Sales work without a customer (walk-in sale). Customers attach to sales without changing the slice; their balances and aging feed customer intelligence.

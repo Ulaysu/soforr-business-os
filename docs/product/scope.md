@@ -1,71 +1,99 @@
 # Product Scope
 
-## Initial Modules (MVP candidates)
+The product is sequenced toward a **globally sellable V1** ([sellable-v1.md](sellable-v1.md) is the canonical definition: what is in, what is deferred and the exit criteria). This document lists the modules and where each stands. Module boundaries are in [modules.md](../architecture/modules.md); work items and their priority classes are in [backlog.md](backlog.md).
 
-| Module | Purpose |
+## Global Product Boundary
+
+Soforr is designed for customers worldwide. V1 intentionally targets a focused operating model—connected web, single location or single stock pool, retail and light wholesale—while keeping the core domain independent of any one country or region.
+
+Global requirements that should influence the architecture include organization currency, time zone, locale-aware presentation, international addresses and phone numbers, configurable tax concepts, and provider-based payment/integration boundaries. These should be implemented when required by the relevant product slice rather than hard-coded as regional behavior.
+
+The product experience should compete on clarity, speed and deterministic operational intelligence. It is not positioned as an Africa-only POS, a regional payment product, or a full ERP.
+
+## Priority Classes
+
+| Class | Meaning |
 |---|---|
-| Identity & Access | Users, authentication, roles, permissions |
-| Organizations | Tenants; membership; organization settings |
-| Products / Catalog | What the business sells and buys |
-| Inventory | Stock levels derived from recorded movements |
-| Sales | Recording sales and their effect on stock |
-| Customers | Who the business sells to |
-| Purchasing | Buying stock from suppliers; receiving goods; reorder approval |
-| Expenses | Recording non-inventory business costs |
-| Reporting | Verified summaries of sales, stock, expenses |
-| Automation | Safe, rule-based routine operations |
-| Intelligence | Stock forecasting and reorder recommendations; later the AI assistant |
-| Notifications | Telling the owner what needs attention |
-| Files / Receipts | Attachments such as receipts and invoices |
+| **SELLABLE-P0** | Required to make the first customer-ready product |
+| **PRODUCT-P1** | Valuable, not required for the first sale |
+| **FUTURE** | Long-term capability (the Intelligent Business OS horizon) |
 
-Module boundaries are defined in [modules.md](../architecture/modules.md).
+## Modules
 
-## First Vertical Slice
+| Module | Purpose | Class |
+|---|---|---|
+| Identity & Access | Users, authentication, roles, permissions, inviting the organization's users | SELLABLE-P0 |
+| Organizations | Tenants; membership; organization settings | SELLABLE-P0 |
+| Audit | Append-only record of business-sensitive actions | SELLABLE-P0 |
+| Products / Catalog | What the business sells and buys; SKU/barcode identification, prices and reorder settings | SELLABLE-P0 |
+| Inventory | Stock levels derived from recorded movements | SELLABLE-P0 |
+| Purchasing | Buying stock from suppliers; receiving goods | SELLABLE-P0 |
+| Sales | Fast connected sales, barcode/SKU lookup, controlled price overrides/discounts, and their effect on stock | SELLABLE-P0 |
+| Customers | Who the business sells to; credit sales, recorded payments and balances | SELLABLE-P0 |
+| Intelligence (deterministic) | Rule-based, explainable insights from business data: inventory risk, sales comparisons, margins, purchasing cost, customer aging, and the "things that need your attention" view | SELLABLE-P0 |
+| Production readiness | Deployment, configuration, observability, backup and recovery | SELLABLE-P0 |
+| Expenses | Recording non-inventory business costs (and expense insights) | PRODUCT-P1 |
+| Reporting beyond the V1 metrics | Further verified summaries | PRODUCT-P1 |
+| Notifications | Telling the owner what needs attention outside the app | PRODUCT-P1 |
+| Files / Receipts | Attachments such as receipts and invoices | PRODUCT-P1 |
+| Stored, approvable reorder recommendations | Recommendations as records the owner approves, creating a purchase order | PRODUCT-P1 |
+| Statistical intelligence | Forecasting, demand prediction, statistical anomaly detection | FUTURE |
+| AI assistant | Natural-language access, generated explanations (over the deterministic services) | FUTURE |
+| Automation | Safe, approved routine operations | FUTURE |
 
-The first end-to-end flow. Its purpose is to prove the system can move from raw business activity to useful operational intelligence.
+## The Core Slice
+
+The workflow that defines V1. Its purpose is to prove the system can move from raw business activity to useful operational insight, and to be demonstrable end to end.
 
 ```text
 Product
     ↓
 Purchase
     ↓
+Receive stock
+    ↓
 Inventory
     ↓
 Sale
     ↓
-Inventory Update
+Inventory update
     ↓
-Stock Forecast
+Metrics
     ↓
-Reorder Recommendation
+Deterministic intelligence
     ↓
-Owner Approval
+Insight
+    ↓
+Action
 ```
 
-Only modules required by this slice (plus Identity/Organizations as its prerequisite) are built first. See [roadmap.md](roadmap.md).
+Only what this slice needs (plus identity and organizations as its prerequisite) is built first; complete the slice before widening. See [roadmap.md](roadmap.md).
 
-## Future Areas (not MVP)
+## Intelligence Boundary
 
-- SaaS Billing (subscriptions, plans, invoicing of tenants)
-- Advanced accounting (ledgers, double-entry, tax filing)
-- Payroll
-- Additional integrations (payment providers, e-commerce, accounting software)
-- Advanced industry-specific functionality (e.g., pharmacy batch/expiry regulation)
+Deterministic intelligence (explicit rules and calculations, no model) is in V1. Statistical and AI-assisted intelligence and automation are not. "Simple, explainable calculations" are in scope; forecasting infrastructure, LLM platforms, agents, vector stores and learned models are not. See [sellable-v1.md](sellable-v1.md#intelligence-layers).
 
-## Explicitly NOT in the MVP
+## Explicitly NOT in Sellable V1
 
 - Microservices
 - Autonomous AI agents or AI-initiated mutations
-- Mobile applications
-- Advanced accounting, payroll, tax compliance
-- Multi-warehouse transfers (single stock location per organization initially; see [data-model.md](../architecture/data-model.md#inventory-integrity-model))
-- Payment processing or automatic financial transactions
-- Third-party integrations
-- Sophisticated forecasting (simple, explainable velocity-based forecasting only)
+- LLM assistant, generated explanations, natural-language questions
+- Statistical forecasting and anomaly detection
+- Automation of any business action
+- Expenses, receipts and file attachments
+- Native mobile applications and offline-first synchronization
+- Advanced accounting, payroll, tax compliance and country-specific regulatory integrations
+- Persistent wholesale price lists, volume tiers, minimum-order quantities, customer-specific catalogs and self-service B2B ordering
+- Multi-location / multi-warehouse transfers (single stock pool per organization in V1; see [data-model.md](../architecture/data-model.md#inventory-integrity-model))
+- Merchandise returns/refunds and exchange workflows (void is the V1 correction mechanism)
+- Payment processing or automatic financial transactions (payments are recorded, never processed)
+- Receipt-printer/payment-terminal integrations
+- Third-party integrations and country-specific payment/tax integrations
 - Industry-specific modules
 - SaaS billing
 
 ## Scope Rules
 
 - Agents work from [backlog.md](backlog.md); new scope requires human approval.
-- Changing this document's MVP boundary is a "major product-scope change" requiring approval (see [AGENTS.md](../../AGENTS.md)).
+- Changing this document's V1 boundary is a "major product-scope change" requiring approval (see [AGENTS.md](../../AGENTS.md)).
+- Cut scope, not quality: a feature may move out of V1; a quality requirement (tests, security, tenant isolation, integrity) never does.

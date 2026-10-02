@@ -41,6 +41,32 @@ Web            → Api over HTTP only
 | Infrastructure | `DbContext`, entity configurations, migrations, adapters for external services | Business decisions |
 | Web | Presentation, client state, API calls, input ergonomics | Any rule that must hold for data integrity |
 
+## Deterministic Intelligence
+
+Sellable V1 includes deterministic operational intelligence ([sellable-v1.md](../product/sellable-v1.md)). **The existing architecture supports it cleanly; no new project, layer or framework is introduced.** It is an `Intelligence` module inside `Soforr.Application` (see [modules.md](modules.md#intelligence)), built with the same handlers, ports and tenant filters as every other module.
+
+```text
+Authoritative business data  (products, movements, purchases, sales, customers, payments)
+        ↓  read through IAppDbContext (tenant-filtered)
+Gathering                    (a query handler loads exactly the records a rule needs)
+        ↓
+Pure calculation / rule      (no I/O: typed input and explicit thresholds → insights)
+        ↓
+Insight                      (type, severity, subject, named facts, reason, recommended action)
+        ↓
+API / UI                     (presents insights; contains no rule)
+```
+
+- **Rules are pure.** A rule or calculation is a function of a typed input snapshot, explicit thresholds and the clock (passed in, never read ambiently). It touches no database and no network, so it is tested with fixtures and a fixed clock, and the same data and clock always give the same result.
+- **Gathering is separate from judging.** Query handlers (ADR 0003 conventions: permission check first, tenant filter, `AsNoTracking`, no saving) load the data and call the rules. The Domain keeps entity invariants; metrics and rules live in the Intelligence module because they read across modules.
+- **Every insight is traceable.** It carries the named facts it was computed from and a plain reason; an insight that cannot show its facts is not an insight.
+- **Derived, never authoritative.** Insights are computed from authoritative data (computed on request by default) and are not the record of what happened. If a later item materializes insights, only their state (for example dismissed) is stored, never the facts as a replacement for the records, and that choice is recorded in an ADR.
+- **Cost-derived insights** (margins, purchase cost) require `ProductViewCost`; every insight is tenant-scoped and permission-checked like any other query.
+- **Transactions snapshot product data.** Sale and purchase lines record the name, SKU, price, cost and currency at the time, so intelligence reads history that cannot change when a product is edited.
+- **No platform.** No LLM, agent, vector store, embedding pipeline or forecasting infrastructure. The later layers (statistical, AI-assisted, automation) add to this module and call these same services as their controlled tools ([ai-architecture.md](ai-architecture.md)); nothing here has to be rewritten for them.
+
+A major architectural change would be proposed, not made silently. None is needed for V1 intelligence.
+
 ## Prohibited
 
 - **Fat controllers / business logic in endpoints.** Endpoints map a request to a command/query and a result to a response.

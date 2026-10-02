@@ -71,21 +71,23 @@ The model is deliberately minimal; entities are named for orientation and refine
 ## Sales
 - **Responsibility:** Recording sales and their effect on stock.
 - **Concepts:** Sale, SaleLine, payment status (recorded only; no payment processing), optional Customer reference.
-- **Commands:** CreateSale, VoidSale, RecordReturn (after the first slice).
+- **Commands:** CreateSale, VoidSale, RecordReturn (after Sellable V1).
 - **Queries:** GetSale, ListSales, GetSalesSummary.
 - **Invariants:** Prices and totals computed server-side; completing a sale writes Inventory movements atomically; a completed sale is never edited, only voided/returned via new records.
 - **Snapshots:** a sale line must record the product's name and SKU, the unit price, the cost price and the currency at the time of the sale (and not refer to the product's current values), because products stay editable, including inactive ones. Margin reporting reads the snapshot and requires `ProductViewCost`.
 - **Depends on:** Catalog, Inventory, Customers (optional reference), Organizations.
 
 ## Customers
-- **Responsibility:** Who the business sells to.
-- **Concepts:** Customer (name, contact details).
-- **Commands:** CreateCustomer, UpdateCustomer, DeactivateCustomer.
-- **Queries:** GetCustomer, SearchCustomers.
+- **Class:** SELLABLE-P0 as proposed (customer balances feed customer intelligence); the owner may move it to PRODUCT-P1.
+- **Responsibility:** Who the business sells to, and what they owe.
+- **Concepts:** Customer (name, contact details, optional credit terms), Payment (recorded against a sale; recording only, never processed).
+- **Commands:** CreateCustomer, UpdateCustomer, DeactivateCustomer, RecordPayment (and its reversal by a new record).
+- **Queries:** GetCustomer, SearchCustomers, GetCustomerBalance (derived: sales minus payments).
 - **Invariants:** Belongs to one organization; personal data minimized; customers with sales are deactivated, not deleted.
 - **Depends on:** Organizations. Sales references Customers (not the reverse); customer activity is exposed by a Sales query consumed by Reporting/Intelligence.
 
 ## Expenses
+- **Class:** PRODUCT-P1 (not required for the first sale).
 - **Responsibility:** Non-inventory business costs.
 - **Concepts:** Expense (amount, category, date, optional receipt file).
 - **Commands:** CreateExpense, UpdateExpense, VoidExpense.
@@ -94,6 +96,7 @@ The model is deliberately minimal; entities are named for orientation and refine
 - **Depends on:** Organizations, Files (optional).
 
 ## Reporting
+- **Class:** the V1 basic metrics are served by the Intelligence queries (sales totals and comparisons, stock list); broader reporting is PRODUCT-P1.
 - **Responsibility:** Verified read-only summaries.
 - **Concepts:** Read models over other modules' data.
 - **Commands:** none.
@@ -102,6 +105,7 @@ The model is deliberately minimal; entities are named for orientation and refine
 - **Depends on:** Sales, Inventory, Purchasing, Expenses (via their queries).
 
 ## Notifications
+- **Class:** PRODUCT-P1 (the V1 surface is the insights screen).
 - **Responsibility:** Telling the owner what needs attention.
 - **Concepts:** Notification (recipient, type, reference, read state); in-app channel first.
 - **Commands:** CreateNotification, MarkNotificationRead.
@@ -110,6 +114,7 @@ The model is deliberately minimal; entities are named for orientation and refine
 - **Depends on:** Identity, Organizations.
 
 ## Automation
+- **Class:** FUTURE (Layer 4, approved automation).
 - **Responsibility:** Safe, rule-based routine operations with execution history.
 - **Concepts:** AutomationRule, AutomationRun.
 - **Commands:** EnableRule, DisableRule, ExecuteRule (system).
@@ -118,14 +123,16 @@ The model is deliberately minimal; entities are named for orientation and refine
 - **Depends on:** Other modules through explicit Application commands; Notifications.
 
 ## Intelligence
-- **Responsibility:** Understanding activity: forecasting, recommendations, later the AI assistant.
-- **Concepts:** StockForecast, ReorderRecommendation (product, projected stock-out date, suggested quantity, rationale, status: pending / approved / dismissed), AI tools.
-- **Commands:** GenerateReorderRecommendations, DismissRecommendation. Approval invokes `Purchasing.ApproveReorder`; Intelligence itself never writes purchases or stock.
-- **Queries:** GetInventoryForecast, ListRecommendations; AI tools (GetSalesSummary, GetLowStockProducts, ...).
-- **Invariants:** Forecasts are deterministic and explainable (simple sales-velocity model in MVP); AI output is never stored as a financial fact; an approved recommendation is traceable to the resulting command and approving user.
-- **Depends on:** Inventory, Sales, Purchasing, Catalog, Notifications. See [ai-architecture.md](ai-architecture.md).
+- **Class:** the deterministic part is **SELLABLE-P0**; statistical and AI-assisted parts are FUTURE ([sellable-v1.md](../product/sellable-v1.md)).
+- **Responsibility:** Understanding activity with explicit rules and calculations: inventory risk, sales comparisons, margins, purchasing cost changes, customer balance and aging, and the single "things that need your attention" view.
+- **Concepts:** `Insight` (type, severity, subject, named facts, reason, recommended action), rules and calculators (pure functions over typed inputs, explicit thresholds and the clock). Later, PRODUCT-P1: `ReorderRecommendation` records with owner approval.
+- **Commands:** none in V1 (insights are computed, not stored). Later: `GenerateReorderRecommendations`, `DismissRecommendation`; approval invokes `Purchasing.ApproveReorder` and Intelligence itself never writes purchases or stock.
+- **Queries:** GetInsights (the attention list), per-topic metrics (stock coverage, sales comparison, margin, purchase cost, customer aging); later the AI tools wrap these same queries.
+- **Invariants:** Deterministic and reproducible from the data and the clock; every insight shows its facts and reason; formulas, comparison periods and thresholds are documented and tested; insights are derived and never override a transaction; tenant-scoped and permission-checked; cost-derived insights need `ProductViewCost`; no model output anywhere in V1.
+- **Depends on:** Inventory, Sales, Purchasing, Catalog, Customers (read-only). See [architecture.md](architecture.md#deterministic-intelligence) and [ai-architecture.md](ai-architecture.md).
 
 ## Files
+- **Class:** PRODUCT-P1.
 - **Responsibility:** Storing and serving attachments (receipts, invoices).
 - **Concepts:** StoredFile (metadata, owner reference, content type, size, storage key).
 - **Commands:** UploadFile, DeleteFile (soft).

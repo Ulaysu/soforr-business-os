@@ -15,6 +15,9 @@ A backlog item is Done only when **all** applicable points hold. "It compiles" i
 9. **Verification:** the agent actually ran the code (tests and, where applicable, the API/UI) and reports results honestly, including failures, warnings and known gaps.
 10. **Review:** diff inspected for unintended changes; PR filled in completely; human approval obtained before merge.
 11. **No known critical defects** remain.
+12. **Intelligence items:** the formula, comparison period and thresholds are documented; the result is reproducible from the data and a fixed clock; every insight shows its facts and reason; rules are covered by tests with fixtures including the edge cases (no data, zero values, period boundaries); cost-derived output respects `ProductViewCost`; nothing computed by intelligence overrides a transaction.
+
+Sellable V1 as a whole is done only when its [exit criteria](../product/sellable-v1.md#v1-exit-criteria) hold.
 
 ## Never Claim Done When
 

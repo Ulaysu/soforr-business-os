@@ -57,16 +57,29 @@ The first major workflow is:
 
 Product
 → Purchase
+→ Receive Stock
 → Inventory
 → Sale
 → Inventory Update
-→ Stock Analysis
-→ Reorder Recommendation
-→ Owner Approval
+→ Metrics
+→ Deterministic Insight
+→ Action
 
 Do not build every module at once.
 
 Build complete vertical slices and keep the system usable at every meaningful stage.
+
+## Sellable V1 Strategy
+
+Development is sequenced toward a **sellable, production-quality V1** (canonical definition: `docs/product/sellable-v1.md`).
+
+- **Sellability is the primary sequencing constraint.** Backlog classes: SELLABLE-P0 (required for the first customer-ready product), PRODUCT-P1 (valuable, not required for the first sale), FUTURE (long-term). Work SELLABLE-P0 first, along the first vertical slice.
+- **Cut scope, not quality.** Never trade away tests, authorization, tenant isolation, data integrity, transaction boundaries, concurrency protection, validation, security, observability, migrations or error handling to go faster. If something must leave V1, remove a feature, not a quality requirement.
+- **Do not postpone intelligence; postpone unnecessary complexity.** Deterministic intelligence (explicit rules and calculations over authoritative data: inventory risk, sales comparisons, margins, purchasing cost, customer aging, and an actionable insights view) is part of V1. Statistical intelligence, AI-assisted intelligence and approved automation are not.
+- **Business data is the source of truth.** Intelligence is derived from it, is reproducible, and every insight shows the facts it was computed from. Nothing computed or generated overrides a transaction.
+- **Do not build an AI platform** (LLM platform, agents, vector stores, RAG, ML pipelines, forecasting infrastructure) to claim the product is "AI-powered".
+- For any proposed task ask: does this materially move Soforr closer to a sellable product? Prefer one complete vertical slice to many incomplete modules.
+- Major architectural changes are proposed, never made silently. V1 intelligence needs none (see `docs/architecture/architecture.md`).
 
 ---
 
@@ -697,7 +710,7 @@ Do not prematurely build:
 - Advanced accounting
 - Payroll
 - Dozens of integrations
-- Highly sophisticated forecasting
+- Highly sophisticated forecasting (statistical, model-based; simple explainable deterministic calculations are in scope)
 - Industry-specific modules
 
 Build the core system first.

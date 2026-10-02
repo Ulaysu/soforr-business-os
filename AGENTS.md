@@ -134,6 +134,8 @@ AI must remain subordinate to application business rules.
 
 AI must never become the authoritative source for financial or transactional data.
 
+Intelligence is layered: deterministic (Sellable V1), statistical, AI-assisted, approved automation. Only the deterministic layer is built before the first sale; do not build an AI platform ahead of a concrete requirement. Every insight must show the facts it was computed from, and nothing derived overrides a transaction.
+
 ---
 
 # Delegation Rules
@@ -163,7 +165,7 @@ Agents must treat the following as authoritative, in order:
 1. Explicit current human decisions
 2. Accepted human-approved Architecture Decision Records
 3. CLAUDE.md
-4. Product specifications
+4. Product specifications (including `docs/product/sellable-v1.md`, the canonical definition of Sellable V1)
 5. Architecture documentation
 6. GitHub backlog
 7. Existing implementation
@@ -186,7 +188,7 @@ Backlog → Ready → Agent claims task → Inspect → Plan → Implement → T
 → Review → Security check → Verification → Pull Request → Human approval → Merge → Done
 ```
 
-- Work comes from [docs/product/backlog.md](docs/product/backlog.md): take the highest-priority `Ready` item whose dependencies are `Done`.
+- Work comes from [docs/product/backlog.md](docs/product/backlog.md): take the highest-priority `Ready` item whose dependencies are `Done`. Priority classes are SELLABLE-P0, PRODUCT-P1 and FUTURE; sellability ([docs/product/sellable-v1.md](docs/product/sellable-v1.md)) is the sequencing constraint, and cutting scope never means cutting quality.
 - Standards and conventions: [docs/engineering/](docs/engineering/development.md). Completion criteria: [definition-of-done.md](docs/engineering/definition-of-done.md).
 - Nothing merges without human approval. Agents do not push to GitHub or create remote repositories unless explicitly authorized.
 
