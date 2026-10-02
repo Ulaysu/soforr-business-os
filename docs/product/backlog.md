@@ -389,7 +389,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 
 # EPIC 07 — Customers and Balances (Sellable V1, proposed scope)
 
-Needed for customer balance and aging intelligence. Part of V1 *as proposed*; the owner may move it to PRODUCT-P1 together with INTEL-005 (see [sellable-v1.md](sellable-v1.md#decisions-needing-the-owners-approval)).
+Needed for customer balance and aging intelligence. Customers, credit sales and recorded payments are an accepted V1 product decision; see [sellable-v1.md](sellable-v1.md#accepted-v1-product-decisions).
 
 ### CUSTOMER-001 — Customers (domain, persistence, API)
 - **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend
