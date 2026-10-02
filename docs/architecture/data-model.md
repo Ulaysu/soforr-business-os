@@ -15,6 +15,7 @@ Conceptual model and conventions for the first vertical slice. Detailed schemas 
 - Database constraints as a second line of defense (CHECK for non-negative amounts, FKs, unique indexes).
 - Append-only audit events for important business actions.
 - **Transaction lines snapshot product data.** A sale or purchase line stores the product's name, SKU, unit price or cost and currency at the time, never only a reference to the product's current values, so history (and the intelligence computed from it) does not change when a product is edited.
+- **Sale price integrity.** A sale line stores both the catalog price at sale time and the final applied unit price. If the final price differs because of a discount or override, the line stores the reason and actor needed by the authorization/audit policy. Margin uses the final applied price and the sale-time cost snapshot.
 
 ## Core Entities (first slice)
 
@@ -42,11 +43,13 @@ Organization ─┬─ Membership ── User
 
 ## Products Table
 
-`Products(Id uuid PK, OrganizationId uuid FK, Sku varchar(64), Name varchar(200), UnitOfMeasure varchar(32), SellingPrice numeric(19,4), SellingPriceCurrency varchar(3), CostPrice numeric(19,4), CostPriceCurrency varchar(3), ReorderPoint numeric(18,4) NULL, ReorderLeadTimeDays int NULL, IsActive bool, CreatedAtUtc, UpdatedAtUtc, SkuKey varchar(64) GENERATED lower(Sku))`. Identifiers are generated in application code.
+`Products(Id uuid PK, OrganizationId uuid FK, Sku varchar(64), Barcode varchar(64) NULL, Name varchar(200), UnitOfMeasure varchar(32), SellingPrice numeric(19,4), SellingPriceCurrency varchar(3), CostPrice numeric(19,4), CostPriceCurrency varchar(3), ReorderPoint numeric(18,4) NULL, ReorderLeadTimeDays int NULL, IsActive bool, CreatedAtUtc, UpdatedAtUtc, SkuKey varchar(64) GENERATED lower(Sku))`. Identifiers are generated in application code.
 
 - Prices and the reorder settings are stored in the product's own row (owned value objects); both reorder columns are null when no settings are configured.
-- **Unique index `IX_Products_OrganizationId_SkuKey` on `(OrganizationId, SkuKey)`**: the case-insensitive SKU rule of [ADR 0006](../decisions/0006-sku-uniqueness.md), also the index for SKU lookups within an organization. No other index yet: search and listing indexes are added by CATALOG-003 when the queries exist.
-- CHECK constraints (second line of defense): SKU, name and unit not blank; prices and reorder point not negative; lead time not negative; currency codes are three capital letters and the two price currencies are equal. That the prices are in the *organization's* currency is a handler rule (it needs the organization).
+- **Unique index `IX_Products_OrganizationId_SkuKey` on `(OrganizationId, SkuKey)`**: the case-insensitive SKU rule of [ADR 0006](../decisions/0006-sku-uniqueness.md), also the index for SKU lookups within an organization.
+- **Optional primary barcode:** V1 stores one barcode/GTIN per product. It is unique within an organization and indexed for exact lookup. The entered value is preserved; barcode semantics are intentionally identifier-only in V1. Multiple barcodes, case/unit identifiers and 2D/GS1 application identifiers are later.
+- No other index yet: search and listing indexes are added as the queries exist.
+- CHECK constraints (second line of defense): SKU, name and unit not blank; prices and reorder point not negative; lead time not negative; currency codes are three capital letters and the two price currencies are equal. Barcode, when present, is non-blank and within the maximum length. That the prices are in the *organization's* currency is a handler rule (it needs the organization).
 - `OrganizationId` is a foreign key (`ON DELETE RESTRICT`), and the table has the tenant query filter ([ADR 0002](../decisions/0002-authentication.md)).
 - No concurrency token yet: no requirement has asked for one on products.
 
