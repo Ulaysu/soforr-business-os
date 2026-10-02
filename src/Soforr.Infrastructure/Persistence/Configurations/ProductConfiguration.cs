@@ -45,6 +45,10 @@ internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
 
         builder.HasKey(product => product.Id);
 
+        // Lets the stock level and the movements of a product reference it together with the organization, so the
+        // database itself guarantees they belong to the same organization as the product (ADR 0004).
+        builder.HasAlternateKey(product => new { product.Id, product.OrganizationId }).HasName("AK_Products_Id_OrganizationId");
+
         // Identifiers are generated in application code (IIdGenerator), never by the database.
         builder.Property(product => product.Id).ValueGeneratedNever();
 

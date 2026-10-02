@@ -223,7 +223,7 @@ AI Assistant (EPIC 12)
 - **Testing:** integration tests against real PostgreSQL, including cross-tenant isolation, SKU reuse across tenants, and a rejected duplicate that differs only by case (`ABC-123` vs `abc-123`) within one organization.
 
 ### CATALOG-003 — Product API
-- **Status:** In Review · **Priority:** P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** P0 · **Agent:** Backend
 - **Description:** CreateProduct, UpdateProduct, DeactivateProduct, GetProduct, SearchProducts (paginated) with permissions.
 - **Acceptance criteria:** Documented in OpenAPI; validation and error contract per conventions; permissions enforced; a duplicate SKU (case-insensitive, per ADR 0006) returns a conflict error and SKU lookups are case-insensitive.
 - **Dependencies:** CATALOG-002, IDENTITY-002
@@ -251,7 +251,7 @@ AI Assistant (EPIC 12)
 - **Testing:** unit tests for movement application and rule violations.
 
 ### INVENTORY-002 — Inventory persistence and movement recording
-- **Status:** Backlog · **Priority:** P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** P0 · **Agent:** Backend
 - **Description:** EF mapping, migration (CHECK constraints), internal `RecordMovement` service that updates `StockLevel` and writes the movement in one transaction following ADR 0004: concurrency token on `StockLevel`, command-level bounded retry with re-validation, `SaveChanges` interceptor rejecting movement updates/deletes, idempotency unique constraint, `CHECK (Quantity >= 0)`.
 - **Acceptance criteria:** `StockLevel = SUM(movements)` holds after any sequence of operations; concurrent decrements never produce negative stock.
 - **Dependencies:** INVENTORY-001, CATALOG-002, FOUNDATION-008

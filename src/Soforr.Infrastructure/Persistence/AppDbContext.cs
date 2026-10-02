@@ -5,6 +5,7 @@ using Soforr.Application.Organizations;
 using Soforr.Application.Persistence;
 using Soforr.Domain.Catalog;
 using Soforr.Domain.Identity;
+using Soforr.Domain.Inventory;
 using Soforr.Domain.Organizations;
 using Soforr.Infrastructure.Identity;
 
@@ -44,7 +45,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IOrgani
         builder.Entity<Organization>().HasQueryFilter(organization => CurrentOrganizationId != null && organization.Id == CurrentOrganizationId);
         builder.Entity<Membership>().HasQueryFilter(membership => CurrentOrganizationId != null && membership.OrganizationId == CurrentOrganizationId);
         builder.Entity<Product>().HasQueryFilter(product => CurrentOrganizationId != null && product.OrganizationId == CurrentOrganizationId);
+        builder.Entity<StockLevel>().HasQueryFilter(level => CurrentOrganizationId != null && level.OrganizationId == CurrentOrganizationId);
+        builder.Entity<InventoryMovement>().HasQueryFilter(movement => CurrentOrganizationId != null && movement.OrganizationId == CurrentOrganizationId);
     }
+
+    public void ClearChangeTracker() => ChangeTracker.Clear();
 
     public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
@@ -66,6 +71,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IOrgani
     /// </summary>
     private void EnsureWritesStayInTheCurrentOrganization()
     {
+        EnsureMovementsAreAppendOnly();
+
         if (CurrentOrganizationId is not { } current)
         {
             return;
@@ -83,6 +90,19 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IOrgani
             {
                 throw new TenantIsolationException($"A write to a {entry.Metadata.ClrType.Name} outside the current organization was refused.");
             }
+        }
+    }
+
+    /// <summary>
+    /// The movement ledger is append-only (ADR 0004): a recorded movement is never changed or deleted, whatever the
+    /// organization or the caller; a correction is a new movement. This applies even without a current organization.
+    /// It guards the application's own writes; a raw SQL statement bypasses it like any EF guard.
+    /// </summary>
+    private void EnsureMovementsAreAppendOnly()
+    {
+        if (ChangeTracker.Entries<InventoryMovement>().Any(entry => entry.State is EntityState.Modified or EntityState.Deleted))
+        {
+            throw new AppendOnlyViolationException("An inventory movement is append-only: it cannot be changed or deleted. Record a new movement instead.");
         }
     }
 

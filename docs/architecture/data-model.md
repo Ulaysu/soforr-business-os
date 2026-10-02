@@ -68,6 +68,14 @@ Organization ─┬─ Membership ── User
 - `StockLevel.Quantity` is updated in the same transaction as its movement. A test/reconciliation query must be able to prove `StockLevel = SUM(movements)`.
 - Single stock location per organization in the MVP; locations later add a `LocationId` dimension by migration.
 
+## Stock Tables (INVENTORY-002)
+
+- `InventoryMovements(Id uuid PK, OrganizationId, ProductId, QuantityDelta numeric(18,4), Reason varchar(30), SourceType varchar(30), SourceId uuid, ActorId uuid, Note varchar(500) NULL, OccurredAtUtc timestamptz)`. Reason and source type are stored as the enum names. Append-only. Unique index `IX_InventoryMovements_Idempotency` on `(OrganizationId, SourceType, SourceId, ProductId, Reason)`; an index on `(OrganizationId, ProductId, OccurredAtUtc)` for a product's history.
+- `StockLevels(OrganizationId, ProductId, Quantity numeric(18,4), UpdatedAtUtc)`, primary key `(OrganizationId, ProductId)`, with the `xmin` concurrency token (a system column, not stored by the table definition).
+- CHECK constraints: quantity not negative; delta not zero; reason and source type known; the reason fixes the sign of the delta (a manual adjustment may be either); a manual adjustment has a non-blank note; a note is never blank.
+- Both tables have a composite foreign key `(ProductId, OrganizationId)` to `Products(Id, OrganizationId)` (`ON DELETE RESTRICT`), so they cannot belong to a different organization than the product. The product table gained the unique key `AK_Products_Id_OrganizationId` for it.
+- Both have the tenant query filter and are covered by the write guard. Reconciliation: `StockLevel.Quantity = SUM(QuantityDelta)` per product, checked by the query in the tests.
+
 ## Multi-Tenancy Enforcement
 
 - EF Core global query filter on `OrganizationId` for tenant-owned entities (`Organization` by its id, `Membership` today), sourced from the authenticated context, never from request bodies. With no organization the filter matches nothing. A write to another organization's row is refused on save. A convention test fails when a tenant-owned entity has no filter.
