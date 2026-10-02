@@ -17,11 +17,11 @@ The product is sequenced toward a **Sellable V1** ([sellable-v1.md](sellable-v1.
 | Identity & Access | Users, authentication, roles, permissions, inviting the organization's users | SELLABLE-P0 |
 | Organizations | Tenants; membership; organization settings | SELLABLE-P0 |
 | Audit | Append-only record of business-sensitive actions | SELLABLE-P0 |
-| Products / Catalog | What the business sells and buys | SELLABLE-P0 |
+| Products / Catalog | What the business sells and buys; SKU/barcode identification, prices and reorder settings | SELLABLE-P0 |
 | Inventory | Stock levels derived from recorded movements | SELLABLE-P0 |
 | Purchasing | Buying stock from suppliers; receiving goods | SELLABLE-P0 |
-| Sales | Recording sales and their effect on stock | SELLABLE-P0 |
-| Customers | Who the business sells to; credit sales, recorded payments, balances (proposed for V1, see [sellable-v1.md](sellable-v1.md#decisions-needing-the-owners-approval)) | SELLABLE-P0 |
+| Sales | Fast connected sales, barcode/SKU lookup, controlled price overrides/discounts, and their effect on stock | SELLABLE-P0 |
+| Customers | Who the business sells to; credit sales, recorded payments and balances | SELLABLE-P0 |
 | Intelligence (deterministic) | Rule-based, explainable insights from business data: inventory risk, sales comparisons, margins, purchasing cost, customer aging, and the "things that need your attention" view | SELLABLE-P0 |
 | Production readiness | Deployment, configuration, observability, backup and recovery | SELLABLE-P0 |
 | Expenses | Recording non-inventory business costs (and expense insights) | PRODUCT-P1 |
@@ -73,10 +73,13 @@ Deterministic intelligence (explicit rules and calculations, no model) is in V1.
 - Statistical forecasting and anomaly detection
 - Automation of any business action
 - Expenses, receipts and file attachments
-- Mobile applications
+- Native mobile applications and offline-first synchronization
 - Advanced accounting, payroll, tax compliance
-- Multi-warehouse transfers (single stock location per organization; see [data-model.md](../architecture/data-model.md#inventory-integrity-model))
+- Persistent wholesale price lists, volume tiers, minimum-order quantities, customer-specific catalogs and self-service B2B ordering
+- Multi-location / multi-warehouse transfers (single stock pool per organization in V1; see [data-model.md](../architecture/data-model.md#inventory-integrity-model))
+- Merchandise returns/refunds and exchange workflows (void is the V1 correction mechanism)
 - Payment processing or automatic financial transactions (payments are recorded, never processed)
+- Receipt-printer/payment-terminal integrations
 - Third-party integrations
 - Industry-specific modules
 - SaaS billing
