@@ -278,6 +278,15 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 
 # EPIC 04 — Inventory
 
+### CATALOG-005 — Product barcode and fast lookup
+- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend / Frontend
+- **Description:** Add one optional primary barcode/GTIN to Product, unique within an organization, with API lookup and fast sales/purchasing lookup. USB barcode scanners that behave as keyboard input must work with the web sale screen; camera scanning is a UI enhancement, not a Domain requirement.
+- **Acceptance criteria:** blank/invalid barcodes rejected; duplicate barcode within an organization conflicts; the same barcode may exist in another organization; lookup is tenant-scoped; sale entry can add a product by barcode without manual SKU search; barcode changes are audited.
+- **Dependencies:** CATALOG-002, CATALOG-003, CATALOG-004, AUDIT-001
+- **Affected area:** Domain, Application, Infrastructure, Api, Web
+- **Testing:** unit, persistence, API, authorization, tenant-isolation and end-to-end scan/lookup tests.
+
+
 ### INVENTORY-001 — Inventory domain model and design note
 - **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Backend / Architecture
 - **Description:** `InventoryMovement` (append-only), `StockLevel`, reasons, non-negative stock rule, `Quantity` value object. The concurrency mechanism is decided in [ADR 0004](../decisions/0004-inventory-concurrency.md) (optimistic token plus database backstops).
@@ -344,11 +353,12 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 
 ### SALES-001 — Sales domain and persistence
 - **Status:** Ready · **Priority:** SELLABLE-P0 · **Agent:** Backend
-- **Description:** `Sale`/`SaleLine` (walk-in; no customer required), server-computed totals, void semantics, EF mapping and migration. **Each line records the product's name and SKU, the unit price, the cost price and the currency at the time of the sale** (snapshots), so sales and margin intelligence ([INTEL-003](#intel-003--sales-metrics-and-comparisons), [INTEL-004](#intel-004--product-margin-intelligence)) never read the product's current values and history does not change when a product is edited.
+- **Description:** `Sale`/`SaleLine` (walk-in; no customer required), server-computed totals, controlled line-price override/discount fields, void semantics, EF mapping and migration. **Each line records the product's name and SKU, the catalog unit price, the final applied unit price, the discount/override reason when applicable, the cost price and the currency at the time of the sale** (snapshots), so sales and margin intelligence never read the product's current values and history does not change when a product is edited.
+- **Price rule:** product selling price is the default. A different line price or discount is allowed only through an explicit permission and server-side rule; the final price can never be negative and every override is attributable. V1 does not implement complex price lists or volume tiers.
 - **Acceptance criteria:** Totals computed only by server code; completed sales immutable except void; tenant-scoped; line snapshots are stored and never updated.
 - **Dependencies:** CATALOG-002, INVENTORY-001 (persistence: IDENTITY-003)
 - **Affected area:** Domain, Infrastructure
-- **Testing:** unit tests for totals/rounding/void rules; persistence integration tests.
+- **Testing:** unit tests for totals/rounding/void/price-override rules; persistence integration tests.
 
 ### SALES-002 — CreateSale and VoidSale commands
 - **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend
@@ -357,6 +367,15 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 - **Dependencies:** SALES-001, INVENTORY-002, IDENTITY-002, AUDIT-001
 - **Affected area:** Application, Api
 - **Testing:** atomicity and concurrency integration tests; authorization and tenant-isolation tests.
+
+### SALES-004 — Controlled price overrides and discounts
+- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Description:** Enforce the V1 sale pricing rule: catalog price is the default; authorized users may apply a line-price override or discount within explicit limits; the original price, final price, reason and actor are preserved.
+- **Acceptance criteria:** unauthorized users cannot override price; every override is attributable; server calculates totals; no price can fall below zero; margin intelligence uses the final sale-line price; audit event is written for sensitive overrides.
+- **Dependencies:** SALES-002, IDENTITY-002, AUDIT-001
+- **Affected area:** Application, Api
+- **Testing:** authorization matrix, validation, audit, tenant isolation, totals and margin snapshot tests.
+
 
 ### SALES-003 — Sales UI
 - **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Frontend
@@ -419,7 +438,7 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 
 ### INTEL-002 — Inventory risk intelligence
 - **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend
-- **Description:** Low-stock and reorder-threshold detection; **estimated stock coverage in days** = current stock ÷ average daily quantity sold over a documented trailing window (default 30 days; zero or no sales means "no recent sales", never infinite); products at risk of running out within their lead time; a suggested reorder quantity with its stated basis. Replaces the old INTEL-001 (sales-velocity forecast).
+- **Description:** Low-stock and reorder-threshold detection; **estimated stock coverage in days** = current stock ÷ average daily quantity sold over the trailing 30 calendar days; zero sales means "no recent sales", never infinite; products at risk of running out within their lead time; suggested reorder quantity = `max(0, reorder point + average daily sales × lead-time days - current stock)` when both reorder point and lead time exist. No quantity is suggested when required inputs are missing.
 - **Acceptance criteria:** Insights name the product, current stock, threshold or velocity used and window; handles no history, zero velocity, zero stock, inactive products and products without reorder settings by documented rules.
 - **Dependencies:** INTEL-001, INVENTORY-003, SALES-002
 - **Affected area:** Application (Intelligence)
@@ -427,7 +446,7 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 
 ### INTEL-003 — Sales metrics and comparisons
 - **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend
-- **Description:** Revenue and quantity for a period against the **immediately preceding period of equal length**, with the percentage change (defined only when the previous value is above zero; otherwise reported as "no previous sales"); best-selling products; poorly-performing products; products whose sales declined. Voided sales are excluded by an explicit rule. These are also the V1 basic reports.
+- **Description:** Revenue and quantity for a period against the **immediately preceding period of equal length**; growth = `(current - previous) / previous × 100` when previous is non-zero; otherwise report "no comparable previous sales". Top sellers are ordered by quantity sold. Slow movers are the bottom 20% by quantity among active products with sufficient data; if fewer than 5 qualify, show the ordered list. A declining product has sales in both periods and at least a 20% quantity decline. Voided sales are excluded.
 - **Acceptance criteria:** Periods, time zone (the organization's) and exclusions are explicit; results reconcile with the underlying sales; documented rounding.
 - **Dependencies:** INTEL-001, SALES-002
 - **Affected area:** Application (Intelligence), Api
@@ -435,7 +454,7 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 
 ### INTEL-004 — Product margin intelligence
 - **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend
-- **Description:** Gross margin and margin percentage per product and period from the **sale-line snapshots** (price and cost at the time of the sale); margin change in percentage points between periods with the cost change that explains it, from purchase cost history. Visible only with `ProductViewCost`.
+- **Description:** Gross margin = final sale revenue − sale-line cost snapshot. Margin percentage = gross margin ÷ final sale revenue when revenue is non-zero. Margin change is compared in percentage points between equal-length periods. This is a management margin measure, not accounting-grade COGS: no FIFO, weighted-average costing or inventory valuation in V1. Visible only with `ProductViewCost`.
 - **Acceptance criteria:** Margin uses snapshots only, never the product's current price; the explanation shows previous and current cost, price and both margins; missing cost or sales data is reported as "not enough data", not guessed.
 - **Dependencies:** INTEL-003, SALES-001, PURCHASING-002
 - **Affected area:** Application (Intelligence)
@@ -443,7 +462,7 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 
 ### INTEL-005 — Customer balance and aging intelligence
 - **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend
-- **Description:** Outstanding balance per customer, overdue balance, **aging buckets** (0-30, 31-60, 61-90, over 90 days past the due date, from the customer's credit terms or an organization default), customers above a configured threshold.
+- **Description:** Outstanding balance per customer, overdue balance, **aging buckets** (0-30, 31-60, 61-90, 91+ days past the due date). Due dates come from customer-specific credit terms when present, otherwise the organization default. Customer balance insights use an explicit organization-configured materiality threshold; no hidden monetary threshold.
 - **Acceptance criteria:** Ages are measured from an explicit due date; the insight lists the amount, the days and the sales behind it; payments reduce the right balances by a documented rule.
 - **Dependencies:** INTEL-001, CUSTOMER-002
 - **Affected area:** Application (Intelligence)
@@ -451,7 +470,7 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 
 ### INTEL-006 — Purchasing cost intelligence
 - **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend
-- **Description:** Change in a product's purchase unit cost against the previous purchase (and against a trailing average), purchase volume and recent activity, supplier cost differences where several suppliers supplied the product. Visible only with `ProductViewCost`.
+- **Description:** Compare the latest purchase unit cost with the immediately previous purchase for the same product and supplier, and show supplier-to-supplier differences when multiple suppliers exist. Show purchase volume and recent activity. A "notable cost change" is at least 10% relative change. Visible only with `ProductViewCost`; missing history is reported as insufficient data.
 - **Acceptance criteria:** Insights show the two costs, dates and suppliers; documented threshold for "notable"; handles a single purchase and missing costs.
 - **Dependencies:** INTEL-001, PURCHASING-002
 - **Affected area:** Application (Intelligence)
