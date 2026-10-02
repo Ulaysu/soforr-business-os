@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Soforr.Application.Organizations;
 using Soforr.Application.Persistence;
+using Soforr.Domain.Catalog;
 using Soforr.Domain.Identity;
 using Soforr.Domain.Organizations;
 using Soforr.Infrastructure.Identity;
@@ -42,6 +43,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IOrgani
         // (ADR 0002, decision B): the handlers also check ownership, and must keep doing so.
         builder.Entity<Organization>().HasQueryFilter(organization => CurrentOrganizationId != null && organization.Id == CurrentOrganizationId);
         builder.Entity<Membership>().HasQueryFilter(membership => CurrentOrganizationId != null && membership.OrganizationId == CurrentOrganizationId);
+        builder.Entity<Product>().HasQueryFilter(product => CurrentOrganizationId != null && product.OrganizationId == CurrentOrganizationId);
     }
 
     public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)

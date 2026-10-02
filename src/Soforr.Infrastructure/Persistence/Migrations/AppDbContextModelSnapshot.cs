@@ -86,6 +86,72 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                     b.ToTable("UserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Soforr.Domain.Catalog.Product", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Sku")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("SkuKey")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasComputedColumnSql("lower(\"Sku\")", true);
+
+                    b.Property<string>("UnitOfMeasure")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId", "SkuKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Products_OrganizationId_SkuKey");
+
+                    b.ToTable("Products", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Products_CostPrice_NotNegative", "\"CostPrice\" >= 0");
+
+                            t.HasCheckConstraint("CK_Products_Name_NotBlank", "char_length(btrim(\"Name\")) > 0");
+
+                            t.HasCheckConstraint("CK_Products_PriceCurrency_Format", "\"SellingPriceCurrency\" ~ '^[A-Z]{3}$' AND \"CostPriceCurrency\" ~ '^[A-Z]{3}$'");
+
+                            t.HasCheckConstraint("CK_Products_PriceCurrency_Same", "\"SellingPriceCurrency\" = \"CostPriceCurrency\"");
+
+                            t.HasCheckConstraint("CK_Products_ReorderLeadTimeDays_NotNegative", "\"ReorderLeadTimeDays\" IS NULL OR \"ReorderLeadTimeDays\" >= 0");
+
+                            t.HasCheckConstraint("CK_Products_ReorderPoint_NotNegative", "\"ReorderPoint\" IS NULL OR \"ReorderPoint\" >= 0");
+
+                            t.HasCheckConstraint("CK_Products_SellingPrice_NotNegative", "\"SellingPrice\" >= 0");
+
+                            t.HasCheckConstraint("CK_Products_Sku_NotBlank", "char_length(btrim(\"Sku\")) > 0");
+
+                            t.HasCheckConstraint("CK_Products_UnitOfMeasure_NotBlank", "char_length(btrim(\"UnitOfMeasure\")) > 0");
+                        });
+                });
+
             modelBuilder.Entity("Soforr.Domain.Identity.Membership", b =>
                 {
                     b.Property<Guid>("Id")
@@ -245,6 +311,93 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Catalog.Product", b =>
+                {
+                    b.HasOne("Soforr.Domain.Organizations.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsOne("Soforr.Domain.Common.Money", "CostPrice", b1 =>
+                        {
+                            b1.Property<Guid>("ProductId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(19, 4)
+                                .HasColumnType("numeric(19,4)")
+                                .HasColumnName("CostPrice");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("CostPriceCurrency");
+
+                            b1.HasKey("ProductId");
+
+                            b1.ToTable("Products");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ProductId");
+                        });
+
+                    b.OwnsOne("Soforr.Domain.Common.Money", "SellingPrice", b1 =>
+                        {
+                            b1.Property<Guid>("ProductId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(19, 4)
+                                .HasColumnType("numeric(19,4)")
+                                .HasColumnName("SellingPrice");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("SellingPriceCurrency");
+
+                            b1.HasKey("ProductId");
+
+                            b1.ToTable("Products");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ProductId");
+                        });
+
+                    b.OwnsOne("Soforr.Domain.Catalog.ReorderSettings", "ReorderSettings", b1 =>
+                        {
+                            b1.Property<Guid>("ProductId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("LeadTimeDays")
+                                .HasColumnType("integer")
+                                .HasColumnName("ReorderLeadTimeDays");
+
+                            b1.Property<decimal>("ReorderPoint")
+                                .HasPrecision(18, 4)
+                                .HasColumnType("numeric(18,4)")
+                                .HasColumnName("ReorderPoint");
+
+                            b1.HasKey("ProductId");
+
+                            b1.ToTable("Products");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ProductId");
+                        });
+
+                    b.Navigation("CostPrice")
+                        .IsRequired();
+
+                    b.Navigation("ReorderSettings");
+
+                    b.Navigation("SellingPrice")
                         .IsRequired();
                 });
 

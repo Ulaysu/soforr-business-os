@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Soforr.Api.IntegrationTests.Postgres;
+using Soforr.Domain.Catalog;
 using Soforr.Domain.Common;
 using Soforr.Domain.Identity;
 using Soforr.Domain.Organizations;
@@ -10,7 +11,7 @@ using static Soforr.Api.IntegrationTests.Identity.AuthClient;
 namespace Soforr.Api.IntegrationTests.TenantIsolation;
 
 /// <summary>
-/// Cross-tenant tests for every tenant-owned entity that exists (organizations and memberships), through the data
+/// Cross-tenant tests for every tenant-owned entity that exists (organizations, memberships and products), through the data
 /// layer and through the real application (ADR 0002): a user of one organization cannot read, change, delete or
 /// create another organization's data, and an unknown or foreign id behaves exactly like a missing one. When a
 /// module adds a tenant-owned entity, it adds its cases here (the convention test fails until it has a filter).
@@ -133,6 +134,84 @@ public sealed class TenantIsolationTests(PostgresDatabaseFixture database) : ICl
 
         await using var asNew = database.CreateContext(id);
         Assert.Equal("Brand new", (await asNew.Set<Organization>().SingleAsync()).Name);
+    }
+
+    // ---- products
+
+    private async Task<(Guid A, Guid B)> SeedProductsAsync(TwoTenants tenants)
+    {
+        var a = NewProduct(tenants.OrganizationA, "SHARED-SKU");
+        var b = NewProduct(tenants.OrganizationB, "shared-sku");
+        await using (var asA = database.CreateContext(tenants.OrganizationA))
+        {
+            asA.Set<Product>().Add(a);
+            await asA.SaveChangesAsync();
+        }
+
+        await using (var asB = database.CreateContext(tenants.OrganizationB))
+        {
+            asB.Set<Product>().Add(b);
+            await asB.SaveChangesAsync();
+        }
+
+        return (a.Id, b.Id);
+    }
+
+    private static Product NewProduct(Guid organizationId, string sku)
+    {
+        var currency = Currency.Create("GMD");
+        return Product.Create(Guid.CreateVersion7(), organizationId, sku, "Rice", "bag", Money.Create(10m, currency), Money.Create(5m, currency), null, DateTimeOffset.UtcNow);
+    }
+
+    [Fact]
+    public async Task Products_AreReadOnlyWithinTheCurrentOrganization_AndAForeignIdOrSkuIsMissing()
+    {
+        using var tenants = await TwoTenants.CreateAsync(database);
+        var (idA, idB) = await SeedProductsAsync(tenants);
+        await using var asA = database.CreateContext(tenants.OrganizationA);
+        await using var nobody = database.CreateContext();
+
+        Assert.Equal([idA], await asA.Set<Product>().Select(p => p.Id).ToArrayAsync());
+        Assert.Null(await asA.Set<Product>().SingleOrDefaultAsync(p => p.Id == idB));
+        Assert.Null(await asA.Set<Product>().FindAsync(idB));
+        Assert.False(await asA.Set<Product>().AnyAsync(p => p.OrganizationId == tenants.OrganizationB));
+        Assert.Equal(0, await nobody.Set<Product>().CountAsync());
+    }
+
+    [Fact]
+    public async Task ChangingOrDeletingAnotherOrganizationsProduct_IsRefused_AndChangesNothing()
+    {
+        using var tenants = await TwoTenants.CreateAsync(database);
+        var (_, idB) = await SeedProductsAsync(tenants);
+
+        await using (var change = database.CreateContext(tenants.OrganizationA))
+        {
+            var theirs = await change.Set<Product>().IgnoreQueryFilters().SingleAsync(p => p.Id == idB);
+            theirs.Deactivate(DateTimeOffset.UtcNow);
+            await Assert.ThrowsAsync<TenantIsolationException>(() => change.SaveChangesAsync());
+        }
+
+        await using (var delete = database.CreateContext(tenants.OrganizationA))
+        {
+            delete.Set<Product>().Remove(await delete.Set<Product>().IgnoreQueryFilters().SingleAsync(p => p.Id == idB));
+            await Assert.ThrowsAsync<TenantIsolationException>(() => delete.SaveChangesAsync());
+        }
+
+        await using var asB = database.CreateContext(tenants.OrganizationB);
+        Assert.True((await asB.Set<Product>().SingleAsync(p => p.Id == idB)).IsActive);
+    }
+
+    [Fact]
+    public async Task CreatingAProductInAnotherOrganization_IsRefused()
+    {
+        using var tenants = await TwoTenants.CreateAsync(database);
+        await using var asA = database.CreateContext(tenants.OrganizationA);
+        asA.Set<Product>().Add(NewProduct(tenants.OrganizationB, "INJECTED"));
+
+        await Assert.ThrowsAsync<TenantIsolationException>(() => asA.SaveChangesAsync());
+
+        await using var asB = database.CreateContext(tenants.OrganizationB);
+        Assert.Equal(0, await asB.Set<Product>().CountAsync());
     }
 
     // ---- through the real application

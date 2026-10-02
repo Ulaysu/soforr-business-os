@@ -53,6 +53,58 @@ public class MoneyTests
         Assert.Equal("money.currency_mismatch", Assert.Throws<DomainException>(() => dollars.Subtract(euros)).Code);
     }
 
+    // ---- range: the same contract as the numeric(19,4) column
+
+    [Fact]
+    public void MaxAmount_IsTheLargestValueOfNumeric19x4()
+    {
+        // 15 integer digits and 4 decimal places: 19 digits in all, the whole of numeric(19,4).
+        Assert.Equal(999_999_999_999_999.9999m, Money.MaxAmount);
+        Assert.Equal(19, Money.MaxAmount.ToString(System.Globalization.CultureInfo.InvariantCulture).Count(char.IsDigit));
+    }
+
+    [Fact]
+    public void Create_AcceptsTheLargestAndTheSmallestAmount()
+    {
+        Assert.Equal(Money.MaxAmount, Money.Create(Money.MaxAmount, Usd).Amount);
+        Assert.Equal(-Money.MaxAmount, Money.Create(-Money.MaxAmount, Usd).Amount);
+    }
+
+    [Theory]
+    [InlineData("1000000000000000")]
+    [InlineData("-1000000000000000")]
+    [InlineData("79228162514264337593543950335")]
+    [InlineData("-79228162514264337593543950335")]
+    public void Create_RejectsAnAmountBeyondTheRangeOfTheStoredColumn(string amount)
+    {
+        var parsed = decimal.Parse(amount, System.Globalization.CultureInfo.InvariantCulture);
+
+        var exception = Assert.Throws<DomainException>(() => Money.Create(parsed, Usd));
+
+        Assert.Equal("money.amount_out_of_range", exception.Code);
+    }
+
+    [Fact]
+    public void Create_RejectsTheSmallestStepBeyondTheLargestAmount_AndBeyondTheSmallest()
+    {
+        const decimal Step = 0.0001m;
+
+        Assert.Equal("money.amount_out_of_range", Assert.Throws<DomainException>(() => Money.Create(Money.MaxAmount + Step, Usd)).Code);
+        Assert.Equal("money.amount_out_of_range", Assert.Throws<DomainException>(() => Money.Create(-Money.MaxAmount - Step, Usd)).Code);
+    }
+
+    [Fact]
+    public void Add_AndSubtract_ThatLeaveTheRange_AreRejected_SoNoMoneyOutsideTheRangeExists()
+    {
+        var max = Money.Create(Money.MaxAmount, Usd);
+        var one = Money.Create(1m, Usd);
+
+        Assert.Equal("money.amount_out_of_range", Assert.Throws<DomainException>(() => max.Add(one)).Code);
+        Assert.Equal("money.amount_out_of_range", Assert.Throws<DomainException>(() => Money.Create(-Money.MaxAmount, Usd).Subtract(one)).Code);
+        Assert.Equal(Money.MaxAmount, max.Add(Money.Zero(Usd)).Amount);
+        Assert.Equal(Money.MaxAmount - 1m, max.Subtract(one).Amount);
+    }
+
     [Fact]
     public void Money_IsEqualByAmountAndCurrency_IgnoringTrailingZeros()
     {
