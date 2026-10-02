@@ -215,7 +215,7 @@ AI Assistant (EPIC 12)
 - **Testing:** unit tests for invariants (price ≥ 0, SKU rules, deactivation).
 
 ### CATALOG-002 — Product persistence
-- **Status:** In Review · **Priority:** P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** P0 · **Agent:** Backend
 - **Description:** EF configuration, migration, tenant filter, per-organization unique SKU compared case-insensitively with the entered casing preserved ([ADR 0006](../decisions/0006-sku-uniqueness.md)), indexes.
 - **Acceptance criteria:** Migration applies cleanly; SKU uniqueness per organization is enforced by the database with a case-insensitive strategy (not only by handler checks); the stored SKU keeps its entered casing; no exception for deactivated products without a decision.
 - **Dependencies:** CATALOG-001, IDENTITY-003
@@ -223,7 +223,7 @@ AI Assistant (EPIC 12)
 - **Testing:** integration tests against real PostgreSQL, including cross-tenant isolation, SKU reuse across tenants, and a rejected duplicate that differs only by case (`ABC-123` vs `abc-123`) within one organization.
 
 ### CATALOG-003 — Product API
-- **Status:** Backlog · **Priority:** P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** P0 · **Agent:** Backend
 - **Description:** CreateProduct, UpdateProduct, DeactivateProduct, GetProduct, SearchProducts (paginated) with permissions.
 - **Acceptance criteria:** Documented in OpenAPI; validation and error contract per conventions; permissions enforced; a duplicate SKU (case-insensitive, per ADR 0006) returns a conflict error and SKU lookups are case-insensitive.
 - **Dependencies:** CATALOG-002, IDENTITY-002

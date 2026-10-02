@@ -15,4 +15,13 @@ public enum Permission
 
     /// <summary>Change the name and time zone of the user's own organization.</summary>
     OrganizationManageSettings,
+
+    /// <summary>Read and search the organization's products (without their cost price).</summary>
+    ProductView,
+
+    /// <summary>See the cost price of products. Cost is margin information, so it is granted separately from viewing.</summary>
+    ProductViewCost,
+
+    /// <summary>Create, change and deactivate products.</summary>
+    ProductManage,
 }
