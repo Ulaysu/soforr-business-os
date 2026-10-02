@@ -1,6 +1,14 @@
 # Product Scope
 
-The product is sequenced toward a **Sellable V1** ([sellable-v1.md](sellable-v1.md) is the canonical definition: what is in, what is deferred and the exit criteria). This document lists the modules and where each stands. Module boundaries are in [modules.md](../architecture/modules.md); work items and their priority classes are in [backlog.md](backlog.md).
+The product is sequenced toward a **globally sellable V1** ([sellable-v1.md](sellable-v1.md) is the canonical definition: what is in, what is deferred and the exit criteria). This document lists the modules and where each stands. Module boundaries are in [modules.md](../architecture/modules.md); work items and their priority classes are in [backlog.md](backlog.md).
+
+## Global Product Boundary
+
+Soforr is designed for customers worldwide. V1 intentionally targets a focused operating model—connected web, single location or single stock pool, retail and light wholesale—while keeping the core domain independent of any one country or region.
+
+Global requirements that should influence the architecture include organization currency, time zone, locale-aware presentation, international addresses and phone numbers, configurable tax concepts, and provider-based payment/integration boundaries. These should be implemented when required by the relevant product slice rather than hard-coded as regional behavior.
+
+The product experience should compete on clarity, speed and deterministic operational intelligence. It is not positioned as an Africa-only POS, a regional payment product, or a full ERP.
 
 ## Priority Classes
 
@@ -74,13 +82,13 @@ Deterministic intelligence (explicit rules and calculations, no model) is in V1.
 - Automation of any business action
 - Expenses, receipts and file attachments
 - Native mobile applications and offline-first synchronization
-- Advanced accounting, payroll, tax compliance
+- Advanced accounting, payroll, tax compliance and country-specific regulatory integrations
 - Persistent wholesale price lists, volume tiers, minimum-order quantities, customer-specific catalogs and self-service B2B ordering
 - Multi-location / multi-warehouse transfers (single stock pool per organization in V1; see [data-model.md](../architecture/data-model.md#inventory-integrity-model))
 - Merchandise returns/refunds and exchange workflows (void is the V1 correction mechanism)
 - Payment processing or automatic financial transactions (payments are recorded, never processed)
 - Receipt-printer/payment-terminal integrations
-- Third-party integrations
+- Third-party integrations and country-specific payment/tax integrations
 - Industry-specific modules
 - SaaS billing
 
