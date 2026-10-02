@@ -14,9 +14,9 @@ Sellable V1 is **Business Operations + Deterministic Operational Intelligence**.
 
 V1 is designed for **small and growing, single-location or single-stock-pool retail and wholesale businesses** that need one operational source of truth for products, purchasing, stock, sales and customer balances.
 
-The product is intentionally **retail-and-light-wholesale**, not a full enterprise POS/ERP or B2B commerce portal. Retail software commonly combines inventory, sales, customer data and analytics; wholesale systems add account-specific pricing, quantity rules and payment terms. citeturn0search0turn1search1
+The product is intentionally **retail-and-light-wholesale**, not a full enterprise POS/ERP or B2B commerce portal. Retail software commonly combines inventory, sales, customer data and analytics; wholesale systems add account-specific pricing, quantity rules and payment terms.
 
-For the first release, Soforr assumes a connected web environment. Offline-first synchronization, multi-branch inventory and advanced wholesale pricing are deliberately deferred because they materially increase complexity. African retail products commonly compete on offline selling, barcode checkout and local payment support, so these are explicit later considerations rather than hidden gaps in the V1 promise. citeturn2search0turn2search2
+For the first release, Soforr assumes a connected web environment. Offline-first synchronization, multi-branch inventory and advanced wholesale pricing are deliberately deferred because they materially increase complexity. African retail products commonly compete on offline selling, barcode checkout and local payment support, so these are explicit later considerations rather than hidden gaps in the V1 promise.
 
 ## Strategy
 
@@ -119,7 +119,7 @@ V1 includes the minimum controls needed to sell credibly to both sides of the ma
 
 - **Product identification:** SKU remains the business identifier; an optional barcode/GTIN may be attached to a product and used for search and fast checkout. A product has one primary barcode in V1; multiple barcodes, case/unit barcodes and advanced 2D/GS1 data are later.
 - **Price integrity:** the product selling price is the default. A sale may use an explicit line-price override or discount when permitted by the user's permission. The sale line stores the final applied price and, where applicable, the original price and reason/actor so margin and audit data remain explainable.
-- **Wholesale reality without wholesale-platform complexity:** customers can buy on credit and sales can use negotiated line prices. Persistent customer price lists, quantity breaks, minimum-order quantities, customer-specific catalogs and self-service B2B ordering are Product P1/Future until real customers justify them. These are established wholesale requirements, so they are deliberately named rather than accidentally omitted. citeturn1search1turn1search4
+- **Wholesale reality without wholesale-platform complexity:** customers can buy on credit and sales can use negotiated line prices. Persistent customer price lists, quantity breaks, minimum-order quantities, customer-specific catalogs and self-service B2B ordering are Product P1/Future until real customers justify them. These are established wholesale requirements, so they are deliberately named rather than accidentally omitted.
 - **Retail reality without a full POS stack:** the web sale screen is designed for rapid product lookup and barcode-scanner input, but V1 does not promise offline checkout, payment-terminal integration, receipt-printer integration or a native mobile app.
 - **Returns:** ordinary corrections use void. A proper merchandise-return/refund workflow is Product P1 because it requires explicit refund, stock disposition and fraud-control rules rather than pretending a void is a return.
 
