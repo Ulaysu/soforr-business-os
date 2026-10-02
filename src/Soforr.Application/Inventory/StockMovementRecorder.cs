@@ -83,12 +83,11 @@ public sealed class StockMovementRecorder(IAppDbContext db, ICurrentUser user, I
             return Result.Failure<StagedMovement>(movement.Error!);
         }
 
+        // A product's first stock level is created in memory only: it is added to the unit of work after the movement was
+        // applied, so a movement that is refused leaves nothing tracked (a use case may stage several movements and
+        // save once, and must be able to drop a refused one without clearing the others).
         var opened = level is null;
-        if (level is null)
-        {
-            level = StockLevel.Open(organizationId, command.ProductId, now);
-            db.Set<StockLevel>().Add(level);
-        }
+        level ??= StockLevel.Open(organizationId, command.ProductId, now);
 
         // Running out of stock is a business rule, not bad input: it is returned as a rule violation (422).
         try
@@ -102,6 +101,11 @@ public sealed class StockMovementRecorder(IAppDbContext db, ICurrentUser user, I
         catch (DomainException exception)
         {
             return Result.Failure<StagedMovement>(new Error(exception.Code, ErrorKind.Validation, exception.Message));
+        }
+
+        if (opened)
+        {
+            db.Set<StockLevel>().Add(level);
         }
 
         db.Set<InventoryMovement>().Add(movement.Value);
@@ -149,7 +153,7 @@ public sealed class StockMovementRecorder(IAppDbContext db, ICurrentUser user, I
 
                     if (value.OpenedLevel && await db.Set<StockLevel>().AnyAsync(level => level.ProductId == command.ProductId, cancellationToken))
                     {
-                        throw new DbUpdateConcurrencyException("The product's first stock level was opened by a concurrent request.", exception);
+                        throw new StockLevelRaceException(exception);
                     }
 
                     throw;
@@ -161,11 +165,13 @@ public sealed class StockMovementRecorder(IAppDbContext db, ICurrentUser user, I
     }
 
     /// <summary>
-    /// Runs a stage-and-save attempt up to <see cref="MaxAttempts"/> times. Only a concurrency conflict on a stock level
-    /// is retried (after discarding everything the failed attempt tracked and a short random pause); a conflict that
-    /// outlasts the attempts is returned as <c>inventory.concurrency_conflict</c>. Any other failure is not ours to
-    /// hide and is rethrown (<see cref="RecordAsync"/> recognizes the two other known races by what the database now
-    /// holds, and never assumes).
+    /// Runs a stage-and-save attempt up to <see cref="MaxAttempts"/> times. This is the retry of ADR 0004 for stock and
+    /// <b>only</b> for stock: it retries a concurrency conflict on a <see cref="StockLevel"/> (after discarding
+    /// everything the failed attempt tracked and a short random pause) and the loss of the race to open a product's
+    /// first stock level. A concurrency failure that does not involve a stock level (some other entity in the same
+    /// unit of work) is not an inventory conflict and is rethrown untouched, as is every other failure
+    /// (<see cref="RecordAsync"/> recognizes the duplicate-movement race by what the database now holds, and never
+    /// assumes). A stock conflict that outlasts the attempts is returned as <c>inventory.concurrency_conflict</c>.
     /// </summary>
     public async Task<Result<T>> ExecuteWithRetryAsync<T>(Func<Task<Result<T>>> attempt, CancellationToken cancellationToken)
         where T : class
@@ -180,11 +186,11 @@ public sealed class StockMovementRecorder(IAppDbContext db, ICurrentUser user, I
             {
                 return await attempt();
             }
-            catch (DbUpdateConcurrencyException) when (number < MaxAttempts)
+            catch (Exception exception) when (IsStockConflict(exception) && number < MaxAttempts)
             {
                 await PauseAsync(cancellationToken);
             }
-            catch (DbUpdateConcurrencyException)
+            catch (Exception exception) when (IsStockConflict(exception))
             {
                 db.ClearChangeTracker();
                 return Result.Failure<T>(InventoryErrors.ConcurrencyConflict);
@@ -200,9 +206,17 @@ public sealed class StockMovementRecorder(IAppDbContext db, ICurrentUser user, I
                 && movement.Reason == command.Reason,
             cancellationToken);
 
+    /// <summary>A concurrency failure on a stock level, or the lost race to open one. Nothing else is an inventory conflict.</summary>
+    private static bool IsStockConflict(Exception exception) =>
+        exception is StockLevelRaceException
+        || (exception is DbUpdateConcurrencyException concurrency && concurrency.Entries.Any(entry => entry.Entity is StockLevel));
+
     private static Task PauseAsync(CancellationToken cancellationToken) =>
         Task.Delay(RandomNumberGenerator.GetInt32(5, 40), cancellationToken);
 }
 
 /// <summary>A movement added to the unit of work (not yet saved).</summary>
 public sealed record StagedMovement(Guid MovementId, decimal NewQuantity, bool AlreadyRecorded, bool OpenedLevel);
+
+/// <summary>Thrown inside the recorder when another request opened the product's first stock level first, so the attempt is retried.</summary>
+internal sealed class StockLevelRaceException(Exception inner) : Exception("The product's first stock level was opened by a concurrent request.", inner);

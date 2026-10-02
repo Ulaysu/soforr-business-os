@@ -417,6 +417,152 @@ public sealed class StockMovementRecorderTests(PostgresDatabaseFixture database)
         await Assert.ThrowsAsync<DbUpdateException>(() => RecordAsync(organization, Receive(product, 1m), removeTheProduct));
     }
 
+    // ---- a refused movement leaves nothing tracked (unit of work)
+
+    [Fact]
+    public async Task ARefusedFirstMovement_LeavesNoStockLevelOrMovementTracked_AndALaterReceiptStillOpensTheLevel()
+    {
+        var organization = await NewOrganizationAsync();
+        var product = await NewProductAsync(organization);
+        var (db, recorder) = Start(organization);
+        await using (db)
+        {
+            var refused = await recorder.StageAsync(Sell(product, 1m), CancellationToken.None);
+
+            Assert.Equal("stock_level.insufficient_stock", refused.Error!.Code);
+            Assert.DoesNotContain(db.ChangeTracker.Entries<StockLevel>(), entry => entry.State == EntityState.Added);
+            Assert.Empty(db.ChangeTracker.Entries<InventoryMovement>());
+            Assert.False(db.ChangeTracker.HasChanges());
+
+            // Saving after a refusal writes nothing.
+            Assert.Equal(0, await db.SaveChangesAsync());
+
+            // The same unit of work can go on: a valid receipt is staged and saved normally.
+            var receipt = await recorder.StageAsync(Receive(product, 4m), CancellationToken.None);
+            Assert.True(receipt.IsSuccess);
+            Assert.True(receipt.Value.OpenedLevel);
+            await db.SaveChangesAsync();
+        }
+
+        Assert.Equal(4m, await LevelAsync(organization, product));
+        Assert.Equal(1, await MovementCountAsync(organization, product));
+        await AssertReconciledAsync(product);
+    }
+
+    [Fact]
+    public async Task ARefusedMovement_OnAnExistingLevel_LeavesTheTrackedLevelUnchanged()
+    {
+        var organization = await NewOrganizationAsync();
+        var product = await NewProductAsync(organization);
+        await RecordAsync(organization, Receive(product, 3m));
+        var (db, recorder) = Start(organization);
+        await using (db)
+        {
+            var refused = await recorder.StageAsync(Sell(product, 5m), CancellationToken.None);
+
+            Assert.Equal("stock_level.insufficient_stock", refused.Error!.Code);
+            var level = Assert.Single(db.ChangeTracker.Entries<StockLevel>());
+            Assert.Equal(EntityState.Unchanged, level.State);
+            Assert.Equal(3m, level.Entity.Quantity.Value);
+            Assert.Empty(db.ChangeTracker.Entries<InventoryMovement>());
+            Assert.False(db.ChangeTracker.HasChanges());
+        }
+    }
+
+    [Fact]
+    public async Task ARefusedLineAmongSeveral_DoesNotDisturbTheLinesAlreadyStaged()
+    {
+        var organization = await NewOrganizationAsync();
+        var first = await NewProductAsync(organization);
+        var second = await NewProductAsync(organization);
+        var (db, recorder) = Start(organization);
+        await using (db)
+        {
+            var okLine = await recorder.StageAsync(Receive(first, 5m), CancellationToken.None);
+            var refused = await recorder.StageAsync(Sell(second, 1m), CancellationToken.None);
+
+            Assert.True(okLine.IsSuccess);
+            Assert.True(refused.IsFailure);
+
+            // Only the accepted line is pending: a new level and its movement. Nothing for the refused product.
+            var added = db.ChangeTracker.Entries().Where(entry => entry.State == EntityState.Added).Select(entry => entry.Entity).ToArray();
+            Assert.Equal(2, added.Length);
+            Assert.Contains(added, entity => entity is StockLevel level && level.ProductId == first);
+            Assert.Contains(added, entity => entity is InventoryMovement movement && movement.ProductId == first);
+            await db.SaveChangesAsync();
+        }
+
+        Assert.Equal(5m, await LevelAsync(organization, first));
+        Assert.Equal(0, await MovementCountAsync(organization, second));
+        await AssertReconciledAsync(first);
+    }
+
+    // ---- the retry boundary: stock conflicts only
+
+    [Fact]
+    public async Task AConcurrencyFailureThatDoesNotInvolveAStockLevel_IsNotRetried_AndNotReportedAsAnInventoryConflict()
+    {
+        var organization = await NewOrganizationAsync();
+        var product = await NewProductAsync(organization);
+        var (db, recorder) = Start(organization);
+        var attempts = 0;
+        await using (db)
+        {
+            // Some other entity in the unit of work: its row is removed under it, which is a concurrency failure of a
+            // Product, not of stock.
+            await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => recorder.ExecuteWithRetryAsync(
+                async () =>
+                {
+                    attempts++;
+                    var tracked = await db.Set<Product>().SingleAsync(p => p.Id == product);
+                    tracked.Deactivate(Now.AddDays(1));
+                    await using (var admin = database.CreateContext())
+                    {
+                        await admin.Database.ExecuteSqlRawAsync("DELETE FROM \"Products\" WHERE \"Id\" = {0}", product);
+                    }
+
+                    await db.SaveChangesAsync();
+                    return Result.Success(new MovementResult(Guid.Empty, 0m, false));
+                },
+                CancellationToken.None));
+        }
+
+        Assert.Equal(1, attempts);
+    }
+
+    [Fact]
+    public async Task AConcurrencyFailureOnAStockLevelInsideAMixedUnitOfWork_IsStillRetried()
+    {
+        var organization = await NewOrganizationAsync();
+        var product = await NewProductAsync(organization);
+        await RecordAsync(organization, Receive(product, 10m));
+        var attempts = 0;
+        var (db, recorder) = Start(organization);
+        await using (db)
+        {
+            var result = await recorder.ExecuteWithRetryAsync(
+                async () =>
+                {
+                    attempts++;
+                    var staged = await recorder.StageAsync(Sell(product, 1m), CancellationToken.None);
+                    if (attempts == 1)
+                    {
+                        await RecordAsync(organization, Sell(product, 2m));
+                    }
+
+                    await db.SaveChangesAsync();
+                    return Result.Success(new MovementResult(staged.Value.MovementId, staged.Value.NewQuantity, false));
+                },
+                CancellationToken.None);
+
+            Assert.True(result.IsSuccess);
+        }
+
+        Assert.Equal(2, attempts);
+        Assert.Equal(7m, await LevelAsync(organization, product));
+        await AssertReconciledAsync(product);
+    }
+
     // ---- parallel requests
 
     [Fact]

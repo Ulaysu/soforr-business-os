@@ -55,8 +55,10 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                     OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
                     ProductId = table.Column<Guid>(type: "uuid", nullable: false),
                     Quantity = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: false),
-                    UpdatedAtUtc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                    // No "xmin" column: it is PostgreSQL's own system column on every table and is used as the
+                    // optimistic concurrency token through the model (see StockLevelConfiguration). The Npgsql scaffold
+                    // writes it here as an ordinary column; it is removed so no migration operation creates it.
+                    UpdatedAtUtc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
