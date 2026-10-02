@@ -16,4 +16,10 @@ public interface IAppDbContext
         where TEntity : class;
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Forgets everything the unit of work has loaded or staged without saving it. Used by the command-level retry of
+    /// ADR 0004: after a concurrency conflict, a retry must start from fresh data and re-validate.
+    /// </summary>
+    void ClearChangeTracker();
 }

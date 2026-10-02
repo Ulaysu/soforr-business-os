@@ -126,6 +126,9 @@ namespace Soforr.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasAlternateKey("Id", "OrganizationId")
+                        .HasName("AK_Products_Id_OrganizationId");
+
                     b.HasIndex("OrganizationId", "SkuKey")
                         .IsUnique()
                         .HasDatabaseName("IX_Products_OrganizationId_SkuKey");
@@ -181,6 +184,101 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                     b.ToTable("Memberships", null, t =>
                         {
                             t.HasCheckConstraint("CK_Memberships_Role_Known", "\"Role\" IN ('Owner', 'Manager', 'Staff')");
+                        });
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Inventory.InventoryMovement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTimeOffset>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("QuantityDelta")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId", "OrganizationId");
+
+                    b.HasIndex("OrganizationId", "ProductId", "OccurredAtUtc");
+
+                    b.HasIndex("OrganizationId", "SourceType", "SourceId", "ProductId", "Reason")
+                        .IsUnique()
+                        .HasDatabaseName("IX_InventoryMovements_Idempotency");
+
+                    b.ToTable("InventoryMovements", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_InventoryMovements_Note_NotBlank", "\"Note\" IS NULL OR char_length(btrim(\"Note\")) > 0");
+
+                            t.HasCheckConstraint("CK_InventoryMovements_Note_RequiredForAdjustment", "\"Reason\" <> 'ManualAdjustment' OR (\"Note\" IS NOT NULL AND char_length(btrim(\"Note\")) > 0)");
+
+                            t.HasCheckConstraint("CK_InventoryMovements_QuantityDelta_NotZero", "\"QuantityDelta\" <> 0");
+
+                            t.HasCheckConstraint("CK_InventoryMovements_Reason_Known", "\"Reason\" IN ('PurchaseReceived', 'SaleCompleted', 'ManualAdjustment', 'Return', 'Damage')");
+
+                            t.HasCheckConstraint("CK_InventoryMovements_Reason_MatchesSign", "(\"Reason\" IN ('PurchaseReceived', 'Return') AND \"QuantityDelta\" > 0) OR (\"Reason\" IN ('SaleCompleted', 'Damage') AND \"QuantityDelta\" < 0) OR \"Reason\" = 'ManualAdjustment'");
+
+                            t.HasCheckConstraint("CK_InventoryMovements_SourceType_Known", "\"SourceType\" IN ('PurchaseReceipt', 'Sale', 'Adjustment')");
+                        });
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Inventory.StockLevel", b =>
+                {
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("OrganizationId", "ProductId");
+
+                    b.HasIndex("ProductId", "OrganizationId");
+
+                    b.ToTable("StockLevels", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_StockLevels_Quantity_NotNegative", "\"Quantity\" >= 0");
                         });
                 });
 
@@ -412,6 +510,26 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                     b.HasOne("Soforr.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Inventory.InventoryMovement", b =>
+                {
+                    b.HasOne("Soforr.Domain.Catalog.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId", "OrganizationId")
+                        .HasPrincipalKey("Id", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Inventory.StockLevel", b =>
+                {
+                    b.HasOne("Soforr.Domain.Catalog.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId", "OrganizationId")
+                        .HasPrincipalKey("Id", "OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

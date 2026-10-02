@@ -4,6 +4,7 @@ using Soforr.Api.IntegrationTests.Postgres;
 using Soforr.Domain.Catalog;
 using Soforr.Domain.Common;
 using Soforr.Domain.Identity;
+using Soforr.Domain.Inventory;
 using Soforr.Domain.Organizations;
 using Soforr.Infrastructure.Persistence;
 using static Soforr.Api.IntegrationTests.Identity.AuthClient;
@@ -11,7 +12,7 @@ using static Soforr.Api.IntegrationTests.Identity.AuthClient;
 namespace Soforr.Api.IntegrationTests.TenantIsolation;
 
 /// <summary>
-/// Cross-tenant tests for every tenant-owned entity that exists (organizations, memberships and products), through the data
+/// Cross-tenant tests for every tenant-owned entity that exists (organizations, memberships, products, stock levels and movements), through the data
 /// layer and through the real application (ADR 0002): a user of one organization cannot read, change, delete or
 /// create another organization's data, and an unknown or foreign id behaves exactly like a missing one. When a
 /// module adds a tenant-owned entity, it adds its cases here (the convention test fails until it has a filter).
@@ -212,6 +213,80 @@ public sealed class TenantIsolationTests(PostgresDatabaseFixture database) : ICl
 
         await using var asB = database.CreateContext(tenants.OrganizationB);
         Assert.Equal(0, await asB.Set<Product>().CountAsync());
+    }
+
+    // ---- stock levels and movements
+
+    private async Task<(Guid ProductA, Guid ProductB, Guid MovementB)> SeedStockAsync(TwoTenants tenants)
+    {
+        var productA = NewProduct(tenants.OrganizationA, "STOCK-A");
+        var productB = NewProduct(tenants.OrganizationB, "STOCK-B");
+        Guid movementB = Guid.Empty;
+        foreach (var (organization, product) in new[] { (tenants.OrganizationA, productA), (tenants.OrganizationB, productB) })
+        {
+            var movement = InventoryMovement.Record(Guid.CreateVersion7(), organization, product.Id, QuantityDelta.Create(5m), InventoryMovementReason.PurchaseReceived, InventorySourceType.PurchaseReceipt, Guid.CreateVersion7(), Guid.CreateVersion7(), null, DateTimeOffset.UtcNow);
+            var level = StockLevel.Open(organization, product.Id, DateTimeOffset.UtcNow);
+            level.Apply(movement);
+            await using var db = database.CreateContext(organization);
+            db.Set<Product>().Add(product);
+            await db.SaveChangesAsync();
+            db.Set<InventoryMovement>().Add(movement);
+            db.Set<StockLevel>().Add(level);
+            await db.SaveChangesAsync();
+            if (organization == tenants.OrganizationB)
+            {
+                movementB = movement.Id;
+            }
+        }
+
+        return (productA.Id, productB.Id, movementB);
+    }
+
+    [Fact]
+    public async Task StockLevelsAndMovements_AreReadOnlyWithinTheCurrentOrganization()
+    {
+        using var tenants = await TwoTenants.CreateAsync(database);
+        var (productA, productB, movementB) = await SeedStockAsync(tenants);
+        await using var asA = database.CreateContext(tenants.OrganizationA);
+        await using var nobody = database.CreateContext();
+
+        Assert.Equal([productA], await asA.Set<StockLevel>().Select(l => l.ProductId).ToArrayAsync());
+        Assert.Equal(1, await asA.Set<InventoryMovement>().CountAsync());
+        Assert.Null(await asA.Set<StockLevel>().SingleOrDefaultAsync(l => l.ProductId == productB));
+        Assert.Null(await asA.Set<InventoryMovement>().SingleOrDefaultAsync(m => m.Id == movementB));
+        Assert.Equal(0, await nobody.Set<StockLevel>().CountAsync());
+        Assert.Equal(0, await nobody.Set<InventoryMovement>().CountAsync());
+    }
+
+    [Fact]
+    public async Task ChangingAnotherOrganizationsStockLevel_IsRefused_AndChangesNothing()
+    {
+        using var tenants = await TwoTenants.CreateAsync(database);
+        var (_, productB, _) = await SeedStockAsync(tenants);
+
+        await using (var asA = database.CreateContext(tenants.OrganizationA))
+        {
+            var theirs = await asA.Set<StockLevel>().IgnoreQueryFilters().SingleAsync(l => l.ProductId == productB);
+            theirs.Apply(InventoryMovement.Record(Guid.CreateVersion7(), tenants.OrganizationB, productB, QuantityDelta.Create(-1m), InventoryMovementReason.SaleCompleted, InventorySourceType.Sale, Guid.CreateVersion7(), Guid.CreateVersion7(), null, DateTimeOffset.UtcNow));
+            await Assert.ThrowsAsync<TenantIsolationException>(() => asA.SaveChangesAsync());
+        }
+
+        await using var asB = database.CreateContext(tenants.OrganizationB);
+        Assert.Equal(5m, (await asB.Set<StockLevel>().SingleAsync()).Quantity.Value);
+    }
+
+    [Fact]
+    public async Task CreatingAMovementOrALevelInAnotherOrganization_IsRefused()
+    {
+        using var tenants = await TwoTenants.CreateAsync(database);
+        var (_, productB, _) = await SeedStockAsync(tenants);
+        await using var asA = database.CreateContext(tenants.OrganizationA);
+        asA.Set<InventoryMovement>().Add(InventoryMovement.Record(Guid.CreateVersion7(), tenants.OrganizationB, productB, QuantityDelta.Create(9m), InventoryMovementReason.PurchaseReceived, InventorySourceType.PurchaseReceipt, Guid.CreateVersion7(), Guid.CreateVersion7(), null, DateTimeOffset.UtcNow));
+
+        await Assert.ThrowsAsync<TenantIsolationException>(() => asA.SaveChangesAsync());
+
+        await using var asB = database.CreateContext(tenants.OrganizationB);
+        Assert.Equal(1, await asB.Set<InventoryMovement>().CountAsync());
     }
 
     // ---- through the real application

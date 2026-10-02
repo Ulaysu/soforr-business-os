@@ -12,6 +12,8 @@ public static class DependencyInjection
     {
         ArgumentNullException.ThrowIfNull(services);
 
+        services.AddScoped<Inventory.StockMovementRecorder>();
+
         return services.AddHandlers(typeof(DependencyInjection).Assembly);
     }
 }
