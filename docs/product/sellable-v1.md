@@ -10,6 +10,14 @@ This is the canonical definition of what Soforr must be before it is sold to a f
 
 Sellable V1 is **Business Operations + Deterministic Operational Intelligence**. It is not "CRUD plus reports". The system records the business, keeps that record trustworthy, calculates useful facts from it, and points the owner at the situations that need action, with the facts that justify each one.
 
+## Target customer and market position
+
+V1 is designed for **small and growing, single-location or single-stock-pool retail and wholesale businesses** that need one operational source of truth for products, purchasing, stock, sales and customer balances.
+
+The product is intentionally **retail-and-light-wholesale**, not a full enterprise POS/ERP or B2B commerce portal. Retail software commonly combines inventory, sales, customer data and analytics; wholesale systems add account-specific pricing, quantity rules and payment terms. citeturn0search0turn1search1
+
+For the first release, Soforr assumes a connected web environment. Offline-first synchronization, multi-branch inventory and advanced wholesale pricing are deliberately deferred because they materially increase complexity. African retail products commonly compete on offline selling, barcode checkout and local payment support, so these are explicit later considerations rather than hidden gaps in the V1 promise. citeturn2search0turn2search2
+
 ## Strategy
 
 - **Sellability is the primary sequencing constraint.** Build the smallest coherent product that solves a real business problem, one vertical slice at a time, and sell it before building the whole vision.
@@ -81,10 +89,10 @@ Product → Purchase → Receive stock → Inventory → Sale → Inventory upda
 | Area | In V1 |
 |---|---|
 | Tenancy and access | Organizations, registration, sign-in/out, roles, per-role permissions, tenant isolation, inviting the organization's users, email verification and password reset |
-| Catalog | Products with prices, cost, reorder settings, SKU rule (done) |
+| Catalog | Products with prices, cost, reorder settings, SKU rule (done), optional barcode/GTIN for fast lookup |
 | Purchasing | Suppliers, purchase orders, receiving (idempotent, partial), unit cost recorded per purchase line |
 | Inventory | Movement-based stock, adjustments with reasons, history, low-stock list |
-| Sales | Sales that decrement stock atomically, void, price/cost/name snapshots on every sale line |
+| Sales | Fast sales that decrement stock atomically, barcode/SKU lookup, controlled line-price overrides/discounts, void, price/cost/name snapshots on every sale line |
 | Customers and balances | Customers, optional customer on a sale, credit sales and recorded payments, outstanding balances and aging (recording only; no payment processing). *Proposed; see [Decisions needing approval](#decisions-needing-the-owners-approval).* |
 | Audit | Append-only audit events for business-sensitive actions |
 | Basic metrics | Sales totals and period comparisons, stock list, as the data behind the intelligence |
@@ -97,15 +105,27 @@ All computed from authoritative data with documented formulas; the exact formula
 | Capability | Examples of what the owner sees |
 |---|---|
 | **Inventory risk** | Product below its reorder threshold; estimated stock coverage in days from recent sales velocity; products at risk of running out before a reorder could arrive; suggested reorder quantity with its basis |
-| **Sales** | Revenue for the current period against the previous period of equal length, with the percentage change; quantity sold; best-selling and poorly-performing products; products with declining sales |
+| **Sales** | Revenue and quantity for the current period against the previous period of equal length; top sellers; slow movers; products with meaningful sales decline; discount/price-override impact where sale-line data exists |
 | **Product margin** | Selling price, cost, gross margin and margin percentage from the sale-time snapshots; margin change between periods and what changed (for example purchase cost) |
 | **Purchasing cost** | Change in a product's purchase cost against the previous purchase; purchase volume and recent activity; supplier cost change where several suppliers exist |
-| **Customer balances** | Outstanding balance per customer; overdue balance; aging buckets; customers over a configured threshold |
-| **Actionable insights** | One place ("Things that need your attention") that lists the current insights with their facts and a recommended action, most important first |
+| **Customer balances** | Outstanding balance per customer; overdue balance; aging buckets; customers above an explicit organization-configured materiality threshold |
+| **Actionable insights** | One place ("Things that need your attention") that lists current insights with facts, reason and a suggested next action, ordered by deterministic severity |
 
 Expense intelligence (totals, period comparisons, threshold alerts) is **not** a V1 requirement because expense recording is not (see below).
 
-### Production readiness (Gate C)
+### Retail and light-wholesale controls
+
+V1 includes the minimum controls needed to sell credibly to both sides of the market without turning Soforr into a full commerce platform:
+
+- **Product identification:** SKU remains the business identifier; an optional barcode/GTIN may be attached to a product and used for search and fast checkout. A product has one primary barcode in V1; multiple barcodes, case/unit barcodes and advanced 2D/GS1 data are later.
+- **Price integrity:** the product selling price is the default. A sale may use an explicit line-price override or discount when permitted by the user's permission. The sale line stores the final applied price and, where applicable, the original price and reason/actor so margin and audit data remain explainable.
+- **Wholesale reality without wholesale-platform complexity:** customers can buy on credit and sales can use negotiated line prices. Persistent customer price lists, quantity breaks, minimum-order quantities, customer-specific catalogs and self-service B2B ordering are Product P1/Future until real customers justify them. These are established wholesale requirements, so they are deliberately named rather than accidentally omitted. citeturn1search1turn1search4
+- **Retail reality without a full POS stack:** the web sale screen is designed for rapid product lookup and barcode-scanner input, but V1 does not promise offline checkout, payment-terminal integration, receipt-printer integration or a native mobile app.
+- **Returns:** ordinary corrections use void. A proper merchandise-return/refund workflow is Product P1 because it requires explicit refund, stock disposition and fraud-control rules rather than pretending a void is a return.
+
+This makes the commercial claim honest: **Soforr V1 is a connected operations system for small retail and light wholesale businesses, not yet a complete offline POS or full B2B commerce suite.**
+
+## Production readiness (Gate C)
 
 Credible deployment, configuration, migrations, health checks, logging and diagnostics, monitoring, backup and recovery approach, security hardening (rate limiting, headers, CORS, email verification), and written deployment documentation. Not enterprise perfection: a real customer must be able to use the product without it being obviously experimental.
 
@@ -125,7 +145,7 @@ A customer can understand what Soforr does, who it is for, what they get and how
 | Statistical forecasting, anomaly detection, demand prediction | Layer 2 | Future |
 | LLM assistant, natural-language questions, generated explanations | Layer 3; needs approval (paid service) | Future |
 | Automation and autonomous workflows | Layer 4 | Future |
-| SaaS billing, advanced accounting, payroll, multi-warehouse, industry-specific modules, mobile apps, third-party integrations | Out of scope until real customers demand them | Future |
+| Persistent wholesale price lists, volume pricing, minimum-order quantities, customer catalogs, sales orders/quotes, returns/refunds, multi-location inventory, offline-first sync, native mobile apps, payment-terminal integrations and third-party integrations | Valuable market capabilities, but each adds meaningful workflow/state complexity; build from observed customer demand | Product P1 / Future |
 
 Nothing in this list may be built to claim that Soforr is "AI-powered". There is no LLM platform, agent, vector store, embedding pipeline or forecasting infrastructure in V1.
 
@@ -136,8 +156,11 @@ Soforr is not Sellable V1 until **all** of these hold, each verified rather than
 **Core operations**
 - Organization/tenant model, authentication and authorization work
 - Products, purchasing and inventory receiving work; inventory movements are reliable
+- Products can be found by SKU and, when configured, by barcode/GTIN
 - Sales work and inventory updates correctly after a sale
-- Customers and balances work (as scoped in V1)
+- Price overrides/discounts are permission-controlled and auditable
+- Customers and balances work
+- A connected retail/wholesale operator can complete the core workflow without relying on spreadsheets
 
 **Deterministic intelligence**
 - Inventory risk, stock coverage and reorder calculations work
@@ -165,6 +188,23 @@ Soforr is not Sellable V1 until **all** of these hold, each verified rather than
 - An onboarding path exists; scope and known limitations are documented
 - The product is suitable for a first pilot customer
 
+## V1 deterministic formula contract
+
+The following defaults are part of V1 unless a backlog item explicitly supersedes them:
+
+- **Sales periods:** organization-local time zone; current period is compared with the immediately preceding period of equal duration.
+- **Sales growth:** `(current - previous) / previous × 100` when the previous value is non-zero. When the previous value is zero, report "no comparable previous sales" rather than infinity.
+- **Slow mover:** among active products with sufficient data, the bottom 20% by quantity sold for the selected period. If fewer than 5 products qualify, show the ordered list rather than inventing a percentile.
+- **Declining sales:** sales exist in both comparison periods and quantity sold decreased by at least 20%.
+- **Stock coverage:** `current stock / average daily quantity sold` over the trailing 30 calendar days. No sales means "no recent sales", not infinite coverage.
+- **Reorder target:** when both reorder point and lead time exist, `target stock = reorder point + (average daily sales × lead-time days)`. Suggested reorder quantity is `max(0, target stock - current stock)`. If required inputs are missing, no quantity is suggested.
+- **Margin:** V1 uses the sale-line cost snapshot as the cost basis. It is a management margin measure, not accounting-grade COGS and does not implement FIFO, weighted-average costing or inventory valuation.
+- **Customer aging:** age from each sale's explicit due date. Default credit terms may exist at organization level; customer-specific terms override them. Buckets are 0–30, 31–60, 61–90 and 91+ days past due.
+- **Materiality threshold:** customer balance insights use an explicit organization setting; no hidden hard-coded monetary threshold.
+- **Insight severity:** severity is rule-derived, not an LLM judgment. Stockout risk outranks low-stock, overdue balances outrank ordinary balances, and material margin/cost changes outrank informational changes. Exact precedence belongs to INTEL-007 and is tested.
+
+These rules are intentionally simple. They make V1 reproducible and explainable; later statistical intelligence can replace or augment them only after customer evidence justifies it.
+
 ## Sequencing Rule
 
 For every proposed task ask: **does this materially move Soforr closer to a sellable product?** Prioritize work that enables the core workflow, provides required deterministic intelligence, fixes correctness, improves security, protects tenant isolation or data integrity, improves required testing, enables production deployment, or removes a critical dependency. Deprioritize work that is interesting but unnecessary, expands scope without customer value, adds premature abstraction, builds advanced AI before the data exists, builds speculative infrastructure, or optimizes prematurely.
@@ -187,11 +227,16 @@ Build → Verify → Deploy → Demonstrate → Sell → Observe → Learn → I
 
 After V1, do not start dozens of features. Use real customer usage to choose what comes next, and then, progressively: Stage 2 statistical intelligence, Stage 3 AI-assisted explanations and recommendations, Stage 4 approved automation, Stage 5 more autonomous intelligent workflows.
 
-## Decisions Needing the Owner's Approval
+## Accepted V1 product decisions
 
-This reorientation proposes these product-scope choices. They are written into the backlog as proposed and are easy to change; none needs code to be reverted.
+These are canonical product-scope decisions for the first sellable release:
 
-1. **Customers with credit sales and recorded payments are in V1** (needed for customer balance and aging intelligence, which the V1 intelligence list names). If the first customers sell only for cash, this can move to Product P1 and customer intelligence with it.
-2. **Expenses are Product P1**, not V1, so expense intelligence is P1 as well.
-3. **Reorder recommendations are shown as insights in V1; stored/approvable recommendations and one-click purchase order creation are Product P1.** This moves the old "owner approval" step out of the first slice.
-4. **Inviting an organization's users (IDENTITY-005) is in V1.** Roles and permissions are built but there is currently no way to give a second person access; a business with staff cannot use the product without it.
+1. **Customers, credit sales and recorded payments are in V1.** Wholesale and many retail businesses need customer balances and aging; payments are recorded only and are not processed by Soforr.
+2. **Expenses are Product P1.** They are useful but are not required to prove the core inventory/purchasing/sales value proposition.
+3. **Reorder recommendations are insights in V1.** Stored/approvable recommendations and one-click purchase-order creation are Product P1.
+4. **Inviting organization users is in V1.** Roles without an invitation workflow are not practically usable for a business with staff.
+5. **Barcode/GTIN lookup is in V1.** One primary barcode per product is the deliberately narrow first implementation; multiple identifiers and advanced barcode workflows are later.
+6. **V1 supports light wholesale, not full B2B commerce.** Negotiated sale-line pricing and customer credit are supported. Persistent price lists, volume tiers, MOQs, customer-specific catalogs, quotes and self-service ordering remain outside V1.
+7. **V1 is connected-first.** Offline synchronization, native mobile POS, multi-location stock and payment-terminal integrations are not V1 requirements. This is an explicit product boundary, not an accidental omission.
+
+Any later change goes through the major product-scope approval rule in `AGENTS.md`.
