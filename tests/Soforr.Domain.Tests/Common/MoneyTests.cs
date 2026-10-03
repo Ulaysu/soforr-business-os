@@ -105,6 +105,37 @@ public class MoneyTests
         Assert.Equal(Money.MaxAmount - 1m, max.Subtract(one).Amount);
     }
 
+    // ---- Multiply (a unit price times a quantity)
+
+    [Theory]
+    [InlineData("12.5", "4", "50")]
+    [InlineData("90.5", "10", "905")]
+    [InlineData("0", "1000", "0")]
+    [InlineData("1.5", "0.3333", "0.5")]
+    [InlineData("-2.5", "3", "-7.5")]
+    [InlineData("0.0001", "0.5", "0.0001")]
+    [InlineData("0.0001", "0.4999", "0")]
+    [InlineData("-0.0001", "0.5", "-0.0001")]
+    public void Multiply_IsExactToFourPlaces_RoundingHalfAwayFromZero(string amount, string quantity, string expected)
+    {
+        var product = Money.Create(decimal.Parse(amount, System.Globalization.CultureInfo.InvariantCulture), Usd)
+            .Multiply(Quantity.Create(decimal.Parse(quantity, System.Globalization.CultureInfo.InvariantCulture)));
+
+        Assert.Equal(decimal.Parse(expected, System.Globalization.CultureInfo.InvariantCulture), product.Amount);
+        Assert.Equal(Usd, product.Currency);
+    }
+
+    [Fact]
+    public void Multiply_RejectsAResultOutsideTheRange_IncludingOneBeyondDecimal()
+    {
+        var max = Money.Create(Money.MaxAmount, Usd);
+
+        Assert.Equal("money.amount_out_of_range", Assert.Throws<DomainException>(() => max.Multiply(Quantity.Create(2))).Code);
+        Assert.Equal("money.amount_out_of_range", Assert.Throws<DomainException>(() => max.Multiply(Quantity.Create(Quantity.MaxValue))).Code);
+        Assert.Equal(Money.MaxAmount, max.Multiply(Quantity.Create(1)).Amount);
+        Assert.Equal(0m, max.Multiply(Quantity.Zero).Amount);
+    }
+
     [Fact]
     public void Money_IsEqualByAmountAndCurrency_IgnoringTrailingZeros()
     {

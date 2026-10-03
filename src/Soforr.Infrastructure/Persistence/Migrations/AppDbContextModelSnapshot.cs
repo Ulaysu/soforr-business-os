@@ -372,6 +372,175 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Soforr.Domain.Purchasing.PurchaseOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ClosedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("PlacedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("SupplierId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Id", "OrganizationId")
+                        .HasName("AK_PurchaseOrders_Id_OrganizationId");
+
+                    b.HasIndex("OrganizationId", "SupplierId");
+
+                    b.HasIndex("SupplierId", "OrganizationId");
+
+                    b.HasIndex("OrganizationId", "Status", "CreatedAtUtc");
+
+                    b.ToTable("PurchaseOrders", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseOrders_ClosedAt_MatchesStatus", "(\"Status\" IN ('Received', 'Cancelled')) = (\"ClosedAtUtc\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_PurchaseOrders_Currency_Format", "\"Currency\" ~ '^[A-Z]{3}$'");
+
+                            t.HasCheckConstraint("CK_PurchaseOrders_PlacedAt_MatchesStatus", "(\"Status\" = 'Draft' AND \"PlacedAtUtc\" IS NULL) OR (\"Status\" IN ('Placed', 'PartiallyReceived', 'Received') AND \"PlacedAtUtc\" IS NOT NULL) OR \"Status\" = 'Cancelled'");
+
+                            t.HasCheckConstraint("CK_PurchaseOrders_Reference_NotBlank", "\"Reference\" IS NULL OR char_length(btrim(\"Reference\")) > 0");
+
+                            t.HasCheckConstraint("CK_PurchaseOrders_Status_Known", "\"Status\" IN ('Draft', 'Placed', 'PartiallyReceived', 'Received', 'Cancelled')");
+                        });
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Purchasing.PurchaseOrderLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("NameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("OrderedQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PurchaseOrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("ReceivedQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("SkuSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("UnitOfMeasureSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId", "OrganizationId");
+
+                    b.HasIndex("PurchaseOrderId", "OrganizationId");
+
+                    b.HasIndex("PurchaseOrderId", "ProductId")
+                        .IsUnique();
+
+                    b.ToTable("PurchaseOrderLines", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseOrderLines_OrderedQuantity_Positive", "\"OrderedQuantity\" > 0");
+
+                            t.HasCheckConstraint("CK_PurchaseOrderLines_ReceivedQuantity_WithinOrdered", "\"ReceivedQuantity\" >= 0 AND \"ReceivedQuantity\" <= \"OrderedQuantity\"");
+
+                            t.HasCheckConstraint("CK_PurchaseOrderLines_Snapshots_NotBlank", "char_length(btrim(\"SkuSnapshot\")) > 0 AND char_length(btrim(\"NameSnapshot\")) > 0 AND char_length(btrim(\"UnitOfMeasureSnapshot\")) > 0");
+
+                            t.HasCheckConstraint("CK_PurchaseOrderLines_UnitCostCurrency_Format", "\"UnitCostCurrency\" ~ '^[A-Z]{3}$'");
+
+                            t.HasCheckConstraint("CK_PurchaseOrderLines_UnitCost_NotNegative", "\"UnitCost\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Purchasing.Supplier", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContactDetails")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Id", "OrganizationId")
+                        .HasName("AK_Suppliers_Id_OrganizationId");
+
+                    b.HasIndex("OrganizationId", "Name");
+
+                    b.ToTable("Suppliers", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Suppliers_ContactDetails_NotBlank", "\"ContactDetails\" IS NULL OR char_length(btrim(\"ContactDetails\")) > 0");
+
+                            t.HasCheckConstraint("CK_Suppliers_Name_NotBlank", "char_length(btrim(\"Name\")) > 0");
+                        });
+                });
+
             modelBuilder.Entity("Soforr.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -593,6 +762,74 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                         .HasPrincipalKey("Id", "OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Purchasing.PurchaseOrder", b =>
+                {
+                    b.HasOne("Soforr.Domain.Purchasing.Supplier", null)
+                        .WithMany()
+                        .HasForeignKey("SupplierId", "OrganizationId")
+                        .HasPrincipalKey("Id", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Purchasing.PurchaseOrderLine", b =>
+                {
+                    b.HasOne("Soforr.Domain.Catalog.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId", "OrganizationId")
+                        .HasPrincipalKey("Id", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Soforr.Domain.Purchasing.PurchaseOrder", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("PurchaseOrderId", "OrganizationId")
+                        .HasPrincipalKey("Id", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.OwnsOne("Soforr.Domain.Common.Money", "UnitCost", b1 =>
+                        {
+                            b1.Property<Guid>("PurchaseOrderLineId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(19, 4)
+                                .HasColumnType("numeric(19,4)")
+                                .HasColumnName("UnitCost");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("UnitCostCurrency");
+
+                            b1.HasKey("PurchaseOrderLineId");
+
+                            b1.ToTable("PurchaseOrderLines");
+
+                            b1.WithOwner()
+                                .HasForeignKey("PurchaseOrderLineId");
+                        });
+
+                    b.Navigation("UnitCost")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Purchasing.Supplier", b =>
+                {
+                    b.HasOne("Soforr.Domain.Organizations.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Purchasing.PurchaseOrder", b =>
+                {
+                    b.Navigation("Lines");
                 });
 #pragma warning restore 612, 618
         }

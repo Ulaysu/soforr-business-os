@@ -5,8 +5,10 @@ namespace Soforr.Domain.Common;
 /// is at most <see cref="MaxAmount"/>, matching the persisted <c>numeric(19,4)</c>, so a value that exists in the
 /// domain can always be stored exactly. Negative amounts are allowed (refunds, adjustments), within the same
 /// magnitude; sign rules belong to the concept that uses the money (for example a price).
-/// Multiplication and rounding are deliberately not provided yet: the rounding policy is decided with the first
-/// feature that needs it (sales totals).
+/// <see cref="Multiply"/> (a unit price times a quantity) is the only multiplication, and its rounding policy is
+/// explicit: the exact product is rounded to <see cref="MaxScale"/> decimal places, half away from zero, so a total is
+/// exact to the stored precision and every total in the system is computed the same way. Rounding to a currency's own
+/// minor unit is a presentation matter and is not done here.
 /// </summary>
 public sealed record Money
 {
@@ -61,6 +63,28 @@ public sealed record Money
     {
         EnsureSameCurrency(other);
         return Create(Amount - other.Amount, Currency);
+    }
+
+    /// <summary>
+    /// The amount multiplied by a quantity, for example a unit cost times the ordered quantity. The exact product is
+    /// rounded to <see cref="MaxScale"/> decimal places, half away from zero (commercial rounding), then range-checked.
+    /// </summary>
+    /// <exception cref="DomainException">The result is outside the range of <see cref="MaxAmount"/>.</exception>
+    public Money Multiply(Quantity quantity)
+    {
+        ArgumentNullException.ThrowIfNull(quantity);
+
+        decimal exact;
+        try
+        {
+            exact = checked(Amount * quantity.Value);
+        }
+        catch (OverflowException)
+        {
+            throw new DomainException("money.amount_out_of_range", "The amount is too large.");
+        }
+
+        return Create(decimal.Round(exact, MaxScale, MidpointRounding.AwayFromZero), Currency);
     }
 
     private void EnsureSameCurrency(Money other)

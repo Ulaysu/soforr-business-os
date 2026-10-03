@@ -8,6 +8,7 @@ using Soforr.Domain.Catalog;
 using Soforr.Domain.Identity;
 using Soforr.Domain.Inventory;
 using Soforr.Domain.Organizations;
+using Soforr.Domain.Purchasing;
 using Soforr.Infrastructure.Identity;
 
 namespace Soforr.Infrastructure.Persistence;
@@ -49,6 +50,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IOrgani
         builder.Entity<StockLevel>().HasQueryFilter(level => CurrentOrganizationId != null && level.OrganizationId == CurrentOrganizationId);
         builder.Entity<InventoryMovement>().HasQueryFilter(movement => CurrentOrganizationId != null && movement.OrganizationId == CurrentOrganizationId);
         builder.Entity<AuditEvent>().HasQueryFilter(auditEvent => CurrentOrganizationId != null && auditEvent.OrganizationId == CurrentOrganizationId);
+        builder.Entity<Supplier>().HasQueryFilter(supplier => CurrentOrganizationId != null && supplier.OrganizationId == CurrentOrganizationId);
+        builder.Entity<PurchaseOrder>().HasQueryFilter(order => CurrentOrganizationId != null && order.OrganizationId == CurrentOrganizationId);
+        builder.Entity<PurchaseOrderLine>().HasQueryFilter(line => CurrentOrganizationId != null && line.OrganizationId == CurrentOrganizationId);
     }
 
     public void ClearChangeTracker() => ChangeTracker.Clear();

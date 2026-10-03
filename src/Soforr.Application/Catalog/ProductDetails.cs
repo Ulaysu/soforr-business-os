@@ -3,7 +3,6 @@ using Soforr.Application.Common;
 using Soforr.Application.Persistence;
 using Soforr.Domain.Catalog;
 using Soforr.Domain.Common;
-using Soforr.Domain.Organizations;
 
 namespace Soforr.Application.Catalog;
 
@@ -60,17 +59,6 @@ internal sealed record ProductDetails(
         return reorder.IsFailure
             ? Result.Failure<(Money, Money, ReorderSettings?)>(reorder.Error!)
             : Result.Success<(Money, Money, ReorderSettings?)>((selling.Value, cost.Value, reorder.Value));
-    }
-
-    /// <summary>The currency every price of the caller's organization is in.</summary>
-    public static async Task<Result<Currency>> OrganizationCurrencyAsync(IAppDbContext db, Guid? organizationId, CancellationToken cancellationToken)
-    {
-        // The organization query is filtered to the current organization.
-        var organization = await db.Set<Organization>().AsNoTracking().SingleOrDefaultAsync(o => o.Id == organizationId, cancellationToken);
-
-        return organization is null
-            ? Result.Failure<Currency>(new Error("organization.not_found", ErrorKind.NotFound, "The organization was not found."))
-            : Result.Success(organization.Currency);
     }
 
     /// <summary>
