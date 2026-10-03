@@ -86,6 +86,58 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                     b.ToTable("UserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Soforr.Domain.Audit.AuditEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("EntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EntityType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId", "EntityType", "EntityId");
+
+                    b.HasIndex("OrganizationId", "OccurredAtUtc", "Id");
+
+                    b.ToTable("AuditEvents", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_AuditEvents_Action_Format", "\"Action\" ~ '^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$'");
+
+                            t.HasCheckConstraint("CK_AuditEvents_Description_NotBlank", "\"Description\" IS NULL OR char_length(btrim(\"Description\")) > 0");
+
+                            t.HasCheckConstraint("CK_AuditEvents_EntityType_NotBlank", "\"EntityType\" IS NULL OR char_length(btrim(\"EntityType\")) > 0");
+
+                            t.HasCheckConstraint("CK_AuditEvents_Entity_BothOrNeither", "(\"EntityType\" IS NULL) = (\"EntityId\" IS NULL)");
+                        });
+                });
+
             modelBuilder.Entity("Soforr.Domain.Catalog.Product", b =>
                 {
                     b.Property<Guid>("Id")
@@ -409,6 +461,15 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Audit.AuditEvent", b =>
+                {
+                    b.HasOne("Soforr.Domain.Organizations.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

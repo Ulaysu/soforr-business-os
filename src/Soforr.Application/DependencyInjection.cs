@@ -13,6 +13,7 @@ public static class DependencyInjection
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddScoped<Inventory.StockMovementRecorder>();
+        services.AddScoped<Audit.IAuditLog, Audit.AuditLog>();
 
         return services.AddHandlers(typeof(DependencyInjection).Assembly);
     }

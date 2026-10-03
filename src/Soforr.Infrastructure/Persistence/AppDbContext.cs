@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Soforr.Application.Organizations;
 using Soforr.Application.Persistence;
+using Soforr.Domain.Audit;
 using Soforr.Domain.Catalog;
 using Soforr.Domain.Identity;
 using Soforr.Domain.Inventory;
@@ -47,6 +48,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IOrgani
         builder.Entity<Product>().HasQueryFilter(product => CurrentOrganizationId != null && product.OrganizationId == CurrentOrganizationId);
         builder.Entity<StockLevel>().HasQueryFilter(level => CurrentOrganizationId != null && level.OrganizationId == CurrentOrganizationId);
         builder.Entity<InventoryMovement>().HasQueryFilter(movement => CurrentOrganizationId != null && movement.OrganizationId == CurrentOrganizationId);
+        builder.Entity<AuditEvent>().HasQueryFilter(auditEvent => CurrentOrganizationId != null && auditEvent.OrganizationId == CurrentOrganizationId);
     }
 
     public void ClearChangeTracker() => ChangeTracker.Clear();
@@ -71,7 +73,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IOrgani
     /// </summary>
     private void EnsureWritesStayInTheCurrentOrganization()
     {
-        EnsureMovementsAreAppendOnly();
+        EnsureAppendOnlyRecordsAreNotChanged();
 
         if (CurrentOrganizationId is not { } current)
         {
@@ -94,15 +96,20 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IOrgani
     }
 
     /// <summary>
-    /// The movement ledger is append-only (ADR 0004): a recorded movement is never changed or deleted, whatever the
-    /// organization or the caller; a correction is a new movement. This applies even without a current organization.
-    /// It guards the application's own writes; a raw SQL statement bypasses it like any EF guard.
+    /// The movement ledger and the audit trail are append-only (ADR 0004; AUDIT-001): a recorded movement or audit
+    /// event is never changed or deleted, whatever the organization or the caller; a correction is a new record.
+    /// This applies even without a current organization. It guards the application's own writes; the audit trail also
+    /// has a database trigger, while a raw SQL statement bypasses this guard for movements like any EF guard.
     /// </summary>
-    private void EnsureMovementsAreAppendOnly()
+    private void EnsureAppendOnlyRecordsAreNotChanged()
     {
-        if (ChangeTracker.Entries<InventoryMovement>().Any(entry => entry.State is EntityState.Modified or EntityState.Deleted))
+        var changed = ChangeTracker.Entries()
+            .Where(entry => entry.Entity is InventoryMovement or AuditEvent)
+            .FirstOrDefault(entry => entry.State is EntityState.Modified or EntityState.Deleted);
+
+        if (changed is not null)
         {
-            throw new AppendOnlyViolationException("An inventory movement is append-only: it cannot be changed or deleted. Record a new movement instead.");
+            throw new AppendOnlyViolationException($"A {changed.Metadata.ClrType.Name} is append-only: it cannot be changed or deleted. Record a new one instead.");
         }
     }
 

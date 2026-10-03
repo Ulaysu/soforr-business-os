@@ -36,6 +36,9 @@ public class AuthorizationTests
         { Role.Staff, Permission.ProductView, true },
         { Role.Staff, Permission.ProductViewCost, false },
         { Role.Staff, Permission.ProductManage, false },
+        { Role.Owner, Permission.AuditView, true },
+        { Role.Manager, Permission.AuditView, false },
+        { Role.Staff, Permission.AuditView, false },
     };
 
     [Theory]

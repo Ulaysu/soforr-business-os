@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Soforr.Api.Audit;
 using Soforr.Api.Catalog;
 using Soforr.Api.Hosting;
 using Soforr.Api.Identity;
@@ -14,6 +15,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddApiJson();
 builder.Services.AddApiErrorHandling();
 builder.Services.AddApiSecurity();
+builder.Services.AddScoped<Soforr.Application.Audit.ICorrelationContext, Soforr.Api.Observability.HttpCorrelationContext>();
 builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration);
@@ -36,6 +38,7 @@ if (app.Environment.IsDevelopment())
 
 app.MapOrganizationEndpoints();
 app.MapProductEndpoints();
+app.MapAuditEndpoints();
 
 // The default-deny policy also applies to requests that match no endpoint, which would answer 401 for every
 // unknown path. A route that does not exist must stay a 404 (it is not a secret and it is not a sign-in problem),

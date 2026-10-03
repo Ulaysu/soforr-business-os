@@ -10,7 +10,7 @@ public static class RolePermissions
 {
     private static readonly Dictionary<Role, HashSet<Permission>> Grants = new()
     {
-        [Role.Owner] = [Permission.OrganizationView, Permission.OrganizationManageSettings, Permission.ProductView, Permission.ProductViewCost, Permission.ProductManage],
+        [Role.Owner] = [Permission.OrganizationView, Permission.OrganizationManageSettings, Permission.ProductView, Permission.ProductViewCost, Permission.ProductManage, Permission.AuditView],
         [Role.Manager] = [Permission.OrganizationView, Permission.ProductView, Permission.ProductViewCost, Permission.ProductManage],
         [Role.Staff] = [Permission.OrganizationView, Permission.ProductView],
     };

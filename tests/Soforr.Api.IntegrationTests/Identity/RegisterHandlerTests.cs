@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Soforr.Api.IntegrationTests.Postgres;
+using Soforr.Application.Audit;
 using Soforr.Application.Common;
 using Soforr.Application.Identity;
 using Soforr.Application.Identity.Register;
+using Soforr.Domain.Audit;
 using Soforr.Domain.Identity;
 using Soforr.Domain.Organizations;
 using Soforr.Infrastructure.Identity;
@@ -17,6 +19,13 @@ public sealed class RegisterHandlerTests(PostgresDatabaseFixture database) : ICl
     private sealed class FixedClock : IClock
     {
         public DateTimeOffset UtcNow { get; } = new(2026, 6, 1, 10, 0, 0, TimeSpan.Zero);
+    }
+
+    /// <summary>Adds the event to the unit of work like the real log, so the test can see whether it was saved with the registration.</summary>
+    private sealed class UnitOfWorkAuditLog(AppDbContext db) : IAuditLog
+    {
+        public void Record(AuditEntry entry) =>
+            db.Set<AuditEvent>().Add(AuditEvent.Record(Guid.CreateVersion7(), entry.OrganizationId, entry.ActorId, entry.Action, entry.EntityType, entry.EntityId, entry.Description, null, new DateTimeOffset(2026, 6, 1, 10, 0, 0, TimeSpan.Zero)));
     }
 
     private sealed class SequentialIds : IIdGenerator
@@ -72,7 +81,8 @@ public sealed class RegisterHandlerTests(PostgresDatabaseFixture database) : ICl
         await using var db = database.CreateContext();
         await using var verify = database.CreateContext();
         var organizationsBefore = await verify.Set<Organization>().IgnoreQueryFilters().CountAsync();
-        var handler = new RegisterHandler(db, new UncheckedAccounts(db, email), new FixedClock(), new SequentialIds());
+        var auditBefore = await verify.Set<AuditEvent>().IgnoreQueryFilters().CountAsync();
+        var handler = new RegisterHandler(db, new UncheckedAccounts(db, email), new FixedClock(), new SequentialIds(), new UnitOfWorkAuditLog(db));
 
         var result = await handler.HandleAsync(new RegisterCommand(email, "correct horse battery staple", "Soforr", "GMD", "UTC"), CancellationToken.None);
 
@@ -82,5 +92,8 @@ public sealed class RegisterHandlerTests(PostgresDatabaseFixture database) : ICl
         await using var after = database.CreateContext();
         Assert.Equal(organizationsBefore, await after.Set<Organization>().IgnoreQueryFilters().CountAsync());
         Assert.Equal(1, await after.Set<ApplicationUser>().CountAsync(user => user.Email == email));
+
+        // The audit events were part of the failed unit of work, so none of them was stored.
+        Assert.Equal(auditBefore, await after.Set<AuditEvent>().IgnoreQueryFilters().CountAsync());
     }
 }
