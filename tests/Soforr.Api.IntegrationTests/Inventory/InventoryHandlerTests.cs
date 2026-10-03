@@ -349,6 +349,56 @@ public sealed class InventoryHandlerTests(PostgresDatabaseFixture database) : IC
         Assert.DoesNotContain(product, await InventoryPersistenceTests.ReconciliationMismatchesAsync(database.ConnectionString));
     }
 
+    [Fact]
+    public async Task AfterAnIdempotencyRaceIsRecognized_TheFailedAttemptLeavesNothingTracked_SoALaterSaveInTheSameScopeStoresNothingStale()
+    {
+        var organization = await NewOrganizationAsync();
+        var product = await NewProductAsync(organization);
+        var id = Guid.CreateVersion7();
+
+        // A concurrent request records the same adjustment just before this request's save, so this request's save is
+        // refused by the unique idempotency index (the DbUpdateException path), not by the check that ran before it.
+        var competitor = new BeforeSaveInterceptor(async () => await AdjustAsync(organization, Adjust(product, 5m, "Concurrent request", id)));
+        var (db, user, handler) = StartAdjust(organization, interceptor: competitor);
+
+        await using (db)
+        {
+            var raced = await handler.HandleAsync(Adjust(product, 5m, "This request", id), CancellationToken.None);
+
+            Assert.True(raced.IsSuccess, raced.Error?.Code);
+            Assert.True(raced.Value.AlreadyRecorded);
+            Assert.Equal(5m, raced.Value.NewQuantity);
+
+            // The failed attempt left nothing behind in this unit of work: no staged movement, stock level or audit event.
+            Assert.DoesNotContain(db.ChangeTracker.Entries<InventoryMovement>(), entry => entry.State != EntityState.Unchanged);
+            Assert.DoesNotContain(db.ChangeTracker.Entries<StockLevel>(), entry => entry.State != EntityState.Unchanged);
+            Assert.DoesNotContain(db.ChangeTracker.Entries<AuditEvent>(), entry => entry.State != EntityState.Unchanged);
+            Assert.False(db.ChangeTracker.HasChanges());
+
+            // A later save in the same scope has nothing stale to store.
+            Assert.Equal(0, await db.SaveChangesAsync());
+
+            // And a legitimate operation in the same scope still works and is the only thing stored.
+            var next = await handler.HandleAsync(Adjust(product, 2m, "A real second adjustment"), CancellationToken.None);
+            Assert.True(next.IsSuccess, next.Error?.Code);
+            Assert.False(next.Value.AlreadyRecorded);
+            Assert.Equal(7m, next.Value.NewQuantity);
+            Assert.Equal(0, await db.SaveChangesAsync());
+        }
+
+        var movements = await MovementsAsync(organization, product);
+        Assert.Equal(2, movements.Length);
+        Assert.Equal([5m, 2m], movements.Select(movement => movement.QuantityDelta.Value).ToArray());
+        Assert.Equal(2, (await AuditAsync(organization, "inventory.stock_adjusted")).Length);
+        Assert.Equal(7m, await LevelAsync(organization, product));
+        await using (var verify = database.CreateContext(organization))
+        {
+            Assert.Equal(1, await verify.Set<StockLevel>().CountAsync(level => level.ProductId == product));
+        }
+
+        Assert.DoesNotContain(product, await InventoryPersistenceTests.ReconciliationMismatchesAsync(database.ConnectionString));
+    }
+
     [Theory]
     [InlineData(Role.Owner, true)]
     [InlineData(Role.Manager, true)]
