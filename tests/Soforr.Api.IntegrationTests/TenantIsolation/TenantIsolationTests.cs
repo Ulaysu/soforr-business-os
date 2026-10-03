@@ -7,13 +7,14 @@ using Soforr.Domain.Common;
 using Soforr.Domain.Identity;
 using Soforr.Domain.Inventory;
 using Soforr.Domain.Organizations;
+using Soforr.Domain.Purchasing;
 using Soforr.Infrastructure.Persistence;
 using static Soforr.Api.IntegrationTests.Identity.AuthClient;
 
 namespace Soforr.Api.IntegrationTests.TenantIsolation;
 
 /// <summary>
-/// Cross-tenant tests for every tenant-owned entity that exists (organizations, memberships, products, stock levels, movements and audit events), through the data
+/// Cross-tenant tests for every tenant-owned entity that exists (organizations, memberships, products, stock levels, movements, audit events, suppliers and purchase orders), through the data
 /// layer and through the real application (ADR 0002): a user of one organization cannot read, change, delete or
 /// create another organization's data, and an unknown or foreign id behaves exactly like a missing one. When a
 /// module adds a tenant-owned entity, it adds its cases here (the convention test fails until it has a filter).
@@ -332,6 +333,100 @@ public sealed class TenantIsolationTests(PostgresDatabaseFixture database) : ICl
 
         await using var asB = database.CreateContext(tenants.OrganizationB);
         Assert.DoesNotContain("tenant.injected", await asB.Set<AuditEvent>().Select(e => e.Action).ToArrayAsync());
+    }
+
+    // ---- suppliers and purchase orders
+
+    private async Task<(Guid SupplierA, Guid SupplierB, Guid OrderA, Guid OrderB, Guid LineB)> SeedPurchasingAsync(TwoTenants tenants)
+    {
+        var ids = new List<(Guid Supplier, Guid Order, Guid Line)>();
+        foreach (var organization in new[] { tenants.OrganizationA, tenants.OrganizationB })
+        {
+            var product = NewProduct(organization, "PO-SKU");
+            var supplier = Supplier.Create(Guid.CreateVersion7(), organization, "Supplier", null, DateTimeOffset.UtcNow);
+            var order = PurchaseOrder.CreateDraft(Guid.CreateVersion7(), organization, supplier.Id, Currency.Create("GMD"), null, DateTimeOffset.UtcNow);
+            var line = order.AddLine(Guid.CreateVersion7(), product.Id, product.Sku, product.Name, product.UnitOfMeasure, Quantity.Create(2m), Money.Create(5m, Currency.Create("GMD")), DateTimeOffset.UtcNow);
+            await using var db = database.CreateContext(organization);
+            db.Set<Product>().Add(product);
+            db.Set<Supplier>().Add(supplier);
+            await db.SaveChangesAsync();
+            db.Set<PurchaseOrder>().Add(order);
+            await db.SaveChangesAsync();
+            ids.Add((supplier.Id, order.Id, line.Id));
+        }
+
+        return (ids[0].Supplier, ids[1].Supplier, ids[0].Order, ids[1].Order, ids[1].Line);
+    }
+
+    [Fact]
+    public async Task SuppliersOrdersAndLines_AreReadOnlyWithinTheCurrentOrganization()
+    {
+        using var tenants = await TwoTenants.CreateAsync(database);
+        var (supplierA, supplierB, orderA, orderB, lineB) = await SeedPurchasingAsync(tenants);
+        await using var asA = database.CreateContext(tenants.OrganizationA);
+        await using var nobody = database.CreateContext();
+
+        Assert.Equal([supplierA], await asA.Set<Supplier>().Select(s => s.Id).ToArrayAsync());
+        Assert.Equal([orderA], await asA.Set<PurchaseOrder>().Select(o => o.Id).ToArrayAsync());
+        Assert.Null(await asA.Set<Supplier>().SingleOrDefaultAsync(s => s.Id == supplierB));
+        Assert.Null(await asA.Set<PurchaseOrder>().FindAsync(orderB));
+        Assert.False(await asA.Set<PurchaseOrderLine>().AnyAsync(l => l.Id == lineB));
+        Assert.Equal(0, await nobody.Set<Supplier>().CountAsync());
+        Assert.Equal(0, await nobody.Set<PurchaseOrder>().CountAsync());
+        Assert.Equal(0, await nobody.Set<PurchaseOrderLine>().CountAsync());
+    }
+
+    [Fact]
+    public async Task ChangingOrDeletingAnotherOrganizationsSupplierOrOrder_IsRefused_AndChangesNothing()
+    {
+        using var tenants = await TwoTenants.CreateAsync(database);
+        var (_, supplierB, _, orderB, _) = await SeedPurchasingAsync(tenants);
+
+        await using (var changeSupplier = database.CreateContext(tenants.OrganizationA))
+        {
+            var theirs = await changeSupplier.Set<Supplier>().IgnoreQueryFilters().SingleAsync(s => s.Id == supplierB);
+            theirs.Deactivate(DateTimeOffset.UtcNow);
+            await Assert.ThrowsAsync<TenantIsolationException>(() => changeSupplier.SaveChangesAsync());
+        }
+
+        await using (var changeOrder = database.CreateContext(tenants.OrganizationA))
+        {
+            var theirs = await changeOrder.Set<PurchaseOrder>().IgnoreQueryFilters().Include(o => o.Lines).SingleAsync(o => o.Id == orderB);
+            theirs.Place(DateTimeOffset.UtcNow);
+            await Assert.ThrowsAsync<TenantIsolationException>(() => changeOrder.SaveChangesAsync());
+        }
+
+        await using (var delete = database.CreateContext(tenants.OrganizationA))
+        {
+            delete.Set<PurchaseOrder>().Remove(await delete.Set<PurchaseOrder>().IgnoreQueryFilters().SingleAsync(o => o.Id == orderB));
+            await Assert.ThrowsAsync<TenantIsolationException>(() => delete.SaveChangesAsync());
+        }
+
+        await using var asB = database.CreateContext(tenants.OrganizationB);
+        Assert.True((await asB.Set<Supplier>().SingleAsync(s => s.Id == supplierB)).IsActive);
+        Assert.Equal(PurchaseOrderStatus.Draft, (await asB.Set<PurchaseOrder>().SingleAsync(o => o.Id == orderB)).Status);
+    }
+
+    [Fact]
+    public async Task CreatingASupplierOrAnOrderInAnotherOrganization_IsRefused()
+    {
+        using var tenants = await TwoTenants.CreateAsync(database);
+        var currency = Currency.Create("GMD");
+        await using (var asA = database.CreateContext(tenants.OrganizationA))
+        {
+            asA.Set<Supplier>().Add(Supplier.Create(Guid.CreateVersion7(), tenants.OrganizationB, "Injected", null, DateTimeOffset.UtcNow));
+            await Assert.ThrowsAsync<TenantIsolationException>(() => asA.SaveChangesAsync());
+        }
+
+        await using (var asA = database.CreateContext(tenants.OrganizationA))
+        {
+            asA.Set<PurchaseOrder>().Add(PurchaseOrder.CreateDraft(Guid.CreateVersion7(), tenants.OrganizationB, Guid.CreateVersion7(), currency, null, DateTimeOffset.UtcNow));
+            await Assert.ThrowsAsync<TenantIsolationException>(() => asA.SaveChangesAsync());
+        }
+
+        await using var asB = database.CreateContext(tenants.OrganizationB);
+        Assert.Equal(0, await asB.Set<Supplier>().CountAsync());
+        Assert.Equal(0, await asB.Set<PurchaseOrder>().CountAsync());
     }
 
     // ---- through the real application

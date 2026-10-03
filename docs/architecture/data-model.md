@@ -89,6 +89,15 @@ Organization ─┬─ Membership ── User
 - Both tables have a composite foreign key `(ProductId, OrganizationId)` to `Products(Id, OrganizationId)` (`ON DELETE RESTRICT`), so they cannot belong to a different organization than the product. The product table gained the unique key `AK_Products_Id_OrganizationId` for it.
 - Both have the tenant query filter and are covered by the write guard. Reconciliation: `StockLevel.Quantity = SUM(QuantityDelta)` per product, checked by the query in the tests.
 
+## Purchasing Tables (PURCHASING-001)
+
+- `Suppliers(Id uuid PK, OrganizationId FK, Name varchar(200), ContactDetails varchar(500) NULL, IsActive, CreatedAtUtc, UpdatedAtUtc)`; alternate key `AK_Suppliers_Id_OrganizationId`; index `(OrganizationId, Name)`. Names are not unique.
+- `PurchaseOrders(Id uuid PK, OrganizationId, SupplierId, Currency char(3), Reference varchar(100) NULL, Status varchar(20), CreatedAtUtc, UpdatedAtUtc, PlacedAtUtc NULL, ClosedAtUtc NULL)` with the `xmin` concurrency token (a system column, not created by the migration, see ADR 0004) so two people changing the same order cannot both save. Alternate key `AK_PurchaseOrders_Id_OrganizationId`; composite foreign key `(SupplierId, OrganizationId)` to `Suppliers`; indexes `(OrganizationId, Status, CreatedAtUtc)` and `(OrganizationId, SupplierId)`.
+- `PurchaseOrderLines(Id uuid PK, OrganizationId, PurchaseOrderId, ProductId, SkuSnapshot, NameSnapshot, UnitOfMeasureSnapshot, OrderedQuantity numeric(18,4), ReceivedQuantity numeric(18,4), UnitCost numeric(19,4), UnitCostCurrency char(3))`. Composite foreign keys `(PurchaseOrderId, OrganizationId)` to the order (`ON DELETE CASCADE`: a line belongs to its order, and removing a line from a draft deletes its row) and `(ProductId, OrganizationId)` to `Products` (`RESTRICT`). Unique index `(PurchaseOrderId, ProductId)`.
+- CHECK constraints: known status; currency format; reference and contact details never blank; a draft has no placed time and every placed, partially received or received order has one; an order has a closed time exactly when it is received or cancelled; ordered quantity positive; received quantity between zero and ordered; unit cost not negative; snapshots not blank.
+- **Snapshots:** the line copies the product's SKU, name and unit of measure, and the unit cost, when it is added. Later edits to the product never change an existing line.
+- All three tables have the tenant query filter and are covered by the write guard. Composite foreign keys make it impossible for an order, a line, a supplier and a product to belong to different organizations.
+
 ## Multi-Tenancy Enforcement
 
 - EF Core global query filter on `OrganizationId` for tenant-owned entities (`Organization` by its id, `Membership` today), sourced from the authenticated context, never from request bodies. With no organization the filter matches nothing. A write to another organization's row is refused on save. A convention test fails when a tenant-owned entity has no filter.

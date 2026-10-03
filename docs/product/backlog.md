@@ -304,7 +304,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 - **Testing:** integration tests with real PostgreSQL, including a concurrency test and a reconciliation test.
 
 ### INVENTORY-003 — Inventory API (adjustments and queries)
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** `AdjustInventory` (reason and note required, audited), `GetStockLevel`, `ListLowStock`, `GetMovementHistory`. Low stock means an active product with reorder settings whose stock is at or below its reorder point (defined once, shared by the stock level and the list); it is the data behind INTEL-002.
 - **Acceptance criteria:** Every adjustment yields a movement and an audit event; permissions and tenant isolation enforced.
 - **Dependencies:** INVENTORY-002, IDENTITY-002, AUDIT-001
@@ -324,7 +324,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 # EPIC 05 — Purchasing
 
 ### PURCHASING-001 — Purchasing domain and persistence
-- **Status:** Ready · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** `Supplier`, `PurchaseOrder` with lines and state machine (draft → placed → partially received → received/cancelled); EF mapping and migration; totals from deterministic code. **Each line records the product's name and SKU and the unit cost at the time** (a snapshot, not a reference to the product's current values), because purchasing cost intelligence ([INTEL-006](#intel-006--purchasing-cost-intelligence)) and margins read them.
 - **Acceptance criteria:** Invalid state transitions rejected in Domain; totals correct; tenant-scoped.
 - **Dependencies:** CATALOG-002, INVENTORY-001 (persistence portions: IDENTITY-003)
