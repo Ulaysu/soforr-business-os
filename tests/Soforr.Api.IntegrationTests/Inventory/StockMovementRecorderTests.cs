@@ -306,6 +306,29 @@ public sealed class StockMovementRecorderTests(PostgresDatabaseFixture database)
         await AssertReconciledAsync(product);
     }
 
+    [Fact]
+    public async Task WhenTheRaceIsRecognizedAsAlreadyRecorded_NothingOfTheFailedAttemptStaysTracked()
+    {
+        var organization = await NewOrganizationAsync();
+        var product = await NewProductAsync(organization);
+        var source = Guid.CreateVersion7();
+        var competitor = new BeforeSaveInterceptor(async () => await RecordAsync(organization, Receive(product, 5m, source)));
+        var (db, recorder) = Start(organization, competitor);
+
+        await using (db)
+        {
+            var result = await recorder.RecordAsync(Receive(product, 5m, source), CancellationToken.None);
+
+            Assert.True(result.Value.AlreadyRecorded);
+            Assert.False(db.ChangeTracker.HasChanges());
+            Assert.DoesNotContain(db.ChangeTracker.Entries(), entry => entry.State == EntityState.Added);
+            Assert.Equal(0, await db.SaveChangesAsync());
+        }
+
+        Assert.Equal(1, await MovementCountAsync(organization, product));
+        Assert.Equal(5m, await LevelAsync(organization, product));
+    }
+
     // ---- optimistic concurrency and retry (ADR 0004)
 
     [Fact]

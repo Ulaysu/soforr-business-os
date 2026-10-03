@@ -39,6 +39,15 @@ public class AuthorizationTests
         { Role.Owner, Permission.AuditView, true },
         { Role.Manager, Permission.AuditView, false },
         { Role.Staff, Permission.AuditView, false },
+        { Role.Owner, Permission.InventoryView, true },
+        { Role.Owner, Permission.InventoryViewHistory, true },
+        { Role.Owner, Permission.InventoryAdjust, true },
+        { Role.Manager, Permission.InventoryView, true },
+        { Role.Manager, Permission.InventoryViewHistory, true },
+        { Role.Manager, Permission.InventoryAdjust, true },
+        { Role.Staff, Permission.InventoryView, true },
+        { Role.Staff, Permission.InventoryViewHistory, false },
+        { Role.Staff, Permission.InventoryAdjust, false },
     };
 
     [Theory]

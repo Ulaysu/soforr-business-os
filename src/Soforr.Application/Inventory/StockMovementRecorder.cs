@@ -117,8 +117,11 @@ public sealed class StockMovementRecorder(IAppDbContext db, ICurrentUser user, I
     /// Records one movement and saves, retrying a bounded number of times when another writer changed the same stock
     /// at the same time. Every attempt starts from a clean unit of work and re-validates, so stock that has meanwhile
     /// run out is reported as the business error it is, not as a conflict.
+    /// <paramref name="onStaged"/> runs after a new movement was staged and before the save, on every attempt, so the
+    /// caller can add what must commit with it (an audit event) to the same unit of work. It does not run when the
+    /// movement was already recorded.
     /// </summary>
-    public Task<Result<MovementResult>> RecordAsync(RecordMovementCommand command, CancellationToken cancellationToken)
+    public Task<Result<MovementResult>> RecordAsync(RecordMovementCommand command, CancellationToken cancellationToken, Action<StagedMovement>? onStaged = null)
     {
         ArgumentNullException.ThrowIfNull(command);
 
@@ -137,6 +140,8 @@ public sealed class StockMovementRecorder(IAppDbContext db, ICurrentUser user, I
                     return Result.Success(new MovementResult(value.MovementId, value.NewQuantity, AlreadyRecorded: true));
                 }
 
+                onStaged?.Invoke(value);
+
                 try
                 {
                     await db.SaveChangesAsync(cancellationToken);
@@ -147,6 +152,12 @@ public sealed class StockMovementRecorder(IAppDbContext db, ICurrentUser user, I
                     // this same movement (the idempotency index refused ours) or opened the product's first stock level.
                     if (await FindExistingAsync(command, cancellationToken) is { } recorded)
                     {
+                        // The movement was recorded by the concurrent request, so this attempt's staged movement, stock
+                        // change and whatever onStaged added (an audit event) must not stay tracked: a later save in
+                        // the same unit of work would otherwise try to store them. Only this recognized case is
+                        // discarded here; a retry starts from a cleared tracker anyway, and any other failure is rethrown.
+                        db.ClearChangeTracker();
+
                         var current = await db.Set<StockLevel>().AsNoTracking().SingleOrDefaultAsync(level => level.ProductId == command.ProductId, cancellationToken);
                         return Result.Success(new MovementResult(recorded.Id, current?.Quantity.Value ?? 0m, AlreadyRecorded: true));
                     }
