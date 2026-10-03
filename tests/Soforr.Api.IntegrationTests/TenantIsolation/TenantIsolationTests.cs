@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Soforr.Api.IntegrationTests.Postgres;
+using Soforr.Domain.Audit;
 using Soforr.Domain.Catalog;
 using Soforr.Domain.Common;
 using Soforr.Domain.Identity;
@@ -12,7 +13,7 @@ using static Soforr.Api.IntegrationTests.Identity.AuthClient;
 namespace Soforr.Api.IntegrationTests.TenantIsolation;
 
 /// <summary>
-/// Cross-tenant tests for every tenant-owned entity that exists (organizations, memberships, products, stock levels and movements), through the data
+/// Cross-tenant tests for every tenant-owned entity that exists (organizations, memberships, products, stock levels, movements and audit events), through the data
 /// layer and through the real application (ADR 0002): a user of one organization cannot read, change, delete or
 /// create another organization's data, and an unknown or foreign id behaves exactly like a missing one. When a
 /// module adds a tenant-owned entity, it adds its cases here (the convention test fails until it has a filter).
@@ -287,6 +288,50 @@ public sealed class TenantIsolationTests(PostgresDatabaseFixture database) : ICl
 
         await using var asB = database.CreateContext(tenants.OrganizationB);
         Assert.Equal(1, await asB.Set<InventoryMovement>().CountAsync());
+    }
+
+    // ---- audit events
+
+    private static AuditEvent NewAuditEvent(Guid organizationId, string action) =>
+        AuditEvent.Record(Guid.CreateVersion7(), organizationId, Guid.CreateVersion7(), action, null, null, null, null, DateTimeOffset.UtcNow);
+
+    [Fact]
+    public async Task AuditEvents_AreReadOnlyWithinTheCurrentOrganization()
+    {
+        using var tenants = await TwoTenants.CreateAsync(database);
+        await using (var seedA = database.CreateContext(tenants.OrganizationA))
+        {
+            seedA.Set<AuditEvent>().Add(NewAuditEvent(tenants.OrganizationA, "tenant.a_event"));
+            await seedA.SaveChangesAsync();
+        }
+
+        await using (var seedB = database.CreateContext(tenants.OrganizationB))
+        {
+            seedB.Set<AuditEvent>().Add(NewAuditEvent(tenants.OrganizationB, "tenant.b_event"));
+            await seedB.SaveChangesAsync();
+        }
+
+        await using var asA = database.CreateContext(tenants.OrganizationA);
+        await using var nobody = database.CreateContext();
+
+        var actionsA = await asA.Set<AuditEvent>().Select(e => e.Action).ToArrayAsync();
+        Assert.Contains("tenant.a_event", actionsA);
+        Assert.DoesNotContain("tenant.b_event", actionsA);
+        Assert.False(await asA.Set<AuditEvent>().AnyAsync(e => e.OrganizationId == tenants.OrganizationB));
+        Assert.Equal(0, await nobody.Set<AuditEvent>().CountAsync());
+    }
+
+    [Fact]
+    public async Task CreatingAnAuditEventInAnotherOrganization_IsRefused()
+    {
+        using var tenants = await TwoTenants.CreateAsync(database);
+        await using var asA = database.CreateContext(tenants.OrganizationA);
+        asA.Set<AuditEvent>().Add(NewAuditEvent(tenants.OrganizationB, "tenant.injected"));
+
+        await Assert.ThrowsAsync<TenantIsolationException>(() => asA.SaveChangesAsync());
+
+        await using var asB = database.CreateContext(tenants.OrganizationB);
+        Assert.DoesNotContain("tenant.injected", await asB.Set<AuditEvent>().Select(e => e.Action).ToArrayAsync());
     }
 
     // ---- through the real application

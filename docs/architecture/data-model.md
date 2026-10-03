@@ -53,6 +53,15 @@ Organization ─┬─ Membership ── User
 - `OrganizationId` is a foreign key (`ON DELETE RESTRICT`), and the table has the tenant query filter ([ADR 0002](../decisions/0002-authentication.md)).
 - No concurrency token yet: no requirement has asked for one on products.
 
+## Audit Table (AUDIT-001)
+
+`AuditEvents(Id uuid PK, OrganizationId uuid FK, ActorId uuid NULL, Action varchar(100), EntityType varchar(50) NULL, EntityId uuid NULL, Description varchar(500) NULL, CorrelationId varchar(64) NULL, OccurredAtUtc timestamptz)`. Identifiers are generated in application code.
+
+- CHECK constraints: the action is a dotted lower-case code (`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$`); the entity type and id are both present or both absent; the entity type and description are never blank.
+- Indexes: `(OrganizationId, OccurredAtUtc, Id)` for the trail, newest first; `(OrganizationId, EntityType, EntityId)` for the trail of one record.
+- **Append-only in the database:** a `BEFORE UPDATE OR DELETE` row trigger and a `BEFORE TRUNCATE` statement trigger raise `restrict_violation` (SQLSTATE 23001). Dropping the table (a migration rollback) is still possible; changing or removing a recorded event is not.
+- `OrganizationId` is a restricting foreign key and the table has the tenant query filter and write guard. No foreign key from `ActorId` to the users table (an event outlives any user).
+
 ## Inventory Integrity Model
 
 - `InventoryMovement(Id, OrganizationId, ProductId, QuantityDelta, Reason, SourceType, SourceId, ActorId, OccurredAtUtc)`.

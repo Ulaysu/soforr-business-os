@@ -25,6 +25,7 @@ Fixed roles, granted in code (`RolePermissions`). Anything not granted is denied
 | `ProductView` | GetProduct, SearchProducts | yes | yes | yes |
 | `ProductViewCost` | the cost price in a product (it is `null` without it) | yes | yes | no |
 | `ProductManage` | CreateProduct, UpdateProduct, DeactivateProduct | yes | yes | no |
+| `AuditView` | ListAuditEvents (the organization's audit trail) | yes | no | no |
 
 Outcomes: not signed in → 401; signed in without a membership or without the permission → 403; another organization's resource → 404 (after the permission check). Registration, sign-in and sign-out are the only operations that need no permission. Planned permissions (`Products.Manage`, `Inventory.Adjust`, `Purchasing.Receive`, `Sales.Create`, `Sales.Void`, `Members.Manage`) are added with their features.
 
@@ -63,7 +64,8 @@ Outcomes: not signed in → 401; signed in without a membership or without the p
 
 ## Auditability
 - Append-only audit events for authentication events, permission changes, inventory adjustments, purchase approvals, reorder approvals, voids, and destructive operations: who, what, when, organization, correlation ID.
-- Audit records are not editable through the application.
+- Audit records are not editable through the application, and not through the database either: a trigger refuses `UPDATE`, `DELETE` and `TRUNCATE` on the table even from raw SQL ([modules.md](../architecture/modules.md#audit)). Only the Owner may read the trail (`AuditView`).
+- **Recorded today (AUDIT-001):** registration, the Owner role assignment, successful sign-in, sign-out, and the moment an account is locked out. A refused sign-in attempt is not recorded (it is logged), so an anonymous caller cannot make the system write unlimited rows; an unknown address records nothing (there is no organization to attach it to). Events hold identifiers, never an e-mail address or a password. Later items record their own actions (inventory adjustments, purchase receipts, role changes, ...) through the same `IAuditLog`.
 
 ## AI Security
 - See [ai-architecture.md](../architecture/ai-architecture.md): tools only, read-only, tenant-scoped, no direct DB access, untrusted-input handling (prompt injection), no secrets or excess personal data sent to providers, cost caps, audited tool calls.

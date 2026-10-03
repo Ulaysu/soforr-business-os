@@ -215,7 +215,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 - **Testing:** cross-tenant integration tests (mandatory), convention test for `OrganizationId` on tenant-owned entities.
 
 ### AUDIT-001 — Audit events foundation
-- **Status:** Ready · **Priority:** SELLABLE-P0 · **Agent:** Backend / Security
+- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend / Security
 - **Description:** Append-only `AuditEvent` (who, what, when, organization, correlation ID, entity reference) and an Application-level `IAuditLog`; record authentication and role changes as first users.
 - **Acceptance criteria:** No update/delete path via the application; events emitted for sign-in, role assignment; queryable by owner role.
 - **Dependencies:** IDENTITY-003

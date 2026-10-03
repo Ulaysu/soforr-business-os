@@ -24,4 +24,7 @@ public enum Permission
 
     /// <summary>Create, change and deactivate products.</summary>
     ProductManage,
+
+    /// <summary>Read the organization's audit trail (who did what and when).</summary>
+    AuditView,
 }

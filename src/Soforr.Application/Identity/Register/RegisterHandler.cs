@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Soforr.Application.Audit;
 using Soforr.Application.Common;
 using Soforr.Application.Persistence;
 using Soforr.Domain.Common;
@@ -14,7 +15,7 @@ public sealed record RegisterCommand(string? Email, string? Password, string? Or
 /// Creates the user, the organization and the Owner membership in one transaction (ADR 0002, ADR 0003): either all
 /// three exist afterwards or none does. The first user of an organization is its Owner.
 /// </summary>
-public sealed class RegisterHandler(IAppDbContext db, IUserAccounts accounts, IClock clock, IIdGenerator ids)
+public sealed class RegisterHandler(IAppDbContext db, IUserAccounts accounts, IClock clock, IIdGenerator ids, IAuditLog audit)
     : ICommandHandler<RegisterCommand, AccountDto>
 {
     public async Task<Result<AccountDto>> HandleAsync(RegisterCommand command, CancellationToken cancellationToken)
@@ -47,6 +48,10 @@ public sealed class RegisterHandler(IAppDbContext db, IUserAccounts accounts, IC
 
         db.Set<Organization>().Add(organization.Value);
         db.Set<Membership>().Add(membership.Value);
+
+        // Audited in the same transaction: the registration and its record exist together or not at all.
+        audit.Record(new AuditEntry(organizationId, AuditActions.UserRegistered, userId, "User", userId, "Account registered and organization created."));
+        audit.Record(new AuditEntry(organizationId, AuditActions.RoleAssigned, userId, "Membership", membership.Value.Id, "Role Owner assigned on registration."));
 
         try
         {

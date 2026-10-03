@@ -16,6 +16,16 @@ The model is deliberately minimal; entities are named for orientation and refine
 - **Invariants:** Email unique; passwords never stored in plain text; one role per membership; an organization always keeps at least one Owner.
 - **Depends on:** Organizations.
 
+## Audit
+- **Class:** SELLABLE-P0.
+- **Responsibility:** An append-only record of business-sensitive actions: who did what, to which record, when, in which request.
+- **Concepts:** `AuditEvent` (organization, optional actor, a stable dotted action code such as `membership.role_assigned`, optional entity type and id, optional short description, correlation id, UTC time). The action codes are constants in `AuditActions`; a code never changes meaning once released.
+- **Writing:** `IAuditLog.Record(entry)` adds the event to the current unit of work **without saving**, so it commits or fails together with the command that caused it (ADR 0003). The log supplies the id, the time and the request's correlation id; the caller supplies the organization, the actor and the facts. There is no way to read, change or delete an event through it.
+- **Reading:** `ListAuditEvents` (Owner only, permission `AuditView`; newest first; optional exact filters by action, entity, actor and time range; page size 1 to 100) and `GET /api/v1/audit-events`. There is no endpoint that creates, changes or deletes an event.
+- **Invariants:** Append-only at three levels: the Domain entity has no mutating members, the context refuses to save a changed or deleted event (`AppendOnlyViolationException`), and a database trigger refuses `UPDATE`, `DELETE` and `TRUNCATE` on `AuditEvents` from any source. Tenant-scoped (query filter and write guard). No personal data in an event (no e-mail address, no password); people and records are referred to by id. An event outlives its user: there is deliberately no foreign key from the actor to the user table.
+- **Recorded today:** `user.registered`, `membership.role_assigned` (at registration, the Owner role), `auth.sign_in_succeeded`, `auth.account_locked` (once, when the lock starts), `auth.signed_out`. Later items add theirs (inventory adjustments, receipts, sales and voids, role changes).
+- **Depends on:** Organizations.
+
 ## Organizations
 - **Responsibility:** Tenants and their settings.
 - **Concepts:** Organization (name, currency, timezone).

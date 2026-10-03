@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using Soforr.Application.Audit;
 using Soforr.Application.Common;
 using Soforr.Application.Persistence;
 using Soforr.Infrastructure.Common;
@@ -30,6 +32,7 @@ public static class DependencyInjection
             options.UseNpgsql(provider.GetRequiredService<IOptions<ConnectionStringsOptions>>().Value.Database));
         services.AddScoped<IAppDbContext>(provider => provider.GetRequiredService<AppDbContext>());
 
+        services.TryAddScoped<ICorrelationContext, NoCorrelationContext>();
         services.AddIdentityAuthentication(configuration);
 
         services.AddHealthChecks()
