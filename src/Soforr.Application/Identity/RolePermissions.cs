@@ -10,9 +10,9 @@ public static class RolePermissions
 {
     private static readonly Dictionary<Role, HashSet<Permission>> Grants = new()
     {
-        [Role.Owner] = [Permission.OrganizationView, Permission.OrganizationManageSettings, Permission.ProductView, Permission.ProductViewCost, Permission.ProductManage, Permission.AuditView],
-        [Role.Manager] = [Permission.OrganizationView, Permission.ProductView, Permission.ProductViewCost, Permission.ProductManage],
-        [Role.Staff] = [Permission.OrganizationView, Permission.ProductView],
+        [Role.Owner] = [Permission.OrganizationView, Permission.OrganizationManageSettings, Permission.ProductView, Permission.ProductViewCost, Permission.ProductManage, Permission.AuditView, Permission.InventoryView, Permission.InventoryViewHistory, Permission.InventoryAdjust],
+        [Role.Manager] = [Permission.OrganizationView, Permission.ProductView, Permission.ProductViewCost, Permission.ProductManage, Permission.InventoryView, Permission.InventoryViewHistory, Permission.InventoryAdjust],
+        [Role.Staff] = [Permission.OrganizationView, Permission.ProductView, Permission.InventoryView],
     };
 
     public static bool IsGranted(Role role, Permission permission) =>

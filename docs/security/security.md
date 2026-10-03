@@ -26,6 +26,9 @@ Fixed roles, granted in code (`RolePermissions`). Anything not granted is denied
 | `ProductViewCost` | the cost price in a product (it is `null` without it) | yes | yes | no |
 | `ProductManage` | CreateProduct, UpdateProduct, DeactivateProduct | yes | yes | no |
 | `AuditView` | ListAuditEvents (the organization's audit trail) | yes | no | no |
+| `InventoryView` | GetStockLevel, ListLowStock | yes | yes | yes |
+| `InventoryViewHistory` | GetMovementHistory (who changed stock, when and why) | yes | yes | no |
+| `InventoryAdjust` | AdjustInventory | yes | yes | no |
 
 Outcomes: not signed in → 401; signed in without a membership or without the permission → 403; another organization's resource → 404 (after the permission check). Registration, sign-in and sign-out are the only operations that need no permission. Planned permissions (`Products.Manage`, `Inventory.Adjust`, `Purchasing.Receive`, `Sales.Create`, `Sales.Void`, `Members.Manage`) are added with their features.
 

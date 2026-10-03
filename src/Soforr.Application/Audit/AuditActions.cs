@@ -21,4 +21,7 @@ public static class AuditActions
     public const string AccountLocked = "auth.account_locked";
 
     public const string SignedOut = "auth.signed_out";
+
+    /// <summary>Stock was adjusted by hand. The entity is the movement; the description states the change, never the note.</summary>
+    public const string StockAdjusted = "inventory.stock_adjusted";
 }

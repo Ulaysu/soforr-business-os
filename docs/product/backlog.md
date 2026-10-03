@@ -215,7 +215,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 - **Testing:** cross-tenant integration tests (mandatory), convention test for `OrganizationId` on tenant-owned entities.
 
 ### AUDIT-001 — Audit events foundation
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend / Security
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Backend / Security
 - **Description:** Append-only `AuditEvent` (who, what, when, organization, correlation ID, entity reference) and an Application-level `IAuditLog`; record authentication and role changes as first users.
 - **Acceptance criteria:** No update/delete path via the application; events emitted for sign-in, role assignment; queryable by owner role.
 - **Dependencies:** IDENTITY-003
@@ -304,8 +304,8 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 - **Testing:** integration tests with real PostgreSQL, including a concurrency test and a reconciliation test.
 
 ### INVENTORY-003 — Inventory API (adjustments and queries)
-- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend
-- **Description:** `AdjustInventory` (reason and note required, audited), `GetStockLevel`, `ListLowStock`, `GetMovementHistory`.
+- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Description:** `AdjustInventory` (reason and note required, audited), `GetStockLevel`, `ListLowStock`, `GetMovementHistory`. Low stock means an active product with reorder settings whose stock is at or below its reorder point (defined once, shared by the stock level and the list); it is the data behind INTEL-002.
 - **Acceptance criteria:** Every adjustment yields a movement and an audit event; permissions and tenant isolation enforced.
 - **Dependencies:** INVENTORY-002, IDENTITY-002, AUDIT-001
 - **Affected area:** Application, Api

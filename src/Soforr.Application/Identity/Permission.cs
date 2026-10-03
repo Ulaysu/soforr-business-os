@@ -27,4 +27,13 @@ public enum Permission
 
     /// <summary>Read the organization's audit trail (who did what and when).</summary>
     AuditView,
+
+    /// <summary>Read stock levels and the low-stock list.</summary>
+    InventoryView,
+
+    /// <summary>Read the movement history of a product (who changed its stock, when and why).</summary>
+    InventoryViewHistory,
+
+    /// <summary>Adjust stock by hand (count corrections, found or lost stock).</summary>
+    InventoryAdjust,
 }

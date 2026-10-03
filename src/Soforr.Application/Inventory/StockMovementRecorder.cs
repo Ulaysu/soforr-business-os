@@ -117,8 +117,11 @@ public sealed class StockMovementRecorder(IAppDbContext db, ICurrentUser user, I
     /// Records one movement and saves, retrying a bounded number of times when another writer changed the same stock
     /// at the same time. Every attempt starts from a clean unit of work and re-validates, so stock that has meanwhile
     /// run out is reported as the business error it is, not as a conflict.
+    /// <paramref name="onStaged"/> runs after a new movement was staged and before the save, on every attempt, so the
+    /// caller can add what must commit with it (an audit event) to the same unit of work. It does not run when the
+    /// movement was already recorded.
     /// </summary>
-    public Task<Result<MovementResult>> RecordAsync(RecordMovementCommand command, CancellationToken cancellationToken)
+    public Task<Result<MovementResult>> RecordAsync(RecordMovementCommand command, CancellationToken cancellationToken, Action<StagedMovement>? onStaged = null)
     {
         ArgumentNullException.ThrowIfNull(command);
 
@@ -136,6 +139,8 @@ public sealed class StockMovementRecorder(IAppDbContext db, ICurrentUser user, I
                 {
                     return Result.Success(new MovementResult(value.MovementId, value.NewQuantity, AlreadyRecorded: true));
                 }
+
+                onStaged?.Invoke(value);
 
                 try
                 {
