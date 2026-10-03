@@ -44,7 +44,7 @@ public sealed class PurchaseOrder
 
     public Guid SupplierId { get; private set; }
 
-    /// <summary>The currency of every amount on the order (the organization's currency; the handler supplies it).</summary>
+    /// <summary>The currency of every amount on the order (the organization's currency). The Domain only stores it: the Application layer obtains the authoritative currency from the Organization module and passes it in, and the Domain never looks it up.</summary>
     public Currency Currency { get; private set; }
 
     /// <summary>An optional reference the user chooses, for example the supplier's quotation number.</summary>

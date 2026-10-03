@@ -334,7 +334,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 ### PURCHASING-002 — Purchase order and receiving commands
 - **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** CreateSupplier, CreatePurchaseOrder, PlacePurchaseOrder, CancelPurchaseOrder, and **ReceivePurchase**, which writes `PurchaseReceived` inventory movements atomically and idempotently per receipt.
-- **Acceptance criteria:** Receiving increases stock exactly once even if retried; partial receipt supported; failure leaves no partial state; audit event recorded.
+- **Acceptance criteria:** Receiving increases stock exactly once even if retried; partial receipt supported; failure leaves no partial state; audit event recorded. `CreatePurchaseOrder` takes no currency from the client: the handler obtains the organization's currency from `OrganizationCurrency.ResolveAsync` and passes it to the Domain (tests: the order is in the organization's currency; an unresolvable organization creates nothing; a currency in the request body is not honored; an API round trip reads back that currency).
 - **Dependencies:** PURCHASING-001, INVENTORY-002, AUDIT-001
 - **Affected area:** Application, Api
 - **Testing:** atomicity, idempotency, partial receipt, authorization, tenant-isolation tests.

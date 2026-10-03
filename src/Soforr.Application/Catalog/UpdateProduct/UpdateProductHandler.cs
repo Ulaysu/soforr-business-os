@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Soforr.Application.Common;
 using Soforr.Application.Identity;
+using Soforr.Application.Organizations;
 using Soforr.Application.Persistence;
 using Soforr.Domain.Catalog;
 
@@ -36,7 +37,7 @@ public sealed class UpdateProductHandler(IAppDbContext db, IClock clock, ICurren
             return Result.Failure<ProductDto>(ProductErrors.NotFound(command.Id));
         }
 
-        var currency = await ProductDetails.OrganizationCurrencyAsync(db, user.OrganizationId, cancellationToken);
+        var currency = await OrganizationCurrency.ResolveAsync(db, user.OrganizationId, cancellationToken);
         if (currency.IsFailure)
         {
             return Result.Failure<ProductDto>(currency.Error!);
