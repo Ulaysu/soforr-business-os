@@ -10,6 +10,9 @@ namespace Soforr.Api.IntegrationTests.Postgres;
 /// </summary>
 internal static class SharedPostgresContainer
 {
+    /// <summary>Names an administrative connection string to use instead of starting a container.</summary>
+    public const string ExternalServerVariable = "SOFORR_TEST_POSTGRES";
+
     private const string Image = "postgres:17";
 
     private static readonly SemaphoreSlim StartLock = new(1, 1);
@@ -18,6 +21,13 @@ internal static class SharedPostgresContainer
     /// <summary>A connection string to the container's administrative database, used to create and drop databases.</summary>
     public static async Task<string> GetAdministrationConnectionStringAsync()
     {
+        // An explicitly provided server (a throwaway local PostgreSQL where Docker is unavailable) replaces the container.
+        // CI does not set it, so the container remains the default.
+        if (Environment.GetEnvironmentVariable(ExternalServerVariable) is { Length: > 0 } external)
+        {
+            return external;
+        }
+
         await StartLock.WaitAsync();
         try
         {
@@ -33,7 +43,7 @@ internal static class SharedPostgresContainer
                 catch (Exception exception)
                 {
                     throw new InvalidOperationException(
-                        "Could not start the PostgreSQL test container. Integration tests need Docker to be running. " +
+                        "Could not start the PostgreSQL test container. Integration tests need Docker to be running (or a PostgreSQL server named by " + ExternalServerVariable + "). " +
                         "To run only the tests that do not need it: dotnet test --filter \"Category!=Integration\".",
                         exception);
                 }
