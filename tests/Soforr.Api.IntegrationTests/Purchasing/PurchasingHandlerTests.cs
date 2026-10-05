@@ -259,6 +259,79 @@ public sealed class PurchasingHandlerTests(PostgresDatabaseFixture database) : I
     }
 
     [Fact]
+    public async Task ACompetingReceiptWithTheSameIdAndADifferentQuantity_WinsOnce_AndOursIsAConflict()
+    {
+        var organization = await NewOrganizationAsync();
+        var (order, line, product) = await PlacedOrderAsync(organization);
+        var receiptId = Guid.CreateVersion7();
+        var competitor = new OnceBeforeSaveInterceptor(async () =>
+        {
+            var won = await ReceiveAsync(organization, order, line, 4m, receiptId);
+            Assert.True(won.IsSuccess, won.Error?.Code);
+        });
+
+        var result = await ReceiveAsync(organization, order, line, 6m, receiptId, competitor);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("purchase_order.receipt_id_conflict", result.Error!.Code);
+        Assert.Equal(ErrorKind.Conflict, result.Error.Kind);
+        Assert.Equal((4m, 1, 1), await StateAsync(organization, order, product));
+        Assert.Equal(4m, await StockAsync(organization, product));
+        await using var db = database.CreateContext(organization);
+        Assert.Equal(1, await db.Set<PurchaseReceipt>().CountAsync());
+    }
+
+    [Fact]
+    public async Task AReceiptThatFailedToSave_DoesNotReserveItsId_SoTheSameIdCanBeUsedAgain()
+    {
+        var organization = await NewOrganizationAsync();
+        var (order, line, product) = await PlacedOrderAsync(organization);
+        var receiptId = Guid.CreateVersion7();
+        var failing = new OnceBeforeSaveInterceptor(() => throw new InvalidOperationException("simulated failure before the save"));
+        var user = FakeUser.In(organization, Role.Owner);
+        var options = new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(database.ConnectionString).AddInterceptors(failing);
+        await using (var db = new AppDbContext(options.Options, user))
+        {
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                ReceiveHandler(db, user).HandleAsync(new ReceivePurchaseCommand(order, receiptId, [new ReceivePurchaseLine(line, 4m)]), CancellationToken.None));
+        }
+
+        await using (var check = database.CreateContext(organization))
+        {
+            Assert.Equal(0, await check.Set<PurchaseReceipt>().CountAsync());
+        }
+
+        // Even a different quantity is fine: nothing committed under this id.
+        var result = await ReceiveAsync(organization, order, line, 6m, receiptId);
+
+        Assert.True(result.IsSuccess, result.Error?.Code);
+        Assert.False(result.Value.AlreadyRecorded);
+        Assert.Equal((6m, 1, 1), await StateAsync(organization, order, product));
+        Assert.Equal(6m, await StockAsync(organization, product));
+    }
+
+    [Fact]
+    public async Task ASuccessfulReceipt_StoresOneReceiptWithItsLines_InTheSameTransactionAsTheMovement()
+    {
+        var organization = await NewOrganizationAsync();
+        var (order, line, product) = await PlacedOrderAsync(organization);
+        var receiptId = Guid.CreateVersion7();
+
+        var result = await ReceiveAsync(organization, order, line, 4m, receiptId);
+
+        Assert.True(result.IsSuccess, result.Error?.Code);
+        await using var db = database.CreateContext(organization);
+        var stored = await db.Set<PurchaseReceipt>().Include(r => r.Lines).SingleAsync();
+        Assert.Equal(receiptId, stored.Id);
+        Assert.Equal(order, stored.PurchaseOrderId);
+        var storedLine = Assert.Single(stored.Lines);
+        Assert.Equal(line, storedLine.LineId);
+        Assert.Equal(product, storedLine.ProductId);
+        Assert.Equal(4m, storedLine.Quantity.Value);
+        Assert.Equal(receiptId, (await db.Set<InventoryMovement>().SingleAsync(m => m.ProductId == product)).SourceId);
+    }
+
+    [Fact]
     public async Task TheReceiptIdOfAnotherOrganization_IsNotSeen()
     {
         var first = await NewOrganizationAsync();

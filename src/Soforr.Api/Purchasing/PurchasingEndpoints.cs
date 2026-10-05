@@ -143,7 +143,7 @@ public static class PurchasingEndpoints
                     return result.ToHttpResult(receipt => receipt.AlreadyRecorded ? Results.Ok(receipt) : Results.Created($"{BasePath}/orders/{id}", receipt));
                 })
             .WithName("ReceivePurchase")
-            .WithSummary("Records goods received against lines of a placed or partially received order and adds the stock, atomically. Sending the same receiptId again changes nothing and answers 200 with alreadyRecorded true. Receiving more than is outstanding is 422.")
+            .WithSummary("Records goods received against lines of a placed or partially received order and adds the stock, atomically. Sending the same receiptId again with exactly the same order, lines and quantities changes nothing and answers 200 with alreadyRecorded true; the same receiptId with anything different is 409 (purchase_order.receipt_id_conflict). Receiving more than is outstanding is 422.")
             .Produces<ReceiptResultDto>(StatusCodes.Status201Created)
             .Produces<ReceiptResultDto>()
             .ProducesValidationProblem()

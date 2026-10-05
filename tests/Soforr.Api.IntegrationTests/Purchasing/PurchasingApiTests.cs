@@ -418,29 +418,167 @@ public sealed class PurchasingApiTests : IClassFixture<PostgresDatabaseFixture>,
         Assert.Equal(1, await db.Set<AuditEvent>().CountAsync(e => e.Action == "purchasing.goods_received"));
     }
 
+    /// <summary>A placed order for 10 rice and 4 oil, with a first receipt R1 of 5 rice already recorded.</summary>
+    private async Task<(HttpClient Owner, Guid Organization, JsonElement Order, Guid Id, Guid Rice, Guid Oil, Guid ReceiptId)> OrderWithFirstReceiptAsync()
+    {
+        var (owner, organization) = await OwnerAsync();
+        var supplier = await CreateSupplierAsync(owner);
+        var rice = await CreateProductAsync(owner, "Rice");
+        var oil = await CreateProductAsync(owner, "Oil");
+        var order = await PlacedOrderAsync(owner, supplier, (rice, 10m, 2m), (oil, 4m, 5m));
+        var id = order.GetProperty("id").GetGuid();
+        var receiptId = Guid.CreateVersion7();
+        Assert.Equal(HttpStatusCode.Created, (await ReceiveAsync(owner, id, receiptId, (LineOf(order, rice), 5m))).StatusCode);
+        return (owner, organization, order, id, rice, oil, receiptId);
+    }
+
+    private async Task AssertReceiptUnchangedAsync(HttpClient owner, Guid organization, Guid order, Guid rice, Guid oil)
+    {
+        Assert.Equal(5m, await StockAsync(owner, rice));
+        Assert.Equal(0m, await StockAsync(owner, oil));
+        var read = await ReadAsync(await owner.GetAsync(Relative($"/api/v1/purchasing/orders/{order}")));
+        Assert.Equal("PartiallyReceived", read.GetProperty("status").GetString());
+        Assert.Equal(5m, LineElement(read, rice).GetProperty("receivedQuantity").GetDecimal());
+        Assert.Equal(0m, LineElement(read, oil).GetProperty("receivedQuantity").GetDecimal());
+        await using var db = _database.CreateContext(organization);
+        Assert.Equal(1, await db.Set<InventoryMovement>().CountAsync());
+        Assert.Equal(1, await db.Set<Soforr.Domain.Purchasing.PurchaseReceipt>().CountAsync());
+        Assert.Equal(1, await db.Set<AuditEvent>().CountAsync(e => e.Action == "purchasing.goods_received"));
+        Assert.Empty(await InventoryPersistenceTests.ReconciliationMismatchesAsync(_database.ConnectionString));
+    }
+
     [Fact]
-    public async Task AReceiptIdAlreadyUsedOnAnotherOrdersProducts_IsAConflict_AndChangesNothing()
+    public async Task TheSameReceiptIdWithTheSameLineAndQuantity_Returns200_AlreadyRecorded_AndChangesNothing()
+    {
+        var (owner, organization, order, id, rice, oil, receiptId) = await OrderWithFirstReceiptAsync();
+
+        var again = await ReceiveAsync(owner, id, receiptId, (LineOf(order, rice), 5m));
+
+        Assert.Equal(HttpStatusCode.OK, again.StatusCode);
+        Assert.True((await ReadAsync(again)).GetProperty("alreadyRecorded").GetBoolean());
+        await AssertReceiptUnchangedAsync(owner, organization, id, rice, oil);
+    }
+
+    [Fact]
+    public async Task TheSameReceiptIdWithADifferentQuantity_Returns409_AndChangesNothing()
+    {
+        var (owner, organization, order, id, rice, oil, receiptId) = await OrderWithFirstReceiptAsync();
+
+        var response = await ReceiveAsync(owner, id, receiptId, (LineOf(order, rice), 8m));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var problem = await ReadAsync(response);
+        Assert.Equal("purchase_order.receipt_id_conflict", problem.GetProperty("code").GetString());
+        Assert.False(problem.TryGetProperty("alreadyRecorded", out _));
+        await AssertReceiptUnchangedAsync(owner, organization, id, rice, oil);
+    }
+
+    [Fact]
+    public async Task TheSameReceiptIdWithADifferentLine_Returns409_AndChangesNothing()
+    {
+        var (owner, organization, order, id, rice, oil, receiptId) = await OrderWithFirstReceiptAsync();
+
+        var response = await ReceiveAsync(owner, id, receiptId, (LineOf(order, oil), 5m));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("purchase_order.receipt_id_conflict", (await ReadAsync(response)).GetProperty("code").GetString());
+        await AssertReceiptUnchangedAsync(owner, organization, id, rice, oil);
+    }
+
+    [Fact]
+    public async Task TheSameReceiptIdWithAnAdditionalLine_Returns409_AndChangesNothing()
+    {
+        var (owner, organization, order, id, rice, oil, receiptId) = await OrderWithFirstReceiptAsync();
+
+        var response = await ReceiveAsync(owner, id, receiptId, (LineOf(order, rice), 5m), (LineOf(order, oil), 1m));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("purchase_order.receipt_id_conflict", (await ReadAsync(response)).GetProperty("code").GetString());
+        await AssertReceiptUnchangedAsync(owner, organization, id, rice, oil);
+    }
+
+    [Fact]
+    public async Task TheSameReceiptIdWithAMissingLine_Returns409_AndChangesNothing()
+    {
+        var (owner, organization) = await OwnerAsync();
+        var supplier = await CreateSupplierAsync(owner);
+        var rice = await CreateProductAsync(owner, "Rice");
+        var oil = await CreateProductAsync(owner, "Oil");
+        var order = await PlacedOrderAsync(owner, supplier, (rice, 10m, 2m), (oil, 4m, 5m));
+        var id = order.GetProperty("id").GetGuid();
+        var receiptId = Guid.CreateVersion7();
+        Assert.Equal(HttpStatusCode.Created, (await ReceiveAsync(owner, id, receiptId, (LineOf(order, rice), 5m), (LineOf(order, oil), 2m))).StatusCode);
+
+        var response = await ReceiveAsync(owner, id, receiptId, (LineOf(order, rice), 5m));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("purchase_order.receipt_id_conflict", (await ReadAsync(response)).GetProperty("code").GetString());
+        Assert.Equal(5m, await StockAsync(owner, rice));
+        Assert.Equal(2m, await StockAsync(owner, oil));
+        await using var db = _database.CreateContext(organization);
+        Assert.Equal(2, await db.Set<InventoryMovement>().CountAsync());
+    }
+
+    [Fact]
+    public async Task AReceiptIdAlreadyUsedOnAnotherOrder_Returns409_EvenForTheSameProductAndQuantity()
+    {
+        var (owner, organization, order, id, rice, oil, receiptId) = await OrderWithFirstReceiptAsync();
+        var supplier = Guid.Parse(order.GetProperty("supplierId").GetString()!);
+        var other = await PlacedOrderAsync(owner, supplier, (rice, 10m, 2m));
+
+        var response = await ReceiveAsync(owner, other.GetProperty("id").GetGuid(), receiptId, (LineOf(other, rice), 5m));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("purchase_order.receipt_id_conflict", (await ReadAsync(response)).GetProperty("code").GetString());
+        var untouched = await ReadAsync(await owner.GetAsync(Relative($"/api/v1/purchasing/orders/{other.GetProperty("id").GetGuid()}")));
+        Assert.Equal("Placed", untouched.GetProperty("status").GetString());
+        await AssertReceiptUnchangedAsync(owner, organization, id, rice, oil);
+    }
+
+    [Fact]
+    public async Task TheSameReceiptIdInAnotherOrganization_IsAnIndependentReceipt()
+    {
+        var (first, _, _, firstId, firstRice, _, receiptId) = await OrderWithFirstReceiptAsync();
+        var (second, _) = await OwnerAsync();
+        var supplier = await CreateSupplierAsync(second);
+        var rice = await CreateProductAsync(second, "Rice");
+        var order = await PlacedOrderAsync(second, supplier, (rice, 10m, 2m));
+
+        var response = await ReceiveAsync(second, order.GetProperty("id").GetGuid(), receiptId, (LineOf(order, rice), 3m));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.False((await ReadAsync(response)).GetProperty("alreadyRecorded").GetBoolean());
+        Assert.Equal(3m, await StockAsync(second, rice));
+        Assert.Equal(5m, await StockAsync(first, firstRice));
+        var mine = await ReadAsync(await first.GetAsync(Relative($"/api/v1/purchasing/orders/{firstId}")));
+        Assert.Equal(5m, LineElement(mine, firstRice).GetProperty("receivedQuantity").GetDecimal());
+    }
+
+    [Fact]
+    public async Task AReceiptThatWasRefused_DoesNotReserveItsId()
     {
         var (owner, _) = await OwnerAsync();
         var supplier = await CreateSupplierAsync(owner);
-        var first = await CreateProductAsync(owner, "First");
-        var second = await CreateProductAsync(owner, "Second");
-        var orderA = await PlacedOrderAsync(owner, supplier, (first, 5m, 1m));
-        var orderB = await PlacedOrderAsync(owner, supplier, (second, 5m, 1m));
+        var product = await CreateProductAsync(owner);
+        var order = await PlacedOrderAsync(owner, supplier, (product, 10m, 2m));
+        var id = order.GetProperty("id").GetGuid();
         var receiptId = Guid.CreateVersion7();
-        Assert.Equal(HttpStatusCode.Created, (await ReceiveAsync(owner, orderA.GetProperty("id").GetGuid(), receiptId, (LineId(orderA, 0), 2m))).StatusCode);
 
-        var response = await ReceiveAsync(owner, orderB.GetProperty("id").GetGuid(), receiptId, (LineId(orderB, 0), 2m));
+        var refused = await ReceiveAsync(owner, id, receiptId, (LineOf(order, product), 11m));
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
+        Assert.Equal(0m, await StockAsync(owner, product));
 
-        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        Assert.Equal("purchase_order.receipt_id_in_use", (await ReadAsync(response)).GetProperty("code").GetString());
-        Assert.Equal(0m, await StockAsync(owner, second));
+        var retried = await ReceiveAsync(owner, id, receiptId, (LineOf(order, product), 10m));
+
+        Assert.Equal(HttpStatusCode.Created, retried.StatusCode);
+        Assert.False((await ReadAsync(retried)).GetProperty("alreadyRecorded").GetBoolean());
+        Assert.Equal(10m, await StockAsync(owner, product));
     }
 
     [Fact]
     public async Task ManyIdenticalReceiptsAtOnce_RecordExactlyOne()
     {
-        var (owner, _) = await OwnerAsync();
+        var (owner, organization) = await OwnerAsync();
         var supplier = await CreateSupplierAsync(owner);
         var product = await CreateProductAsync(owner);
         var order = await PlacedOrderAsync(owner, supplier, (product, 100m, 2m));
@@ -451,10 +589,22 @@ public sealed class PurchasingApiTests : IClassFixture<PostgresDatabaseFixture>,
 
         var created = responses.Count(r => r.StatusCode == HttpStatusCode.Created);
         var ok = responses.Count(r => r.StatusCode == HttpStatusCode.OK);
-        var conflicts = responses.Count(r => r.StatusCode == HttpStatusCode.Conflict);
+        var conflicts = responses.Where(r => r.StatusCode == HttpStatusCode.Conflict).ToArray();
         Assert.Equal(1, created);
-        Assert.Equal(6, created + ok + conflicts);
+        Assert.Equal(6, created + ok + conflicts.Length);
+        // Identical requests are never a receipt-id conflict: a loser sees the stored receipt (200) or, if the retries run out, a plain concurrency conflict.
+        foreach (var conflict in conflicts)
+        {
+            Assert.Equal("purchase_order.concurrency_conflict", (await ReadAsync(conflict)).GetProperty("code").GetString());
+        }
+
         Assert.Equal(7m, await StockAsync(owner, product));
+        await using (var check = _database.CreateContext(organization))
+        {
+            Assert.Equal(1, await check.Set<InventoryMovement>().CountAsync(m => m.ProductId == product));
+            Assert.Equal(1, await check.Set<Soforr.Domain.Purchasing.PurchaseReceipt>().CountAsync());
+        }
+
         var read = await ReadAsync(await owner.GetAsync(Relative($"/api/v1/purchasing/orders/{id}")));
         Assert.Equal(7m, read.GetProperty("lines")[0].GetProperty("receivedQuantity").GetDecimal());
         Assert.Empty(await InventoryPersistenceTests.ReconciliationMismatchesAsync(_database.ConnectionString));

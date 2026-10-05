@@ -18,7 +18,9 @@ public sealed record ReceivePurchaseLine(Guid? LineId, decimal? Quantity);
 /// <summary>
 /// Records goods received against a placed or partially received order. <see cref="ReceiptId"/> is an optional,
 /// client-chosen identifier of this receipt: sending the same one again (a retry after a timeout, a double click)
-/// changes nothing and reports that it was already recorded. Without it a new receipt is recorded each time.
+/// changes nothing and reports that it was already recorded, provided it is exactly the same receipt (same order, same
+/// lines, same quantities); the same id with anything different is a conflict. Without an id a new receipt is recorded
+/// each time.
 /// </summary>
 public sealed record ReceivePurchaseCommand(Guid OrderId, Guid? ReceiptId, IReadOnlyList<ReceivePurchaseLine>? Lines);
 
@@ -28,8 +30,9 @@ public sealed record ReceiptResultDto(Guid ReceiptId, bool AlreadyRecorded, Purc
 /// <summary>
 /// The receiving use case (ADR 0004). In one transaction it updates the order's received quantities and status, writes
 /// one <c>PurchaseReceived</c> movement per line (through the stock recorder, which updates the stock levels) and the
-/// audit event; they are saved together or not at all. The receipt id is the movements' source id, so the unique
-/// idempotency index makes a repeat record nothing twice. A conflict with another writer of the same stock or the same
+/// receipt record and the audit event; they are saved together or not at all, so a receipt that did not commit does not
+/// reserve its id. The receipt id is the receipt's key and the movements' source id, so a repeat is recognized by the
+/// stored receipt (and refused by the unique keys if two arrive together). A conflict with another writer of the same stock or the same
 /// order is retried a bounded number of times, re-reading and re-validating each time.
 /// </summary>
 public sealed class ReceivePurchaseHandler(IAppDbContext db, StockMovementRecorder recorder, IClock clock, IIdGenerator ids, ICurrentUser user, IAuditLog audit)
@@ -102,15 +105,6 @@ public sealed class ReceivePurchaseHandler(IAppDbContext db, StockMovementRecord
             return Fail(PurchasingErrors.OrderNotFound(orderId));
         }
 
-        // Has this receipt been recorded already? Then report it and change nothing.
-        var recordedProducts = await RecordedProductsAsync(receiptId, cancellationToken);
-        if (recordedProducts.Count > 0)
-        {
-            return recordedProducts.All(product => order.Lines.Any(line => line.ProductId == product))
-                ? Result.Success(new ReceiptResultDto(receiptId, AlreadyRecorded: true, PurchaseOrderDto.From(order)))
-                : Fail(PurchasingErrors.ReceiptIdInUse);
-        }
-
         var receipt = new List<ReceiptLine>(lines.Count);
         for (var index = 0; index < lines.Count; index++)
         {
@@ -121,6 +115,16 @@ public sealed class ReceivePurchaseHandler(IAppDbContext db, StockMovementRecord
             }
 
             receipt.Add(new ReceiptLine(lines[index].LineId!.Value, quantity.Value));
+        }
+
+        // Has this receipt id been used already (the stored receipt is filtered to the caller's organization)? The same
+        // receipt again is a repeat and changes nothing; anything different under the same id is a conflict.
+        var recorded = await db.Set<PurchaseReceipt>().AsNoTracking().Include(r => r.Lines).SingleOrDefaultAsync(r => r.Id == receiptId, cancellationToken);
+        if (recorded is not null)
+        {
+            return recorded.IsSameAs(order.Id, receipt)
+                ? Result.Success(new ReceiptResultDto(receiptId, AlreadyRecorded: true, PurchaseOrderDto.From(order)))
+                : Fail(PurchasingErrors.ReceiptIdConflict);
         }
 
         var now = clock.UtcNow;
@@ -144,6 +148,7 @@ public sealed class ReceivePurchaseHandler(IAppDbContext db, StockMovementRecord
 
         // Stage one movement per line. A refused movement leaves nothing saved: this attempt simply returns the failure.
         var opened = new List<Guid>();
+        var entries = new List<PurchaseReceiptEntry>(receipt.Count);
         foreach (var line in receipt)
         {
             var orderLine = order.Lines.Single(l => l.Id == line.LineId);
@@ -164,7 +169,7 @@ public sealed class ReceivePurchaseHandler(IAppDbContext db, StockMovementRecord
 
             if (staged.Value.AlreadyRecorded)
             {
-                // Another request recorded this receipt after the check above: start over, which will find it.
+                // Another request recorded this receipt after the check above: start over, which will find its receipt.
                 throw new ReceiptRaceException();
             }
 
@@ -172,7 +177,18 @@ public sealed class ReceivePurchaseHandler(IAppDbContext db, StockMovementRecord
             {
                 opened.Add(orderLine.ProductId);
             }
+
+            entries.Add(new PurchaseReceiptEntry(orderLine.Id, orderLine.ProductId, line.Quantity));
         }
+
+        // The record of this receipt, saved with the order, the movements and the audit event: it is what makes the id mean one receipt.
+        var stored = PurchasingErrors.Run(() => PurchaseReceipt.Create(receiptId, order.OrganizationId, order.Id, user.UserId!.Value, now, entries));
+        if (stored.IsFailure)
+        {
+            return Fail(stored.Error!);
+        }
+
+        db.Set<PurchaseReceipt>().Add(stored.Value);
 
         audit.Record(new AuditEntry(
             order.OrganizationId,
@@ -189,8 +205,9 @@ public sealed class ReceivePurchaseHandler(IAppDbContext db, StockMovementRecord
         catch (DbUpdateException exception) when (exception is not DbUpdateConcurrencyException)
         {
             // Recognize what the database now holds instead of assuming: a concurrent request may have recorded this
-            // same receipt (the idempotency index refused ours) or opened a product's first stock level.
-            if ((await RecordedProductsAsync(receiptId, cancellationToken)).Count > 0)
+            // receipt id (the receipt key or the movement idempotency index refused ours) or opened a product's first
+            // stock level. Starting over finds the stored receipt: the same one is a repeat, a different one a conflict.
+            if (await db.Set<PurchaseReceipt>().AnyAsync(r => r.Id == receiptId, cancellationToken))
             {
                 throw new ReceiptRaceException();
             }
@@ -208,12 +225,6 @@ public sealed class ReceivePurchaseHandler(IAppDbContext db, StockMovementRecord
 
         return Result.Success(new ReceiptResultDto(receiptId, AlreadyRecorded: false, PurchaseOrderDto.From(order)));
     }
-
-    private async Task<List<Guid>> RecordedProductsAsync(Guid receiptId, CancellationToken cancellationToken) =>
-        await db.Set<InventoryMovement>().AsNoTracking()
-            .Where(movement => movement.SourceType == InventorySourceType.PurchaseReceipt && movement.SourceId == receiptId)
-            .Select(movement => movement.ProductId)
-            .ToListAsync(cancellationToken);
 
     private static bool IsOrderConflict(Exception exception) =>
         exception is ReceiptRaceException

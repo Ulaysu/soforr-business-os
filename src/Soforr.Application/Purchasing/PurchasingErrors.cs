@@ -30,8 +30,9 @@ internal static class PurchasingErrors
     public static Error ConcurrencyConflict { get; } =
         new("purchase_order.concurrency_conflict", ErrorKind.Conflict, "The order was changed by someone else at the same time. Please try again.");
 
-    public static Error ReceiptIdInUse { get; } =
-        new("purchase_order.receipt_id_in_use", ErrorKind.Conflict, "This receipt id was already used for different goods.", "receiptId");
+    /// <summary>A receipt id that was already used for a different receipt (another order, other lines or other quantities).</summary>
+    public static Error ReceiptIdConflict { get; } =
+        new("purchase_order.receipt_id_conflict", ErrorKind.Conflict, "This receipt id was already used for a different receipt. Use a new receipt id, or send exactly the same receipt again.");
 
     public static Error Invalid(string code, string field, string message) => new(code, ErrorKind.Validation, message, field);
 
