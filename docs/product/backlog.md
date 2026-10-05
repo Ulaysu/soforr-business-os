@@ -324,7 +324,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 # EPIC 05 — Purchasing
 
 ### PURCHASING-001 — Purchasing domain and persistence
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** `Supplier`, `PurchaseOrder` with lines and state machine (draft → placed → partially received → received/cancelled); EF mapping and migration; totals from deterministic code. **Each line records the product's name and SKU and the unit cost at the time** (a snapshot, not a reference to the product's current values), because purchasing cost intelligence ([INTEL-006](#intel-006--purchasing-cost-intelligence)) and margins read them.
 - **Acceptance criteria:** Invalid state transitions rejected in Domain; totals correct; tenant-scoped.
 - **Dependencies:** CATALOG-002, INVENTORY-001 (persistence portions: IDENTITY-003)
@@ -332,7 +332,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 - **Testing:** unit tests for state machine and totals; persistence integration tests.
 
 ### PURCHASING-002 — Purchase order and receiving commands
-- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** CreateSupplier, CreatePurchaseOrder, PlacePurchaseOrder, CancelPurchaseOrder, and **ReceivePurchase**, which writes `PurchaseReceived` inventory movements atomically and idempotently per receipt.
 - **Acceptance criteria:** Receiving increases stock exactly once even if retried; partial receipt supported; failure leaves no partial state; audit event recorded. `CreatePurchaseOrder` takes no currency from the client: the handler obtains the organization's currency from `OrganizationCurrency.ResolveAsync` and passes it to the Domain (tests: the order is in the organization's currency; an unresolvable organization creates nothing; a currency in the request body is not honored; an API round trip reads back that currency).
 - **Dependencies:** PURCHASING-001, INVENTORY-002, AUDIT-001

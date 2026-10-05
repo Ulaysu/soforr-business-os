@@ -36,4 +36,13 @@ public enum Permission
 
     /// <summary>Adjust stock by hand (count corrections, found or lost stock).</summary>
     InventoryAdjust,
+
+    /// <summary>Read suppliers and purchase orders. Orders carry unit costs, so this is not granted to Staff.</summary>
+    PurchasingView,
+
+    /// <summary>Create suppliers, and create, place and cancel purchase orders.</summary>
+    PurchasingManage,
+
+    /// <summary>Record goods received against a purchase order, which adds the stock.</summary>
+    PurchasingReceive,
 }

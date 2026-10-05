@@ -29,8 +29,11 @@ Fixed roles, granted in code (`RolePermissions`). Anything not granted is denied
 | `InventoryView` | GetStockLevel, ListLowStock | yes | yes | yes |
 | `InventoryViewHistory` | GetMovementHistory (who changed stock, when and why) | yes | yes | no |
 | `InventoryAdjust` | AdjustInventory | yes | yes | no |
+| `PurchasingView` | ListSuppliers, GetPurchaseOrder, ListPurchaseOrders (orders carry unit costs) | yes | yes | no |
+| `PurchasingManage` | CreateSupplier, CreatePurchaseOrder, PlacePurchaseOrder, CancelPurchaseOrder | yes | yes | no |
+| `PurchasingReceive` | ReceivePurchase (adds stock) | yes | yes | no |
 
-Outcomes: not signed in → 401; signed in without a membership or without the permission → 403; another organization's resource → 404 (after the permission check). Registration, sign-in and sign-out are the only operations that need no permission. Planned permissions (`Products.Manage`, `Inventory.Adjust`, `Purchasing.Receive`, `Sales.Create`, `Sales.Void`, `Members.Manage`) are added with their features.
+Outcomes: not signed in → 401; signed in without a membership or without the permission → 403; another organization's resource → 404 (after the permission check). Registration, sign-in and sign-out are the only operations that need no permission. Planned permissions (`Products.Manage`, `Inventory.Adjust`, `Sales.Create`, `Sales.Void`, `Members.Manage`) are added with their features.
 
 ## Tenant Isolation (critical boundary)
 - Organization identity derives from the authenticated principal, never from client-supplied ids.
