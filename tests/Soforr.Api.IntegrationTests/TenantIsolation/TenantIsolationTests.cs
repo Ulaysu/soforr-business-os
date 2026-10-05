@@ -8,13 +8,14 @@ using Soforr.Domain.Identity;
 using Soforr.Domain.Inventory;
 using Soforr.Domain.Organizations;
 using Soforr.Domain.Purchasing;
+using Soforr.Domain.Sales;
 using Soforr.Infrastructure.Persistence;
 using static Soforr.Api.IntegrationTests.Identity.AuthClient;
 
 namespace Soforr.Api.IntegrationTests.TenantIsolation;
 
 /// <summary>
-/// Cross-tenant tests for every tenant-owned entity that exists (organizations, memberships, products, stock levels, movements, audit events, suppliers and purchase orders), through the data
+/// Cross-tenant tests for every tenant-owned entity that exists (organizations, memberships, products, stock levels, movements, audit events, suppliers, purchase orders and sales), through the data
 /// layer and through the real application (ADR 0002): a user of one organization cannot read, change, delete or
 /// create another organization's data, and an unknown or foreign id behaves exactly like a missing one. When a
 /// module adds a tenant-owned entity, it adds its cases here (the convention test fails until it has a filter).
@@ -427,6 +428,83 @@ public sealed class TenantIsolationTests(PostgresDatabaseFixture database) : ICl
         await using var asB = database.CreateContext(tenants.OrganizationB);
         Assert.Equal(0, await asB.Set<Supplier>().CountAsync());
         Assert.Equal(0, await asB.Set<PurchaseOrder>().CountAsync());
+    }
+
+    // ---- sales
+
+    private async Task<(Guid SaleA, Guid SaleB, Guid LineB)> SeedSalesAsync(TwoTenants tenants)
+    {
+        var ids = new List<(Guid Sale, Guid Line)>();
+        foreach (var organization in new[] { tenants.OrganizationA, tenants.OrganizationB })
+        {
+            var product = NewProduct(organization, "SALE-SKU");
+            var currency = Currency.Create("GMD");
+            var line = new SaleLineInput(Guid.CreateVersion7(), product.Id, product.Sku, product.Name, product.UnitOfMeasure, Quantity.Create(2m), Money.Create(5m, currency), Money.Create(5m, currency), Money.Create(3m, currency), null);
+            var sale = Sale.Complete(Guid.CreateVersion7(), organization, currency, Guid.CreateVersion7(), DateTimeOffset.UtcNow, [line]);
+            await using var db = database.CreateContext(organization);
+            db.Set<Product>().Add(product);
+            await db.SaveChangesAsync();
+            db.Set<Sale>().Add(sale);
+            await db.SaveChangesAsync();
+            ids.Add((sale.Id, line.LineId));
+        }
+
+        return (ids[0].Sale, ids[1].Sale, ids[1].Line);
+    }
+
+    [Fact]
+    public async Task SalesAndSaleLines_AreReadOnlyWithinTheCurrentOrganization()
+    {
+        using var tenants = await TwoTenants.CreateAsync(database);
+        var (saleA, saleB, lineB) = await SeedSalesAsync(tenants);
+        await using var asA = database.CreateContext(tenants.OrganizationA);
+        await using var nobody = database.CreateContext();
+
+        Assert.Equal([saleA], await asA.Set<Sale>().Select(s => s.Id).ToArrayAsync());
+        Assert.Null(await asA.Set<Sale>().FindAsync(saleB));
+        Assert.False(await asA.Set<SaleLine>().AnyAsync(l => l.Id == lineB));
+        Assert.Equal(0, await nobody.Set<Sale>().CountAsync());
+        Assert.Equal(0, await nobody.Set<SaleLine>().CountAsync());
+    }
+
+    [Fact]
+    public async Task VoidingOrDeletingAnotherOrganizationsSale_IsRefused_AndChangesNothing()
+    {
+        using var tenants = await TwoTenants.CreateAsync(database);
+        var (_, saleB, _) = await SeedSalesAsync(tenants);
+
+        await using (var voiding = database.CreateContext(tenants.OrganizationA))
+        {
+            var theirs = await voiding.Set<Sale>().IgnoreQueryFilters().Include(s => s.Lines).SingleAsync(s => s.Id == saleB);
+            theirs.Void(Guid.CreateVersion7(), "Injected", DateTimeOffset.UtcNow);
+            await Assert.ThrowsAsync<TenantIsolationException>(() => voiding.SaveChangesAsync());
+        }
+
+        await using (var delete = database.CreateContext(tenants.OrganizationA))
+        {
+            delete.Set<Sale>().Remove(await delete.Set<Sale>().IgnoreQueryFilters().SingleAsync(s => s.Id == saleB));
+            await Assert.ThrowsAsync<TenantIsolationException>(() => delete.SaveChangesAsync());
+        }
+
+        await using var asB = database.CreateContext(tenants.OrganizationB);
+        Assert.Equal(SaleStatus.Completed, (await asB.Set<Sale>().SingleAsync(s => s.Id == saleB)).Status);
+    }
+
+    [Fact]
+    public async Task CreatingASaleInAnotherOrganization_IsRefused()
+    {
+        using var tenants = await TwoTenants.CreateAsync(database);
+        var currency = Currency.Create("GMD");
+        var line = new SaleLineInput(Guid.CreateVersion7(), Guid.CreateVersion7(), "S", "N", "u", Quantity.Create(1m), Money.Create(1m, currency), Money.Create(1m, currency), Money.Create(1m, currency), null);
+
+        await using (var asA = database.CreateContext(tenants.OrganizationA))
+        {
+            asA.Set<Sale>().Add(Sale.Complete(Guid.CreateVersion7(), tenants.OrganizationB, currency, Guid.CreateVersion7(), DateTimeOffset.UtcNow, [line]));
+            await Assert.ThrowsAsync<TenantIsolationException>(() => asA.SaveChangesAsync());
+        }
+
+        await using var asB = database.CreateContext(tenants.OrganizationB);
+        Assert.Equal(0, await asB.Set<Sale>().CountAsync());
     }
 
     // ---- through the real application

@@ -593,6 +593,135 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Soforr.Domain.Sales.Sale", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTimeOffset?>("VoidedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("VoidedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Id", "OrganizationId")
+                        .HasName("AK_Sales_Id_OrganizationId");
+
+                    b.HasIndex("OrganizationId", "CreatedAtUtc");
+
+                    b.HasIndex("OrganizationId", "Status", "CreatedAtUtc");
+
+                    b.ToTable("Sales", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Sales_Currency_Format", "\"Currency\" ~ '^[A-Z]{3}$'");
+
+                            t.HasCheckConstraint("CK_Sales_Status_Known", "\"Status\" IN ('Completed', 'Voided')");
+
+                            t.HasCheckConstraint("CK_Sales_VoidReason_NotBlank", "\"VoidReason\" IS NULL OR char_length(btrim(\"VoidReason\")) > 0");
+
+                            t.HasCheckConstraint("CK_Sales_Void_MatchesStatus", "(\"Status\" = 'Voided') = (\"VoidedAtUtc\" IS NOT NULL) AND (\"Status\" = 'Voided') = (\"VoidedByUserId\" IS NOT NULL) AND (\"Status\" = 'Voided') = (\"VoidReason\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_Sales_VoidedAt_NotBeforeSale", "\"VoidedAtUtc\" IS NULL OR \"VoidedAtUtc\" >= \"CreatedAtUtc\"");
+                        });
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Sales.SaleLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("NameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PriceOverrideReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<Guid>("SaleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SkuSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("UnitOfMeasureSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId", "OrganizationId");
+
+                    b.HasIndex("SaleId", "OrganizationId");
+
+                    b.HasIndex("SaleId", "ProductId")
+                        .IsUnique();
+
+                    b.ToTable("SaleLines", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SaleLines_CatalogUnitPrice_NotNegative", "\"CatalogUnitPrice\" >= 0");
+
+                            t.HasCheckConstraint("CK_SaleLines_CostPrice_NotNegative", "\"CostPrice\" >= 0");
+
+                            t.HasCheckConstraint("CK_SaleLines_Currencies_Format", "\"UnitPriceCurrency\" ~ '^[A-Z]{3}$'");
+
+                            t.HasCheckConstraint("CK_SaleLines_Currencies_Match", "\"UnitPriceCurrency\" = \"CatalogUnitPriceCurrency\" AND \"UnitPriceCurrency\" = \"CostPriceCurrency\"");
+
+                            t.HasCheckConstraint("CK_SaleLines_OverrideReason_MatchesPrice", "(\"UnitPrice\" <> \"CatalogUnitPrice\") = (\"PriceOverrideReason\" IS NOT NULL) AND (\"PriceOverrideReason\" IS NULL OR char_length(btrim(\"PriceOverrideReason\")) > 0)");
+
+                            t.HasCheckConstraint("CK_SaleLines_Quantity_Positive", "\"Quantity\" > 0");
+
+                            t.HasCheckConstraint("CK_SaleLines_Snapshots_NotBlank", "char_length(btrim(\"SkuSnapshot\")) > 0 AND char_length(btrim(\"NameSnapshot\")) > 0 AND char_length(btrim(\"UnitOfMeasureSnapshot\")) > 0");
+
+                            t.HasCheckConstraint("CK_SaleLines_UnitPrice_NotNegative", "\"UnitPrice\" >= 0");
+                        });
+                });
+
             modelBuilder.Entity("Soforr.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -905,12 +1034,115 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Soforr.Domain.Sales.SaleLine", b =>
+                {
+                    b.HasOne("Soforr.Domain.Catalog.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId", "OrganizationId")
+                        .HasPrincipalKey("Id", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Soforr.Domain.Sales.Sale", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("SaleId", "OrganizationId")
+                        .HasPrincipalKey("Id", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsOne("Soforr.Domain.Common.Money", "CatalogUnitPrice", b1 =>
+                        {
+                            b1.Property<Guid>("SaleLineId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(19, 4)
+                                .HasColumnType("numeric(19,4)")
+                                .HasColumnName("CatalogUnitPrice");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("CatalogUnitPriceCurrency");
+
+                            b1.HasKey("SaleLineId");
+
+                            b1.ToTable("SaleLines");
+
+                            b1.WithOwner()
+                                .HasForeignKey("SaleLineId");
+                        });
+
+                    b.OwnsOne("Soforr.Domain.Common.Money", "CostPrice", b1 =>
+                        {
+                            b1.Property<Guid>("SaleLineId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(19, 4)
+                                .HasColumnType("numeric(19,4)")
+                                .HasColumnName("CostPrice");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("CostPriceCurrency");
+
+                            b1.HasKey("SaleLineId");
+
+                            b1.ToTable("SaleLines");
+
+                            b1.WithOwner()
+                                .HasForeignKey("SaleLineId");
+                        });
+
+                    b.OwnsOne("Soforr.Domain.Common.Money", "UnitPrice", b1 =>
+                        {
+                            b1.Property<Guid>("SaleLineId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(19, 4)
+                                .HasColumnType("numeric(19,4)")
+                                .HasColumnName("UnitPrice");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("UnitPriceCurrency");
+
+                            b1.HasKey("SaleLineId");
+
+                            b1.ToTable("SaleLines");
+
+                            b1.WithOwner()
+                                .HasForeignKey("SaleLineId");
+                        });
+
+                    b.Navigation("CatalogUnitPrice")
+                        .IsRequired();
+
+                    b.Navigation("CostPrice")
+                        .IsRequired();
+
+                    b.Navigation("UnitPrice")
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Soforr.Domain.Purchasing.PurchaseOrder", b =>
                 {
                     b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("Soforr.Domain.Purchasing.PurchaseReceipt", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Sales.Sale", b =>
                 {
                     b.Navigation("Lines");
                 });

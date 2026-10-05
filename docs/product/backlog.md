@@ -332,7 +332,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 - **Testing:** unit tests for state machine and totals; persistence integration tests.
 
 ### PURCHASING-002 — Purchase order and receiving commands
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** CreateSupplier, CreatePurchaseOrder, PlacePurchaseOrder, CancelPurchaseOrder, and **ReceivePurchase**, which writes `PurchaseReceived` inventory movements atomically and idempotently per receipt.
 - **Acceptance criteria:** Receiving increases stock exactly once even if retried; partial receipt supported; failure leaves no partial state; audit event recorded. `CreatePurchaseOrder` takes no currency from the client: the handler obtains the organization's currency from `OrganizationCurrency.ResolveAsync` and passes it to the Domain (tests: the order is in the organization's currency; an unresolvable organization creates nothing; a currency in the request body is not honored; an API round trip reads back that currency).
 - **Dependencies:** PURCHASING-001, INVENTORY-002, AUDIT-001
@@ -352,7 +352,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 # EPIC 06 — Sales
 
 ### SALES-001 — Sales domain and persistence
-- **Status:** Ready · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** `Sale`/`SaleLine` (walk-in; no customer required), server-computed totals, controlled line-price override/discount fields, void semantics, EF mapping and migration. **Each line records the product's name and SKU, the catalog unit price, the final applied unit price, the discount/override reason when applicable, the cost price and the currency at the time of the sale** (snapshots), so sales and margin intelligence never read the product's current values and history does not change when a product is edited.
 - **Price rule:** product selling price is the default. A different line price or discount is allowed only through an explicit permission and server-side rule; the final price can never be negative and every override is attributable. V1 does not implement complex price lists or volume tiers.
 - **Acceptance criteria:** Totals computed only by server code; completed sales immutable except void; tenant-scoped; line snapshots are stored and never updated.
