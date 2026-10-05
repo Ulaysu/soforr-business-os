@@ -53,6 +53,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IOrgani
         builder.Entity<Supplier>().HasQueryFilter(supplier => CurrentOrganizationId != null && supplier.OrganizationId == CurrentOrganizationId);
         builder.Entity<PurchaseOrder>().HasQueryFilter(order => CurrentOrganizationId != null && order.OrganizationId == CurrentOrganizationId);
         builder.Entity<PurchaseOrderLine>().HasQueryFilter(line => CurrentOrganizationId != null && line.OrganizationId == CurrentOrganizationId);
+        builder.Entity<PurchaseReceipt>().HasQueryFilter(receipt => CurrentOrganizationId != null && receipt.OrganizationId == CurrentOrganizationId);
+        builder.Entity<PurchaseReceiptLine>().HasQueryFilter(line => CurrentOrganizationId != null && line.OrganizationId == CurrentOrganizationId);
     }
 
     public void ClearChangeTracker() => ChangeTracker.Clear();

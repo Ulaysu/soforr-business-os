@@ -500,6 +500,58 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Soforr.Domain.Purchasing.PurchaseReceipt", b =>
+                {
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PurchaseOrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ReceivedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ReceivedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("OrganizationId", "Id");
+
+                    b.HasIndex("PurchaseOrderId", "OrganizationId");
+
+                    b.ToTable("PurchaseReceipts", (string)null);
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Purchasing.PurchaseReceiptLine", b =>
+                {
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ReceiptId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("LineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.HasKey("OrganizationId", "ReceiptId", "LineId");
+
+                    b.HasIndex("ProductId", "OrganizationId");
+
+                    b.ToTable("PurchaseReceiptLines", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseReceiptLines_Quantity_Positive", "\"Quantity\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("Soforr.Domain.Purchasing.Supplier", b =>
                 {
                     b.Property<Guid>("Id")
@@ -818,6 +870,32 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Soforr.Domain.Purchasing.PurchaseReceipt", b =>
+                {
+                    b.HasOne("Soforr.Domain.Purchasing.PurchaseOrder", null)
+                        .WithMany()
+                        .HasForeignKey("PurchaseOrderId", "OrganizationId")
+                        .HasPrincipalKey("Id", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Purchasing.PurchaseReceiptLine", b =>
+                {
+                    b.HasOne("Soforr.Domain.Purchasing.PurchaseReceipt", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("OrganizationId", "ReceiptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Soforr.Domain.Catalog.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId", "OrganizationId")
+                        .HasPrincipalKey("Id", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Soforr.Domain.Purchasing.Supplier", b =>
                 {
                     b.HasOne("Soforr.Domain.Organizations.Organization", null)
@@ -828,6 +906,11 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("Soforr.Domain.Purchasing.PurchaseOrder", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Purchasing.PurchaseReceipt", b =>
                 {
                     b.Navigation("Lines");
                 });

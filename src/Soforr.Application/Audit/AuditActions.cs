@@ -24,4 +24,15 @@ public static class AuditActions
 
     /// <summary>Stock was adjusted by hand. The entity is the movement; the description states the change, never the note.</summary>
     public const string StockAdjusted = "inventory.stock_adjusted";
+
+    public const string SupplierCreated = "purchasing.supplier_created";
+
+    public const string PurchaseOrderCreated = "purchasing.order_created";
+
+    public const string PurchaseOrderPlaced = "purchasing.order_placed";
+
+    public const string PurchaseOrderCancelled = "purchasing.order_cancelled";
+
+    /// <summary>Goods were received against an order and stock increased. The entity is the order.</summary>
+    public const string PurchaseReceived = "purchasing.goods_received";
 }

@@ -14,6 +14,7 @@ Conceptual model and conventions for the first vertical slice. Detailed schemas 
 - Concurrency token on stock levels and on documents that change state (see [ADR 0004](../decisions/0004-inventory-concurrency.md)).
 - Database constraints as a second line of defense (CHECK for non-negative amounts, FKs, unique indexes).
 - Append-only audit events for important business actions.
+- **A purchase receipt is recorded.** `PurchaseReceipts` (key: organization, receipt id) and `PurchaseReceiptLines` (key: organization, receipt, order line; the product and the quantity received) record exactly what each receipt received, in the same transaction as the movements, so a receipt id can be recognized as the same receipt or refused as a different one. They are written once and never changed.
 - **Transaction lines snapshot product data.** A sale or purchase line stores the product's name, SKU, unit price or cost and currency at the time, never only a reference to the product's current values, so history (and the intelligence computed from it) does not change when a product is edited.
 - **Sale price integrity.** A sale line stores both the catalog price at sale time and the final applied unit price. If the final price differs because of a discount or override, the line stores the reason and actor needed by the authorization/audit policy. Margin uses the final applied price and the sale-time cost snapshot.
 
