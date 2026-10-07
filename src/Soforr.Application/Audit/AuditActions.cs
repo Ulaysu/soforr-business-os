@@ -41,4 +41,12 @@ public static class AuditActions
 
     /// <summary>A sale was voided and its stock returned. The entity is the sale; the description never carries the reason text.</summary>
     public const string SaleVoided = "sales.sale_voided";
+
+    /// <summary>A customer was created. The entity is the customer; the description never carries personal data.</summary>
+    public const string CustomerCreated = "customers.customer_created";
+
+    /// <summary>A customer's details were changed. The entity is the customer; the description never carries personal data.</summary>
+    public const string CustomerUpdated = "customers.customer_updated";
+
+    public const string CustomerDeactivated = "customers.customer_deactivated";
 }

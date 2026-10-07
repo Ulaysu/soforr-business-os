@@ -5,6 +5,7 @@ using Soforr.Application.Organizations;
 using Soforr.Application.Persistence;
 using Soforr.Domain.Audit;
 using Soforr.Domain.Catalog;
+using Soforr.Domain.Customers;
 using Soforr.Domain.Identity;
 using Soforr.Domain.Inventory;
 using Soforr.Domain.Organizations;
@@ -56,6 +57,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IOrgani
         builder.Entity<PurchaseOrderLine>().HasQueryFilter(line => CurrentOrganizationId != null && line.OrganizationId == CurrentOrganizationId);
         builder.Entity<PurchaseReceipt>().HasQueryFilter(receipt => CurrentOrganizationId != null && receipt.OrganizationId == CurrentOrganizationId);
         builder.Entity<PurchaseReceiptLine>().HasQueryFilter(line => CurrentOrganizationId != null && line.OrganizationId == CurrentOrganizationId);
+        builder.Entity<Customer>().HasQueryFilter(customer => CurrentOrganizationId != null && customer.OrganizationId == CurrentOrganizationId);
         builder.Entity<Sale>().HasQueryFilter(sale => CurrentOrganizationId != null && sale.OrganizationId == CurrentOrganizationId);
         builder.Entity<SaleLine>().HasQueryFilter(line => CurrentOrganizationId != null && line.OrganizationId == CurrentOrganizationId);
     }

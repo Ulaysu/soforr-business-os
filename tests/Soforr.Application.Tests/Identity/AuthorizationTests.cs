@@ -69,6 +69,12 @@ public class AuthorizationTests
         { Role.Owner, Permission.InsightsView, true },
         { Role.Manager, Permission.InsightsView, true },
         { Role.Staff, Permission.InsightsView, false },
+        { Role.Owner, Permission.CustomerView, true },
+        { Role.Manager, Permission.CustomerView, true },
+        { Role.Staff, Permission.CustomerView, true },
+        { Role.Owner, Permission.CustomerManage, true },
+        { Role.Manager, Permission.CustomerManage, true },
+        { Role.Staff, Permission.CustomerManage, false },
     };
 
     [Theory]

@@ -207,6 +207,52 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Soforr.Domain.Customers.Customer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContactDetails")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreditTermsDays")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Id", "OrganizationId")
+                        .HasName("AK_Customers_Id_OrganizationId");
+
+                    b.HasIndex("OrganizationId", "IsActive", "Name");
+
+                    b.ToTable("Customers", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Customers_ContactDetails_NotBlank", "\"ContactDetails\" IS NULL OR char_length(btrim(\"ContactDetails\")) > 0");
+
+                            t.HasCheckConstraint("CK_Customers_CreditTermsDays_Range", "\"CreditTermsDays\" IS NULL OR (\"CreditTermsDays\" >= 0 AND \"CreditTermsDays\" <= 365)");
+
+                            t.HasCheckConstraint("CK_Customers_Name_NotBlank", "char_length(btrim(\"Name\")) > 0");
+                        });
+                });
+
             modelBuilder.Entity("Soforr.Domain.Identity.Membership", b =>
                 {
                     b.Property<Guid>("Id")
@@ -904,6 +950,15 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                     b.Navigation("ReorderSettings");
 
                     b.Navigation("SellingPrice")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Customers.Customer", b =>
+                {
+                    b.HasOne("Soforr.Domain.Organizations.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
