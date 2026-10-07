@@ -54,4 +54,7 @@ public enum Permission
 
     /// <summary>Void a sale after the fact, which returns the stock it took.</summary>
     SalesVoid,
+
+    /// <summary>See the insights ("things that need your attention"). Insights that reveal costs additionally need <see cref="ProductViewCost"/>. Not granted to Staff.</summary>
+    InsightsView,
 }

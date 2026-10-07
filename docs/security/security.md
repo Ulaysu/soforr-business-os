@@ -34,6 +34,7 @@ Fixed roles, granted in code (`RolePermissions`). Anything not granted is denied
 | `SalesView` | GetSale, ListSales (cost prices additionally need `ProductViewCost`) | yes | yes | yes |
 | `SalesCreate` | CreateSale (removes stock; a cashier needs it) | yes | yes | yes |
 | `SalesVoid` | VoidSale (returns stock) | yes | yes | no |
+| `InsightsView` | GetInsights (the attention list; insights that reveal costs additionally need `ProductViewCost`) | yes | yes | no |
 | `PurchasingReceive` | ReceivePurchase (adds stock; a receipt id can never be reused for a different receipt) | yes | yes | no |
 
 Outcomes: not signed in → 401; signed in without a membership or without the permission → 403; another organization's resource → 404 (after the permission check). Registration, sign-in and sign-out are the only operations that need no permission. Planned permissions (`Members.Manage`, price override and discount permissions with SALES-004) are added with their features.
