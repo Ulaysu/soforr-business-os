@@ -445,7 +445,7 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 - **Testing:** unit tests with fixed clock and fixtures for every edge case; integration test against real data; tenant isolation.
 
 ### INTEL-003 — Sales metrics and comparisons
-- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** Revenue and quantity for a period against the **immediately preceding period of equal length**; growth = `(current - previous) / previous × 100` when previous is non-zero; otherwise report "no comparable previous sales". Top sellers are ordered by quantity sold. Slow movers are the bottom 20% by quantity among active products with sufficient data; if fewer than 5 qualify, show the ordered list. A declining product has sales in both periods and at least a 20% quantity decline. Voided sales are excluded.
 - **Acceptance criteria:** Periods, time zone (the organization's) and exclusions are explicit; results reconcile with the underlying sales; documented rounding.
 - **Dependencies:** INTEL-001, SALES-002

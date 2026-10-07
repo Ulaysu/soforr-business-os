@@ -438,6 +438,7 @@ public sealed class InsightsTests(PostgresDatabaseFixture database) : IClassFixt
         var handler = scope.ServiceProvider.GetRequiredService<IQueryHandler<GetInsightsQuery, InsightsDto>>();
 
         Assert.Contains(sources, source => source is InventoryRiskInsightSource);
+        Assert.Contains(sources, source => source is SalesInsightSource);
         Assert.IsType<GetInsightsHandler>(handler);
     }
 }
