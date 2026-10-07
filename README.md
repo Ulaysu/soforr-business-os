@@ -63,7 +63,7 @@ Product
 
 - Product: [vision](docs/product/vision.md), [Sellable V1](docs/product/sellable-v1.md), [scope](docs/product/scope.md), [roadmap](docs/product/roadmap.md), [backlog](docs/product/backlog.md)
 - Architecture: [architecture](docs/architecture/architecture.md), [modules](docs/architecture/modules.md), [data model](docs/architecture/data-model.md), [AI architecture](docs/architecture/ai-architecture.md)
-- Engineering: [development](docs/engineering/development.md), [testing](docs/engineering/testing.md), [definition of done](docs/engineering/definition-of-done.md)
+- Engineering: [development](docs/engineering/development.md), [testing](docs/engineering/testing.md), [definition of done](docs/engineering/definition-of-done.md), [intelligence conventions](docs/engineering/intelligence.md)
 - Security: [security](docs/security/security.md), [threat model](docs/security/threat-model.md)
 - Decisions: [ADRs](docs/decisions/README.md)
 - Agent rules: [CLAUDE.md](CLAUDE.md), [AGENTS.md](AGENTS.md)

@@ -429,7 +429,7 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 - No LLM, no forecasting infrastructure, no agent. Smallest structure that works: a module inside `Soforr.Application` (see [architecture.md](../architecture/architecture.md#deterministic-intelligence)).
 
 ### INTEL-001 — Intelligence foundation
-- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend / Architecture
+- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend / Architecture
 - **Description:** The smallest shared structure for insights: an `Insight` (type, severity, subject, named facts, reason, recommended action), a rule contract (a pure function from a typed input snapshot and explicit thresholds to insights), the clock as an input, an evaluation query that gathers authoritative data and applies the rules, the `InsightsView` permission, and the conventions for formulas, periods and thresholds. Decide, and record in a short ADR if it is a real choice, whether insights are computed on request (the default) or materialized.
 - **Acceptance criteria:** A rule is testable without a database; the result is reproducible from data and clock; facts and reason are always present; tenant scoping and permission checks are in place; no insight is persisted as a source of truth; an example rule proves the structure end to end.
 - **Dependencies:** IDENTITY-002, INVENTORY-002
