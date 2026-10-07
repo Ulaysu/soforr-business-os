@@ -9,6 +9,7 @@ using Soforr.Application.Organizations;
 using Soforr.Application.Persistence;
 using Soforr.Domain.Catalog;
 using Soforr.Domain.Common;
+using Soforr.Domain.Customers;
 using Soforr.Domain.Inventory;
 using Soforr.Domain.Sales;
 
@@ -20,10 +21,18 @@ public sealed record CreateSaleLine(Guid? ProductId, decimal? Quantity);
 /// <summary>
 /// Records a sale of products. <see cref="SaleId"/> is an optional, client-chosen identifier of this sale: sending the
 /// same one again (a retry after a timeout, a double click) changes nothing and reports that it was already recorded,
-/// provided it asks for exactly the same products and quantities; the same id with anything different is a conflict.
-/// Without an id a new sale is recorded each time.
+/// provided it asks for exactly the same products, quantities, customer and amount paid; the same id with anything
+/// different is a conflict. Without an id a new sale is recorded each time.
+/// <para>
+/// <see cref="CustomerId"/> makes it a sale on account: <see cref="AmountPaid"/> is then what the customer pays now, from
+/// nothing (all on credit) to the whole total, and the rest is owed from a due date fixed now (the sale date plus the
+/// customer's credit terms, or immediately when the customer has none). An absent <see cref="AmountPaid"/> means paid in full, so a
+/// debt is never created by leaving something out. Without a customer the sale is a walk-in sale, always paid in full: a stated
+/// amount must equal the total. <see cref="PaymentMethod"/> is a free-text label recorded with the payment taken now (a walk-in
+/// sale records no payment, so it has no label).
+/// </para>
 /// </summary>
-public sealed record CreateSaleCommand(Guid? SaleId, IReadOnlyList<CreateSaleLine>? Lines);
+public sealed record CreateSaleCommand(Guid? SaleId, IReadOnlyList<CreateSaleLine>? Lines, Guid? CustomerId = null, decimal? AmountPaid = null, string? PaymentMethod = null);
 
 /// <summary>
 /// The selling use case (ADR 0004). In one transaction it records the sale (with the prices and costs of its products as
@@ -49,6 +58,11 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
         if (command.SaleId == Guid.Empty)
         {
             return Fail(SalesErrors.Invalid("sale.sale_id_invalid", "saleId", "The sale id must be a non-empty identifier or absent."));
+        }
+
+        if (command.CustomerId == Guid.Empty)
+        {
+            return Fail(SalesErrors.Invalid("sale.customer_invalid", "customerId", "The customer must be a non-empty identifier or absent."));
         }
 
         if (command.Lines is not { Count: > 0 } lines)
@@ -101,7 +115,7 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
         {
             try
             {
-                return await recorder.ExecuteWithRetryAsync(() => SellOnceAsync(saleId, requested, currency.Value, cancellationToken), cancellationToken);
+                return await recorder.ExecuteWithRetryAsync(() => SellOnceAsync(saleId, requested, command, currency.Value, cancellationToken), cancellationToken);
             }
             catch (SaleRaceException) when (attempt < StockMovementRecorder.MaxAttempts)
             {
@@ -115,16 +129,16 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
         }
     }
 
-    private async Task<Result<SaleResultDto>> SellOnceAsync(Guid saleId, List<(Guid ProductId, Quantity Quantity)> requested, Currency currency, CancellationToken cancellationToken)
+    private async Task<Result<SaleResultDto>> SellOnceAsync(Guid saleId, List<(Guid ProductId, Quantity Quantity)> requested, CreateSaleCommand command, Currency currency, CancellationToken cancellationToken)
     {
         var includeCost = user.Has(Permission.ProductViewCost);
 
         // Has this sale id been used already (the stored sale is filtered to the caller's organization)? The same sale
         // again is a repeat and changes nothing; anything different under the same id is a conflict.
-        var recorded = await db.Set<Sale>().AsNoTracking().Include(s => s.Lines).SingleOrDefaultAsync(s => s.Id == saleId, cancellationToken);
+        var recorded = await db.Set<Sale>().AsNoTracking().Include(s => s.Lines).Include(s => s.Payments).SingleOrDefaultAsync(s => s.Id == saleId, cancellationToken);
         if (recorded is not null)
         {
-            return recorded.HasSameLinesAs(requested)
+            return recorded.HasSameLinesAs(requested) && recorded.HasSameSettlementAs(command.CustomerId, command.AmountPaid)
                 ? Result.Success(new SaleResultDto(saleId, AlreadyRecorded: true, SaleDto.From(recorded, includeCost)))
                 : Fail(SalesErrors.SaleIdConflict);
         }
@@ -153,7 +167,51 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
 
         var organizationId = user.OrganizationId!.Value;
         var now = clock.UtcNow;
-        var created = SalesErrors.Run(() => Sale.Complete(saleId, organizationId, currency, user.UserId!.Value, now, inputs), SaleField);
+
+        // How the sale is settled: a walk-in sale is paid in full and records no payment; a sale on account takes what the
+        // customer pays now (the whole total when nothing is stated) and is due after the customer's terms, fixed from today.
+        DateTimeOffset? dueAtUtc = null;
+        Money? initialPayment = null;
+        if (command.CustomerId is { } customerId)
+        {
+            // Filtered to the caller's organization: another organization's customer is not found.
+            var customer = await db.Set<Customer>().AsNoTracking().SingleOrDefaultAsync(c => c.Id == customerId, cancellationToken);
+            if (customer is null)
+            {
+                return Fail(SalesErrors.CustomerNotFound(customerId, "customerId"));
+            }
+
+            if (!customer.IsActive)
+            {
+                return Fail(SalesErrors.CustomerInactive);
+            }
+
+            dueAtUtc = now.AddDays(customer.CreditTermsDays ?? 0);
+            var paid = SalesErrors.Run(
+                () => command.AmountPaid is { } amount ? Money.Create(amount, currency) : Sale.TotalOf(currency, inputs),
+                _ => "amountPaid");
+            if (paid.IsFailure)
+            {
+                return Fail(paid.Error!);
+            }
+
+            initialPayment = paid.Value;
+        }
+        else if (command.AmountPaid is { } stated)
+        {
+            var total = SalesErrors.Run(() => Sale.TotalOf(currency, inputs));
+            if (total.IsFailure)
+            {
+                return Fail(total.Error!);
+            }
+
+            if (stated != total.Value.Amount)
+            {
+                return Fail(SalesErrors.Invalid("sale.walk_in_is_paid_in_full", "amountPaid", "A sale without a customer is paid in full: the amount paid must equal the total, or be left out."));
+            }
+        }
+
+        var created = SalesErrors.Run(() => Sale.Complete(saleId, organizationId, currency, user.UserId!.Value, now, inputs, command.CustomerId, dueAtUtc, initialPayment, command.PaymentMethod), SaleField);
         if (created.IsFailure)
         {
             return Fail(created.Error!);
@@ -193,7 +251,7 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
             user.UserId,
             "Sale",
             sale.Id,
-            string.Create(CultureInfo.InvariantCulture, $"A sale with {sale.Lines.Count} line(s) was recorded.")));
+            string.Create(CultureInfo.InvariantCulture, $"A sale with {sale.Lines.Count} line(s) was recorded{(sale.CustomerId is null ? string.Empty : " on account")}.")));
 
         try
         {
@@ -228,6 +286,9 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
     private static string? SaleField(string code) => code switch
     {
         "sale.no_lines" or "sale.line_product_duplicate" => "lines",
+        "sale.customer_invalid" => "customerId",
+        "sale.payment_exceeds_total" or "sale.payment_amount_negative" or "sale.payment_currency_mismatch" or "sale.walk_in_is_paid_in_full" or "money.scale_exceeded" or "money.amount_out_of_range" => "amountPaid",
+        "sale.payment_method_too_long" => "paymentMethod",
         _ => null,
     };
 

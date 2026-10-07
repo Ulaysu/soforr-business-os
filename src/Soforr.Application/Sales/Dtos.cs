@@ -40,7 +40,32 @@ public sealed record SaleLineDto(
     }
 }
 
-/// <summary>A sale with its lines. <see cref="Total"/> is computed by the Domain, never supplied. <see cref="TotalCost"/> is null for a caller who may not see costs.</summary>
+/// <summary>One money event on a sale: a payment, or the reversal of one (<see cref="ReversesPaymentId"/> names the payment it takes back). Amounts are positive.</summary>
+public sealed record SalePaymentDto(
+    Guid Id,
+    string Kind,
+    decimal Amount,
+    DateTimeOffset PaidAtUtc,
+    string? MethodLabel,
+    Guid? ReversesPaymentId,
+    string? ReversalReason,
+    Guid RecordedByUserId,
+    DateTimeOffset RecordedAtUtc)
+{
+    internal static SalePaymentDto From(SalePayment payment)
+    {
+        ArgumentNullException.ThrowIfNull(payment);
+
+        return new SalePaymentDto(payment.Id, payment.Kind.ToString(), payment.Amount.Amount, payment.PaidAtUtc, payment.MethodLabel, payment.ReversesPaymentId, payment.ReversalReason, payment.RecordedByUserId, payment.RecordedAtUtc);
+    }
+}
+
+/// <summary>
+/// A sale with its lines. <see cref="Total"/> is computed by the Domain, never supplied. <see cref="TotalCost"/> is null for a
+/// caller who may not see costs. A sale made on account has a <see cref="CustomerId"/>, a fixed <see cref="DueAtUtc"/>, the
+/// <see cref="AmountPaid"/> (payments minus reversals) and what is still <see cref="Outstanding"/>; a walk-in sale has no
+/// customer or due date, is paid in full and has nothing outstanding.
+/// </summary>
 public sealed record SaleDto(
     Guid Id,
     string Status,
@@ -53,7 +78,12 @@ public sealed record SaleDto(
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset? VoidedAtUtc,
     Guid? VoidedByUserId,
-    string? VoidReason)
+    string? VoidReason,
+    Guid? CustomerId,
+    DateTimeOffset? DueAtUtc,
+    decimal AmountPaid,
+    decimal Outstanding,
+    IReadOnlyList<SalePaymentDto> Payments)
 {
     internal static SaleDto From(Sale sale, bool includeCost)
     {
@@ -77,18 +107,23 @@ public sealed record SaleDto(
             sale.CreatedAtUtc,
             sale.VoidedAtUtc,
             sale.VoidedByUserId,
-            sale.VoidReason);
+            sale.VoidReason,
+            sale.CustomerId,
+            sale.DueAtUtc,
+            sale.AmountPaid.Amount,
+            sale.Outstanding.Amount,
+            sale.Payments.OrderBy(payment => payment.RecordedAtUtc).ThenBy(payment => payment.Kind).ThenBy(payment => payment.Id).Select(SalePaymentDto.From).ToList());
     }
 }
 
 /// <summary>A sale without its lines, for lists.</summary>
-public sealed record SaleSummaryDto(Guid Id, string Status, string Currency, decimal Total, int LineCount, Guid CreatedByUserId, DateTimeOffset CreatedAtUtc, DateTimeOffset? VoidedAtUtc)
+public sealed record SaleSummaryDto(Guid Id, string Status, string Currency, decimal Total, int LineCount, Guid CreatedByUserId, DateTimeOffset CreatedAtUtc, DateTimeOffset? VoidedAtUtc, Guid? CustomerId, DateTimeOffset? DueAtUtc, decimal Outstanding)
 {
     internal static SaleSummaryDto From(Sale sale)
     {
         ArgumentNullException.ThrowIfNull(sale);
 
-        return new SaleSummaryDto(sale.Id, sale.Status.ToString(), sale.Currency.Code, sale.Total.Amount, sale.Lines.Count, sale.CreatedByUserId, sale.CreatedAtUtc, sale.VoidedAtUtc);
+        return new SaleSummaryDto(sale.Id, sale.Status.ToString(), sale.Currency.Code, sale.Total.Amount, sale.Lines.Count, sale.CreatedByUserId, sale.CreatedAtUtc, sale.VoidedAtUtc, sale.CustomerId, sale.DueAtUtc, sale.Outstanding.Amount);
     }
 }
 

@@ -20,7 +20,7 @@ public sealed class GetSaleHandler(IAppDbContext db, ICurrentUser user) : IQuery
         }
 
         // Filtered to the caller's organization: another organization's sale is not found.
-        var sale = await db.Set<Sale>().AsNoTracking().Include(s => s.Lines).SingleOrDefaultAsync(s => s.Id == query.Id, cancellationToken);
+        var sale = await db.Set<Sale>().AsNoTracking().Include(s => s.Lines).Include(s => s.Payments).SingleOrDefaultAsync(s => s.Id == query.Id, cancellationToken);
 
         return sale is null
             ? Result.Failure<SaleDto>(SalesErrors.SaleNotFound(query.Id))

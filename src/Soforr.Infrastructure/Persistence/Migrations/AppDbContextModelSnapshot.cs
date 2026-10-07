@@ -658,6 +658,17 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                         .HasMaxLength(3)
                         .HasColumnType("character varying(3)");
 
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("DueAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("PaymentRevision")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -681,13 +692,23 @@ namespace Soforr.Infrastructure.Persistence.Migrations
 
                     b.HasKey("OrganizationId", "Id");
 
+                    b.HasIndex("CustomerId", "OrganizationId");
+
                     b.HasIndex("OrganizationId", "CreatedAtUtc");
+
+                    b.HasIndex("OrganizationId", "CustomerId", "DueAtUtc");
 
                     b.HasIndex("OrganizationId", "Status", "CreatedAtUtc");
 
                     b.ToTable("Sales", null, t =>
                         {
                             t.HasCheckConstraint("CK_Sales_Currency_Format", "\"Currency\" ~ '^[A-Z]{3}$'");
+
+                            t.HasCheckConstraint("CK_Sales_Customer_MatchesDueDate", "(\"CustomerId\" IS NULL) = (\"DueAtUtc\" IS NULL)");
+
+                            t.HasCheckConstraint("CK_Sales_DueAt_NotBeforeSale", "\"DueAtUtc\" IS NULL OR \"DueAtUtc\" >= \"CreatedAtUtc\"");
+
+                            t.HasCheckConstraint("CK_Sales_PaymentRevision_NotNegative", "\"PaymentRevision\" >= 0");
 
                             t.HasCheckConstraint("CK_Sales_Status_Known", "\"Status\" IN ('Completed', 'Voided')");
 
@@ -762,6 +783,72 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("CK_SaleLines_Snapshots_NotBlank", "char_length(btrim(\"SkuSnapshot\")) > 0 AND char_length(btrim(\"NameSnapshot\")) > 0 AND char_length(btrim(\"UnitOfMeasureSnapshot\")) > 0");
 
                             t.HasCheckConstraint("CK_SaleLines_UnitPrice_NotNegative", "\"UnitPrice\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Sales.SalePayment", b =>
+                {
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("MethodLabel")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset>("PaidAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("RecordedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RecordedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ReversalReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("ReversesPaymentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SaleId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("OrganizationId", "Id");
+
+                    b.HasAlternateKey("OrganizationId", "SaleId", "Id")
+                        .HasName("AK_SalePayments_OrganizationId_SaleId_Id");
+
+                    b.HasIndex("OrganizationId", "ReversesPaymentId")
+                        .IsUnique();
+
+                    b.HasIndex("OrganizationId", "SaleId", "RecordedAtUtc");
+
+                    b.HasIndex("OrganizationId", "SaleId", "ReversesPaymentId");
+
+                    b.ToTable("SalePayments", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SalePayments_AmountCurrency_Format", "\"AmountCurrency\" ~ '^[A-Z]{3}$'");
+
+                            t.HasCheckConstraint("CK_SalePayments_Amount_Positive", "\"Amount\" > 0");
+
+                            t.HasCheckConstraint("CK_SalePayments_Kind_Known", "\"Kind\" IN ('Payment', 'Reversal')");
+
+                            t.HasCheckConstraint("CK_SalePayments_MethodLabel_NotBlank", "\"MethodLabel\" IS NULL OR char_length(btrim(\"MethodLabel\")) > 0");
+
+                            t.HasCheckConstraint("CK_SalePayments_PaidAt_NotAfterRecorded", "\"PaidAtUtc\" <= \"RecordedAtUtc\"");
+
+                            t.HasCheckConstraint("CK_SalePayments_ReversalReason_NotBlank", "\"ReversalReason\" IS NULL OR char_length(btrim(\"ReversalReason\")) > 0");
+
+                            t.HasCheckConstraint("CK_SalePayments_Reversal_MatchesKind", "(\"Kind\" = 'Reversal') = (\"ReversesPaymentId\" IS NOT NULL) AND (\"Kind\" = 'Reversal') = (\"ReversalReason\" IS NOT NULL)");
                         });
                 });
 
@@ -1086,6 +1173,15 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Soforr.Domain.Sales.Sale", b =>
+                {
+                    b.HasOne("Soforr.Domain.Customers.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId", "OrganizationId")
+                        .HasPrincipalKey("Id", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("Soforr.Domain.Sales.SaleLine", b =>
                 {
                     b.HasOne("Soforr.Domain.Sales.Sale", null)
@@ -1183,6 +1279,51 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Soforr.Domain.Sales.SalePayment", b =>
+                {
+                    b.HasOne("Soforr.Domain.Sales.Sale", null)
+                        .WithMany("Payments")
+                        .HasForeignKey("OrganizationId", "SaleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Soforr.Domain.Sales.SalePayment", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "SaleId", "ReversesPaymentId")
+                        .HasPrincipalKey("OrganizationId", "SaleId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.OwnsOne("Soforr.Domain.Common.Money", "Amount", b1 =>
+                        {
+                            b1.Property<Guid>("SalePaymentOrganizationId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<Guid>("SalePaymentId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(19, 4)
+                                .HasColumnType("numeric(19,4)")
+                                .HasColumnName("Amount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("AmountCurrency");
+
+                            b1.HasKey("SalePaymentOrganizationId", "SalePaymentId");
+
+                            b1.ToTable("SalePayments");
+
+                            b1.WithOwner()
+                                .HasForeignKey("SalePaymentOrganizationId", "SalePaymentId");
+                        });
+
+                    b.Navigation("Amount")
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Soforr.Domain.Purchasing.PurchaseOrder", b =>
                 {
                     b.Navigation("Lines");
@@ -1196,6 +1337,8 @@ namespace Soforr.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Soforr.Domain.Sales.Sale", b =>
                 {
                     b.Navigation("Lines");
+
+                    b.Navigation("Payments");
                 });
 #pragma warning restore 612, 618
         }

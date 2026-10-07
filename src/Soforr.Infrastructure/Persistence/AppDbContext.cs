@@ -59,6 +59,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IOrgani
         builder.Entity<PurchaseReceiptLine>().HasQueryFilter(line => CurrentOrganizationId != null && line.OrganizationId == CurrentOrganizationId);
         builder.Entity<Customer>().HasQueryFilter(customer => CurrentOrganizationId != null && customer.OrganizationId == CurrentOrganizationId);
         builder.Entity<Sale>().HasQueryFilter(sale => CurrentOrganizationId != null && sale.OrganizationId == CurrentOrganizationId);
+        builder.Entity<SalePayment>().HasQueryFilter(payment => CurrentOrganizationId != null && payment.OrganizationId == CurrentOrganizationId);
         builder.Entity<SaleLine>().HasQueryFilter(line => CurrentOrganizationId != null && line.OrganizationId == CurrentOrganizationId);
     }
 
@@ -107,15 +108,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IOrgani
     }
 
     /// <summary>
-    /// The movement ledger and the audit trail are append-only (ADR 0004; AUDIT-001): a recorded movement or audit
-    /// event is never changed or deleted, whatever the organization or the caller; a correction is a new record.
+    /// The movement ledger, the audit trail, the sale payments and the sale lines are append-only (ADR 0004; AUDIT-001;
+    /// CUSTOMER-002; SALES-001): a recorded movement, audit event, payment (or reversal) or sale line is never changed or
+    /// deleted, whatever the organization or the caller; a correction is a new record (a payment is corrected by a reversal).
     /// This applies even without a current organization. It guards the application's own writes; the audit trail also
     /// has a database trigger, while a raw SQL statement bypasses this guard for movements like any EF guard.
     /// </summary>
     private void EnsureAppendOnlyRecordsAreNotChanged()
     {
         var changed = ChangeTracker.Entries()
-            .Where(entry => entry.Entity is InventoryMovement or AuditEvent)
+            .Where(entry => entry.Entity is InventoryMovement or AuditEvent or SalePayment or SaleLine)
             .FirstOrDefault(entry => entry.State is EntityState.Modified or EntityState.Deleted);
 
         if (changed is not null)

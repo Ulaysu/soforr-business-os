@@ -20,6 +20,12 @@ internal static class SalesErrors
     public static Error ProductInactive(string field) =>
         new("sale.product_inactive", ErrorKind.RuleViolation, "An inactive product cannot be sold.", field);
 
+    public static Error CustomerNotFound(Guid id, string field) =>
+        new("customer.not_found", ErrorKind.NotFound, $"The customer '{id}' was not found.", field);
+
+    public static Error CustomerInactive { get; } =
+        new("sale.customer_inactive", ErrorKind.RuleViolation, "A sale cannot be made on account to an inactive customer.", "customerId");
+
     /// <summary>A sale id that was already used for a different sale (other products or other quantities).</summary>
     public static Error SaleIdConflict { get; } =
         new("sale.id_conflict", ErrorKind.Conflict, "This sale id was already used for a different sale. Use a new sale id, or send exactly the same sale again.");
@@ -37,7 +43,13 @@ internal static class SalesErrors
     {
         ArgumentNullException.ThrowIfNull(exception);
 
-        var kind = exception.Code is "sale.not_voidable" ? ErrorKind.RuleViolation : ErrorKind.Validation;
+        var kind = exception.Code switch
+        {
+            "sale.payment_not_found" => ErrorKind.NotFound,
+            "sale.not_voidable" or "sale.has_payments" or "sale.not_payable" or "sale.payment_exceeds_outstanding"
+                or "sale.payment_already_reversed" or "sale.payment_not_reversible" or "sale.reversal_before_payment" => ErrorKind.RuleViolation,
+            _ => ErrorKind.Validation,
+        };
 
         return new Error(exception.Code, kind, exception.Message, fieldFor?.Invoke(exception.Code));
     }
