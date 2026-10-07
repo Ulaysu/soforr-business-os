@@ -181,6 +181,21 @@ public sealed class Sale
         VoidReason = trimmed;
     }
 
+    /// <summary>
+    /// Whether a request to sell these products in these quantities is exactly this sale again: the same set of products
+    /// (no more, no fewer) with the same quantity of each. Only what the caller asked for is compared, not the prices the
+    /// server applied, so a later change of a catalog price does not turn a repeat into a different sale. Quantities are
+    /// compared by value.
+    /// </summary>
+    public bool HasSameLinesAs(IReadOnlyCollection<(Guid ProductId, Quantity Quantity)> requested)
+    {
+        ArgumentNullException.ThrowIfNull(requested);
+
+        return requested.Count == _lines.Count
+            && requested.Select(line => line.ProductId).Distinct().Count() == requested.Count
+            && requested.All(line => _lines.Any(stored => stored.ProductId == line.ProductId && stored.Quantity.Value == line.Quantity.Value));
+    }
+
     private static SaleLine BuildLine(Sale sale, SaleLineInput? input)
     {
         if (input is null)

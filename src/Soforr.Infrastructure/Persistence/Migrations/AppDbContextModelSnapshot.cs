@@ -595,6 +595,9 @@ namespace Soforr.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Soforr.Domain.Sales.Sale", b =>
                 {
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
@@ -608,9 +611,6 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(3)
                         .HasColumnType("character varying(3)");
-
-                    b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uuid");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -633,10 +633,7 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
-                    b.HasKey("Id");
-
-                    b.HasAlternateKey("Id", "OrganizationId")
-                        .HasName("AK_Sales_Id_OrganizationId");
+                    b.HasKey("OrganizationId", "Id");
 
                     b.HasIndex("OrganizationId", "CreatedAtUtc");
 
@@ -695,9 +692,9 @@ namespace Soforr.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProductId", "OrganizationId");
+                    b.HasIndex("OrganizationId", "SaleId");
 
-                    b.HasIndex("SaleId", "OrganizationId");
+                    b.HasIndex("ProductId", "OrganizationId");
 
                     b.HasIndex("SaleId", "ProductId")
                         .IsUnique();
@@ -1036,16 +1033,15 @@ namespace Soforr.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Soforr.Domain.Sales.SaleLine", b =>
                 {
-                    b.HasOne("Soforr.Domain.Catalog.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId", "OrganizationId")
-                        .HasPrincipalKey("Id", "OrganizationId")
+                    b.HasOne("Soforr.Domain.Sales.Sale", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("OrganizationId", "SaleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Soforr.Domain.Sales.Sale", null)
-                        .WithMany("Lines")
-                        .HasForeignKey("SaleId", "OrganizationId")
+                    b.HasOne("Soforr.Domain.Catalog.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId", "OrganizationId")
                         .HasPrincipalKey("Id", "OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();

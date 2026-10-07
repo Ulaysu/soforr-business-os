@@ -361,7 +361,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 - **Testing:** unit tests for totals/rounding/void/price-override rules; persistence integration tests.
 
 ### SALES-002 — CreateSale and VoidSale commands
-- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** `CreateSale` writes `SaleCompleted` movements in the same transaction; rejects insufficient stock; `VoidSale` restores stock via new movements; endpoints and permissions.
 - **Acceptance criteria:** No partial state on failure; concurrent sales of the last unit result in one success; void restores stock exactly once; audited.
 - **Dependencies:** SALES-001, INVENTORY-002, IDENTITY-002, AUDIT-001

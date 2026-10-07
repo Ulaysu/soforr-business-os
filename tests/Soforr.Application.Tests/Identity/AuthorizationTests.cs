@@ -57,6 +57,15 @@ public class AuthorizationTests
         { Role.Owner, Permission.PurchasingReceive, true },
         { Role.Manager, Permission.PurchasingReceive, true },
         { Role.Staff, Permission.PurchasingReceive, false },
+        { Role.Owner, Permission.SalesView, true },
+        { Role.Manager, Permission.SalesView, true },
+        { Role.Staff, Permission.SalesView, true },
+        { Role.Owner, Permission.SalesCreate, true },
+        { Role.Manager, Permission.SalesCreate, true },
+        { Role.Staff, Permission.SalesCreate, true },
+        { Role.Owner, Permission.SalesVoid, true },
+        { Role.Manager, Permission.SalesVoid, true },
+        { Role.Staff, Permission.SalesVoid, false },
     };
 
     [Theory]

@@ -35,4 +35,10 @@ public static class AuditActions
 
     /// <summary>Goods were received against an order and stock increased. The entity is the order.</summary>
     public const string PurchaseReceived = "purchasing.goods_received";
+
+    /// <summary>A sale was recorded and its stock removed. The entity is the sale.</summary>
+    public const string SaleCreated = "sales.sale_created";
+
+    /// <summary>A sale was voided and its stock returned. The entity is the sale; the description never carries the reason text.</summary>
+    public const string SaleVoided = "sales.sale_voided";
 }

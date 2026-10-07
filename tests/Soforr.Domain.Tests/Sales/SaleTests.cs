@@ -79,6 +79,20 @@ public class SaleTests
         Assert.Null(line.PriceOverrideReason);
     }
 
+    [Fact]
+    public void TheSameMoneyInstancePassedForSeveralPrices_BecomesIndependentValues()
+    {
+        var shared = M(10m);
+        var input = new SaleLineInput(Guid.CreateVersion7(), Guid.CreateVersion7(), "S", "N", "u", Quantity.Create(1m), shared, shared, shared, null);
+
+        var line = Assert.Single(Complete(input).Lines);
+
+        Assert.Equal(10m, line.CatalogUnitPrice.Amount);
+        Assert.NotSame(line.CatalogUnitPrice, line.UnitPrice);
+        Assert.NotSame(line.UnitPrice, line.CostPrice);
+        Assert.NotSame(line.CatalogUnitPrice, line.CostPrice);
+    }
+
     // ---- price overrides and discounts
 
     [Fact]
@@ -237,6 +251,33 @@ public class SaleTests
         var more = Line(quantity: 1m, catalog: 1m, cost: 0m);
 
         Assert.Equal("money.amount_out_of_range", CodeOf(() => Complete(huge, more)));
+    }
+
+    // ---- repeat detection
+
+    [Fact]
+    public void ARequestForTheSameProductsAndQuantities_IsTheSameSale_InAnyOrder()
+    {
+        var a = Guid.CreateVersion7();
+        var b = Guid.CreateVersion7();
+        var sale = Complete(Line(quantity: 2m, product: a, sku: "A"), Line(quantity: 3m, product: b, sku: "B"));
+
+        Assert.True(sale.HasSameLinesAs([(a, Quantity.Create(2m)), (b, Quantity.Create(3m))]));
+        Assert.True(sale.HasSameLinesAs([(b, Quantity.Create(3.0000m)), (a, Quantity.Create(2m))]));
+    }
+
+    [Fact]
+    public void ADifferentQuantityProductAdditionalOrMissingLine_IsNotTheSameSale()
+    {
+        var a = Guid.CreateVersion7();
+        var b = Guid.CreateVersion7();
+        var sale = Complete(Line(quantity: 2m, product: a, sku: "A"));
+
+        Assert.False(sale.HasSameLinesAs([(a, Quantity.Create(5m))]));
+        Assert.False(sale.HasSameLinesAs([(b, Quantity.Create(2m))]));
+        Assert.False(sale.HasSameLinesAs([(a, Quantity.Create(2m)), (b, Quantity.Create(1m))]));
+        Assert.False(Complete(Line(product: a, sku: "A"), Line(product: b, sku: "B")).HasSameLinesAs([(a, Quantity.Create(2m))]));
+        Assert.False(Complete(Line(product: a, sku: "A"), Line(product: b, sku: "B")).HasSameLinesAs([(a, Quantity.Create(2m)), (a, Quantity.Create(2m))]));
     }
 
     // ---- void

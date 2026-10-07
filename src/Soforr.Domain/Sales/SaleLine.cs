@@ -49,9 +49,12 @@ public sealed class SaleLine
         NameSnapshot = nameSnapshot;
         UnitOfMeasureSnapshot = unitOfMeasureSnapshot;
         Quantity = quantity;
-        CatalogUnitPrice = catalogUnitPrice;
-        UnitPrice = unitPrice;
-        CostPrice = costPrice;
+
+        // Each price is its own value: the same instance is often passed for two of them (an unchanged price is the catalog
+        // price), and persistence cannot track one value under two properties.
+        CatalogUnitPrice = Money.Create(catalogUnitPrice.Amount, catalogUnitPrice.Currency);
+        UnitPrice = Money.Create(unitPrice.Amount, unitPrice.Currency);
+        CostPrice = Money.Create(costPrice.Amount, costPrice.Currency);
         PriceOverrideReason = priceOverrideReason;
     }
 

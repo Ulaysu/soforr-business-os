@@ -45,4 +45,13 @@ public enum Permission
 
     /// <summary>Record goods received against a purchase order, which adds the stock.</summary>
     PurchasingReceive,
+
+    /// <summary>Read sales. The cost price on a sale line is shown only with <see cref="ProductViewCost"/>.</summary>
+    SalesView,
+
+    /// <summary>Record a sale, which removes the sold stock. A cashier needs it, so Staff has it.</summary>
+    SalesCreate,
+
+    /// <summary>Void a sale after the fact, which returns the stock it took.</summary>
+    SalesVoid,
 }
