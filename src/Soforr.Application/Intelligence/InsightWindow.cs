@@ -28,6 +28,21 @@ public static class InsightWindows
         return new InsightWindow(first, last, days, LocalMidnightUtc(first, zone), LocalMidnightUtc(today, zone), zone.Id);
     }
 
+    /// <summary>
+    /// The period of equal length immediately before <paramref name="current"/>: the same number of whole local days, ending
+    /// exactly where <paramref name="current"/> starts, so the two periods never overlap and leave no gap.
+    /// </summary>
+    public static InsightWindow Preceding(InsightWindow current, TimeZoneInfo zone)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentNullException.ThrowIfNull(zone);
+
+        var first = current.FirstDay.AddDays(-current.Days);
+        var last = current.FirstDay.AddDays(-1);
+
+        return new InsightWindow(first, last, current.Days, LocalMidnightUtc(first, zone), current.StartUtc, current.TimeZoneId);
+    }
+
     private static DateTimeOffset LocalMidnightUtc(DateOnly day, TimeZoneInfo zone)
     {
         var local = day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);

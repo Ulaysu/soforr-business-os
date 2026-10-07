@@ -129,6 +129,33 @@ public class InsightWindowsTests
         Assert.Equal(new DateTimeOffset(2026, 10, 9, 21, 0, 0, TimeSpan.Zero), window.EndUtc);
     }
 
+    [Fact]
+    public void ThePrecedingWindow_IsTheSameNumberOfDays_EndingWhereTheCurrentOneStarts()
+    {
+        var current = InsightWindows.TrailingCompleteDays(Utc(2026, 6, 1, 10), TimeZoneInfo.Utc, 30);
+
+        var previous = InsightWindows.Preceding(current, TimeZoneInfo.Utc);
+
+        Assert.Equal((new DateOnly(2026, 4, 2), new DateOnly(2026, 5, 1), 30), (previous.FirstDay, previous.LastDay, previous.Days));
+        Assert.Equal(Utc(2026, 4, 2), previous.StartUtc);
+        Assert.Equal(current.StartUtc, previous.EndUtc);
+        Assert.Equal(current.TimeZoneId, previous.TimeZoneId);
+    }
+
+    [Fact]
+    public void ThePrecedingWindow_FollowsTheOrganizationsTimeZone_AndLeavesNoGapAcrossAClockChange()
+    {
+        var london = TimeZoneInfo.FindSystemTimeZoneById("Europe/London"); // clocks went forward on 2026-03-29
+        var current = InsightWindows.TrailingCompleteDays(Utc(2026, 4, 10, 12), london, 7);
+
+        var previous = InsightWindows.Preceding(current, london);
+
+        Assert.Equal((new DateOnly(2026, 3, 27), new DateOnly(2026, 4, 2)), (previous.FirstDay, previous.LastDay));
+        Assert.Equal(current.StartUtc, previous.EndUtc);
+        Assert.Equal(Utc(2026, 3, 27), previous.StartUtc); // local midnight March 27, still GMT
+        Assert.Equal(TimeSpan.FromDays(7) - TimeSpan.FromHours(1), previous.EndUtc - previous.StartUtc);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
