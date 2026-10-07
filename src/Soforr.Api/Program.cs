@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Soforr.Api.Audit;
 using Soforr.Api.Catalog;
+using Soforr.Api.Customers;
 using Soforr.Api.Hosting;
 using Soforr.Api.Identity;
 using Soforr.Api.Intelligence;
@@ -42,6 +43,7 @@ if (app.Environment.IsDevelopment())
 
 app.MapOrganizationEndpoints();
 app.MapProductEndpoints();
+app.MapCustomerEndpoints();
 app.MapAuditEndpoints();
 app.MapInventoryEndpoints();
 app.MapPurchasingEndpoints();

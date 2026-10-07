@@ -4,6 +4,7 @@ using Soforr.Api.IntegrationTests.Postgres;
 using Soforr.Domain.Audit;
 using Soforr.Domain.Catalog;
 using Soforr.Domain.Common;
+using Soforr.Domain.Customers;
 using Soforr.Domain.Identity;
 using Soforr.Domain.Inventory;
 using Soforr.Domain.Organizations;
@@ -428,6 +429,74 @@ public sealed class TenantIsolationTests(PostgresDatabaseFixture database) : ICl
         await using var asB = database.CreateContext(tenants.OrganizationB);
         Assert.Equal(0, await asB.Set<Supplier>().CountAsync());
         Assert.Equal(0, await asB.Set<PurchaseOrder>().CountAsync());
+    }
+
+    // ---- customers
+
+    private async Task<(Guid CustomerA, Guid CustomerB)> SeedCustomersAsync(TwoTenants tenants)
+    {
+        var ids = new List<Guid>();
+        foreach (var organization in new[] { tenants.OrganizationA, tenants.OrganizationB })
+        {
+            var customer = Customer.Create(Guid.CreateVersion7(), organization, "Customer", "+220 555 0100", 30, DateTimeOffset.UtcNow);
+            await using var db = database.CreateContext(organization);
+            db.Set<Customer>().Add(customer);
+            await db.SaveChangesAsync();
+            ids.Add(customer.Id);
+        }
+
+        return (ids[0], ids[1]);
+    }
+
+    [Fact]
+    public async Task Customers_AreReadOnlyWithinTheCurrentOrganization()
+    {
+        using var tenants = await TwoTenants.CreateAsync(database);
+        var (customerA, customerB) = await SeedCustomersAsync(tenants);
+        await using var asA = database.CreateContext(tenants.OrganizationA);
+        await using var nobody = database.CreateContext();
+
+        Assert.Equal([customerA], await asA.Set<Customer>().Select(c => c.Id).ToArrayAsync());
+        Assert.Null(await asA.Set<Customer>().FindAsync(customerB));
+        Assert.Equal(0, await nobody.Set<Customer>().CountAsync());
+    }
+
+    [Fact]
+    public async Task ChangingOrDeletingAnotherOrganizationsCustomer_IsRefused_AndChangesNothing()
+    {
+        using var tenants = await TwoTenants.CreateAsync(database);
+        var (_, customerB) = await SeedCustomersAsync(tenants);
+
+        await using (var update = database.CreateContext(tenants.OrganizationA))
+        {
+            var theirs = await update.Set<Customer>().IgnoreQueryFilters().SingleAsync(c => c.Id == customerB);
+            theirs.Update("Injected", null, null, DateTimeOffset.UtcNow);
+            await Assert.ThrowsAsync<TenantIsolationException>(() => update.SaveChangesAsync());
+        }
+
+        await using (var delete = database.CreateContext(tenants.OrganizationA))
+        {
+            delete.Set<Customer>().Remove(await delete.Set<Customer>().IgnoreQueryFilters().SingleAsync(c => c.Id == customerB));
+            await Assert.ThrowsAsync<TenantIsolationException>(() => delete.SaveChangesAsync());
+        }
+
+        await using var asB = database.CreateContext(tenants.OrganizationB);
+        Assert.Equal("Customer", (await asB.Set<Customer>().SingleAsync(c => c.Id == customerB)).Name);
+    }
+
+    [Fact]
+    public async Task CreatingACustomerInAnotherOrganization_IsRefused()
+    {
+        using var tenants = await TwoTenants.CreateAsync(database);
+
+        await using (var asA = database.CreateContext(tenants.OrganizationA))
+        {
+            asA.Set<Customer>().Add(Customer.Create(Guid.CreateVersion7(), tenants.OrganizationB, "Injected", null, null, DateTimeOffset.UtcNow));
+            await Assert.ThrowsAsync<TenantIsolationException>(() => asA.SaveChangesAsync());
+        }
+
+        await using var asB = database.CreateContext(tenants.OrganizationB);
+        Assert.Equal(0, await asB.Set<Customer>().CountAsync());
     }
 
     // ---- sales

@@ -392,7 +392,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 Needed for customer balance and aging intelligence. Customers, credit sales and recorded payments are an accepted V1 product decision; see [sellable-v1.md](sellable-v1.md#accepted-v1-product-decisions).
 
 ### CUSTOMER-001 — Customers (domain, persistence, API)
-- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** `Customer` (name, contact details, optional credit terms such as days until a balance is overdue), tenant-owned, never deleted (deactivated). Create, update, deactivate, get, search (paginated). Permissions in the matrix.
 - **Acceptance criteria:** Invariants in Domain; tenant filter and write guard; OpenAPI; permissions enforced; authorization and tenant-isolation tests.
 - **Dependencies:** IDENTITY-003

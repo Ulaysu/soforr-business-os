@@ -57,4 +57,10 @@ public enum Permission
 
     /// <summary>See the insights ("things that need your attention"). Insights that reveal costs additionally need <see cref="ProductViewCost"/>. Not granted to Staff.</summary>
     InsightsView,
+
+    /// <summary>Read customers. Contact details are shown only with <see cref="CustomerManage"/>. Staff has it: a cashier picks the customer of a sale.</summary>
+    CustomerView,
+
+    /// <summary>Create, update and deactivate customers, and see their contact details.</summary>
+    CustomerManage,
 }
