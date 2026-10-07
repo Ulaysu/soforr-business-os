@@ -10,9 +10,9 @@ public static class RolePermissions
 {
     private static readonly Dictionary<Role, HashSet<Permission>> Grants = new()
     {
-        [Role.Owner] = [Permission.OrganizationView, Permission.OrganizationManageSettings, Permission.ProductView, Permission.ProductViewCost, Permission.ProductManage, Permission.AuditView, Permission.InventoryView, Permission.InventoryViewHistory, Permission.InventoryAdjust, Permission.PurchasingView, Permission.PurchasingManage, Permission.PurchasingReceive],
-        [Role.Manager] = [Permission.OrganizationView, Permission.ProductView, Permission.ProductViewCost, Permission.ProductManage, Permission.InventoryView, Permission.InventoryViewHistory, Permission.InventoryAdjust, Permission.PurchasingView, Permission.PurchasingManage, Permission.PurchasingReceive],
-        [Role.Staff] = [Permission.OrganizationView, Permission.ProductView, Permission.InventoryView],
+        [Role.Owner] = [Permission.OrganizationView, Permission.OrganizationManageSettings, Permission.ProductView, Permission.ProductViewCost, Permission.ProductManage, Permission.AuditView, Permission.InventoryView, Permission.InventoryViewHistory, Permission.InventoryAdjust, Permission.PurchasingView, Permission.PurchasingManage, Permission.PurchasingReceive, Permission.SalesView, Permission.SalesCreate, Permission.SalesVoid],
+        [Role.Manager] = [Permission.OrganizationView, Permission.ProductView, Permission.ProductViewCost, Permission.ProductManage, Permission.InventoryView, Permission.InventoryViewHistory, Permission.InventoryAdjust, Permission.PurchasingView, Permission.PurchasingManage, Permission.PurchasingReceive, Permission.SalesView, Permission.SalesCreate, Permission.SalesVoid],
+        [Role.Staff] = [Permission.OrganizationView, Permission.ProductView, Permission.InventoryView, Permission.SalesView, Permission.SalesCreate],
     };
 
     public static bool IsGranted(Role role, Permission permission) =>

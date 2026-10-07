@@ -32,11 +32,11 @@ internal sealed class SaleConfiguration : IEntityTypeConfiguration<Sale>
                 table.HasCheckConstraint("CK_Sales_VoidedAt_NotBeforeSale", "\"VoidedAtUtc\" IS NULL OR \"VoidedAtUtc\" >= \"CreatedAtUtc\"");
             });
 
-        builder.HasKey(sale => sale.Id);
+        // The key is (organization, sale id): a sale id may be chosen by the client (to make a retry safe), so it is unique
+        // within an organization only. Another organization may use the same id independently, and one organization can
+        // never collide with, or learn about, another's. The lines reference the sale through this key.
+        builder.HasKey(sale => new { sale.OrganizationId, sale.Id });
         builder.Property(sale => sale.Id).ValueGeneratedNever();
-
-        // Lets the lines reference the sale together with the organization.
-        builder.HasAlternateKey(sale => new { sale.Id, sale.OrganizationId }).HasName("AK_Sales_Id_OrganizationId");
 
         builder.Property(sale => sale.OrganizationId).IsRequired();
 
@@ -63,8 +63,8 @@ internal sealed class SaleConfiguration : IEntityTypeConfiguration<Sale>
 
         builder.HasMany(sale => sale.Lines)
             .WithOne()
-            .HasForeignKey(line => new { line.SaleId, line.OrganizationId })
-            .HasPrincipalKey(sale => new { sale.Id, sale.OrganizationId })
+            .HasForeignKey(line => new { line.OrganizationId, line.SaleId })
+            .HasPrincipalKey(sale => new { sale.OrganizationId, sale.Id })
             .OnDelete(DeleteBehavior.Restrict); // a sale and its lines are never deleted
         builder.Navigation(sale => sale.Lines).UsePropertyAccessMode(PropertyAccessMode.Field);
 

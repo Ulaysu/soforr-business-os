@@ -87,6 +87,21 @@ public sealed class SalesPersistenceTests(PostgresDatabaseFixture database) : IC
     }
 
     [Fact]
+    public async Task ALineBuiltFromOneSharedPriceInstance_IsStoredAndReadBack()
+    {
+        var organization = await NewOrganizationAsync();
+        var product = await NewProductAsync(organization);
+        var price = Money.Create(10m, Gmd);
+        var input = new SaleLineInput(Guid.CreateVersion7(), product, "S", "N", "bag", Quantity.Create(2m), price, price, price, null);
+        var sale = NewSale(organization, input);
+
+        await SaveAsync(organization, sale);
+
+        var line = Assert.Single((await LoadAsync(organization, sale.Id)).Lines);
+        Assert.Equal((10m, 10m, 10m), (line.CatalogUnitPrice.Amount, line.UnitPrice.Amount, line.CostPrice.Amount));
+    }
+
+    [Fact]
     public async Task TheSnapshots_DoNotChange_WhenTheProductIsEditedLater()
     {
         var organization = await NewOrganizationAsync();

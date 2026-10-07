@@ -461,7 +461,7 @@ public sealed class TenantIsolationTests(PostgresDatabaseFixture database) : ICl
         await using var nobody = database.CreateContext();
 
         Assert.Equal([saleA], await asA.Set<Sale>().Select(s => s.Id).ToArrayAsync());
-        Assert.Null(await asA.Set<Sale>().FindAsync(saleB));
+        Assert.Null(await asA.Set<Sale>().SingleOrDefaultAsync(s => s.Id == saleB));
         Assert.False(await asA.Set<SaleLine>().AnyAsync(l => l.Id == lineB));
         Assert.Equal(0, await nobody.Set<Sale>().CountAsync());
         Assert.Equal(0, await nobody.Set<SaleLine>().CountAsync());
