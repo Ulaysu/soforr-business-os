@@ -188,7 +188,7 @@ public class GetInsightsHandlerTests
 
         services.AddInsightSources(typeof(IInsightSource).Assembly);
 
-        Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(IInsightSource) && descriptor.ImplementationType == typeof(ReorderPointInsightSource));
+        Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(IInsightSource) && descriptor.ImplementationType == typeof(InventoryRiskInsightSource));
         Assert.All(services, descriptor => Assert.Equal(ServiceLifetime.Scoped, descriptor.Lifetime));
     }
 

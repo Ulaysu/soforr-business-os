@@ -437,7 +437,7 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 - **Testing:** unit tests with a fixed clock and fixtures; tenant-isolation and authorization tests.
 
 ### INTEL-002 — Inventory risk intelligence
-- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** Low-stock and reorder-threshold detection; **estimated stock coverage in days** = current stock ÷ average daily quantity sold over the trailing 30 calendar days; zero sales means "no recent sales", never infinite; products at risk of running out within their lead time; suggested reorder quantity = `max(0, reorder point + average daily sales × lead-time days - current stock)` when both reorder point and lead time exist. No quantity is suggested when required inputs are missing.
 - **Acceptance criteria:** Insights name the product, current stock, threshold or velocity used and window; handles no history, zero velocity, zero stock, inactive products and products without reorder settings by documented rules.
 - **Dependencies:** INTEL-001, INVENTORY-003, SALES-002
