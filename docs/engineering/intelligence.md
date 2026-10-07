@@ -18,8 +18,9 @@ An **insight** is a finding about the business, derived from authoritative recor
 | `InsightFact` | a named value as invariant-culture text (no grouping, dot as decimal separator, no trailing zeros) with an optional unit. Presentation is the client's job. |
 | `InsightAction` | a stable `Code` the client maps to a screen (for example `create_purchase_order`) and a plain `Label`. The target is the insight's subject. |
 | `IInsightSource` | gathers records for one capability and calls its rules. Declares `RequiresProductViewCost`. |
-| `Rules/` | the pure rules (for example `ReorderPointRule`). |
-| `Sources/` | the sources (for example `ReorderPointInsightSource`). |
+| `InsightWindow` | a comparison period: whole local days, UTC bounds, half-open. |
+| `Rules/` | the pure rules (for example `InventoryRiskRule`). |
+| `Sources/` | the sources (for example `InventoryRiskInsightSource`). |
 | `GetInsights` | the query: checks `InsightsView`, runs every registered source, orders the result. |
 
 **Adding a capability** (INTEL-002 onwards): write the pure rule and its tests, write a source that gathers its input, done. Sources are found by scanning the assembly (`AddInsightSources`), so nothing is listed by hand and only capabilities that exist appear on the attention list.
@@ -33,7 +34,7 @@ Severity is a fixed scale, shown highest first: **High** (costing or about to co
 Every rule documents, next to the code (on the rule's type) and in its backlog item:
 
 1. **The formula**, in words and symbols, with units.
-2. **The comparison period.** Windows are trailing calendar days or "the immediately preceding period of equal length", half-open `[start, end)`, ending at the evaluation time (the clock passed in). Day boundaries use the **organization's time zone**, not the server's. A period with no data is "no data", never zero or infinity.
+2. **The comparison period.** A window is **N complete local calendar days before today** (`InsightWindows.TrailingCompleteDays`), or "the immediately preceding period of equal length", half-open `[start, end)`, where "today" is the day of the evaluation time (the clock passed in) in the **organization's time zone**, not the server's. Today's partial day is left out on purpose, so the same data gives the same answer at any time of the day. Windows are whole local days, so across a clock change a day is 23 or 25 hours; a local midnight that does not exist starts the day when the clocks move forward, one that happens twice starts at its first occurrence. The window is passed to the rule and shown in the insight's facts (`window`, `window_days`). A period with no data is "no data", never zero or infinity.
 3. **The thresholds**, as named constants or a thresholds record with the default stated (for example "notable cost change = at least 10% relative change"; "slow movers = bottom 20% by quantity, at least 5 qualifying products"). No hidden monetary or percentage threshold; an organization-configurable one is stated as such.
 4. **The edge cases**: no history, zero velocity, zero stock, inactive products, missing inputs. Missing inputs yield no insight or an explicit "not enough data", never a guess, and never a suggestion computed from missing numbers.
 5. **Rounding.** Calculations use `decimal`. Round only where a rule says so, state the places and the mode (half away from zero, as `Money.Multiply`), and round once at the end.
