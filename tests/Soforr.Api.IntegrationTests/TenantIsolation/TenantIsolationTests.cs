@@ -74,7 +74,7 @@ public sealed class TenantIsolationTests(PostgresDatabaseFixture database) : ICl
         {
             // The row can only be reached by bypassing the filter, as buggy code taking an id from the caller might.
             var theirs = await asA.Set<Organization>().IgnoreQueryFilters().SingleAsync(o => o.Id == tenants.OrganizationB);
-            theirs.UpdateSettings("Hijacked", "UTC", DateTimeOffset.UtcNow);
+            theirs.UpdateSettings("Hijacked", "UTC", null, DateTimeOffset.UtcNow);
 
             await Assert.ThrowsAsync<TenantIsolationException>(() => asA.SaveChangesAsync());
         }
@@ -119,7 +119,7 @@ public sealed class TenantIsolationTests(PostgresDatabaseFixture database) : ICl
         using var tenants = await TwoTenants.CreateAsync(database);
         await using var asA = database.CreateContext(tenants.OrganizationA);
         var mine = await asA.Set<Organization>().SingleAsync();
-        mine.UpdateSettings("Renamed A", "UTC", DateTimeOffset.UtcNow);
+        mine.UpdateSettings("Renamed A", "UTC", null, DateTimeOffset.UtcNow);
 
         await asA.SaveChangesAsync();
 

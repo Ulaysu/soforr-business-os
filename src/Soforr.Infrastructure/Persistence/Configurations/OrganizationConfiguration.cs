@@ -22,6 +22,7 @@ internal sealed class OrganizationConfiguration : IEntityTypeConfiguration<Organ
                 table.HasCheckConstraint("CK_Organizations_Name_NotBlank", "char_length(btrim(\"Name\")) > 0");
                 table.HasCheckConstraint("CK_Organizations_Currency_Format", "\"Currency\" ~ '^[A-Z]{3}$'");
                 table.HasCheckConstraint("CK_Organizations_TimeZoneId_NotBlank", "char_length(btrim(\"TimeZoneId\")) > 0");
+                table.HasCheckConstraint("CK_Organizations_OverdueMaterialityThreshold_NotNegative", "\"OverdueMaterialityThreshold\" IS NULL OR \"OverdueMaterialityThreshold\" >= 0");
             });
 
         builder.HasKey(organization => organization.Id);
@@ -42,6 +43,8 @@ internal sealed class OrganizationConfiguration : IEntityTypeConfiguration<Organ
         builder.Property(organization => organization.TimeZoneId)
             .IsRequired()
             .HasMaxLength(100);
+
+        builder.Property(organization => organization.OverdueMaterialityThreshold);
 
         builder.Property(organization => organization.CreatedAtUtc).IsRequired();
         builder.Property(organization => organization.UpdatedAtUtc).IsRequired();

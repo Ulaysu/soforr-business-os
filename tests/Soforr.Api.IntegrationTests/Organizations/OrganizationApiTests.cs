@@ -57,7 +57,7 @@ public sealed class OrganizationApiTests : IClassFixture<PostgresDatabaseFixture
         Assert.Equal("Soforr Trading", body.GetProperty("name").GetString());
         Assert.Equal("GMD", body.GetProperty("currency").GetString());
         var names = body.EnumerateObject().Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray();
-        Assert.Equal(["createdAtUtc", "currency", "id", "name", "timeZoneId", "updatedAtUtc"], names);
+        Assert.Equal(["createdAtUtc", "currency", "id", "name", "overdueMaterialityThreshold", "timeZoneId", "updatedAtUtc"], names);
     }
 
     [Fact]
@@ -101,6 +101,44 @@ public sealed class OrganizationApiTests : IClassFixture<PostgresDatabaseFixture
 
         await using var db = _database.CreateContext(id);
         Assert.Equal("Soforr Group", (await db.Set<Organization>().SingleAsync(o => o.Id == id)).Name);
+    }
+
+    [Fact]
+    public async Task UpdateSettings_StoresTheOverdueThreshold_AndAbsentClearsIt()
+    {
+        var id = await SignInAsOwnerAsync();
+
+        var set = await SendAsync(_client, HttpMethod.Put, Settings(id), new { name = "Soforr Group", timeZoneId = "UTC", overdueMaterialityThreshold = 250.5 });
+        Assert.Equal(HttpStatusCode.OK, set.StatusCode);
+        Assert.Equal(250.5m, (await ReadAsync(set)).GetProperty("overdueMaterialityThreshold").GetDecimal());
+
+        await using (var db = _database.CreateContext(id))
+        {
+            Assert.Equal(250.5m, (await db.Set<Organization>().SingleAsync(o => o.Id == id)).OverdueMaterialityThreshold);
+        }
+
+        var cleared = await SendAsync(_client, HttpMethod.Put, Settings(id), new { name = "Soforr Group", timeZoneId = "UTC" });
+        Assert.Equal(HttpStatusCode.OK, cleared.StatusCode);
+        Assert.Equal(JsonValueKind.Null, (await ReadAsync(cleared)).GetProperty("overdueMaterialityThreshold").ValueKind);
+    }
+
+    [Theory]
+    [InlineData(-1, "organization.overdue_threshold_negative")]
+    [InlineData(1.00001, "money.scale_exceeded")]
+    public async Task UpdateSettings_WithAnInvalidThreshold_Returns400WithTheField_AndChangesNothing(double threshold, string code)
+    {
+        var id = await SignInAsOwnerAsync();
+
+        var response = await SendAsync(_client, HttpMethod.Put, Settings(id), new { name = "New name", timeZoneId = "UTC", overdueMaterialityThreshold = threshold });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await ReadAsync(response);
+        Assert.Equal(code, problem.GetProperty("code").GetString());
+        Assert.Equal(1, problem.GetProperty("errors").GetProperty("overdueMaterialityThreshold").GetArrayLength());
+        await using var db = _database.CreateContext(id);
+        var organization = await db.Set<Organization>().SingleAsync(o => o.Id == id);
+        Assert.NotEqual("New name", organization.Name);
+        Assert.Null(organization.OverdueMaterialityThreshold);
     }
 
     [Fact]

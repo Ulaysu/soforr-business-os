@@ -57,7 +57,7 @@ public class OrganizationPersistenceTests(PostgresDatabaseFixture database) : IC
         await using (var updater = database.CreateContext(id))
         {
             var organization = await updater.Set<Organization>().SingleAsync(o => o.Id == id);
-            organization.UpdateSettings("Soforr Group", "UTC", later);
+            organization.UpdateSettings("Soforr Group", "UTC", null, later);
             await updater.SaveChangesAsync();
         }
 
@@ -131,7 +131,8 @@ public class OrganizationPersistenceTests(PostgresDatabaseFixture database) : IC
         Assert.Equal(("character varying", 100, "NO"), columns["TimeZoneId"]);
         Assert.Equal(("timestamp with time zone", null, "NO"), columns["CreatedAtUtc"]);
         Assert.Equal(("timestamp with time zone", null, "NO"), columns["UpdatedAtUtc"]);
-        Assert.Equal(6, columns.Count);
+        Assert.Equal(("numeric", null, "YES"), columns["OverdueMaterialityThreshold"]);
+        Assert.Equal(7, columns.Count);
     }
 
     // ---- constraints enforced by the database itself
@@ -175,6 +176,31 @@ public class OrganizationPersistenceTests(PostgresDatabaseFixture database) : IC
             () => InsertRawAsync(Guid.CreateVersion7(), new string('n', Organization.MaxNameLength + 1), "GMD", "UTC"));
 
         Assert.Equal("22001", exception.SqlState);
+    }
+
+    [Fact]
+    public async Task TheDatabase_RejectsANegativeOverdueThreshold_ButAcceptsZeroAndNone()
+    {
+        var id = Guid.CreateVersion7();
+        await using var db = database.CreateContext();
+        db.Set<Organization>().Add(Organization.Create(id, "Soforr", Currency.Create("GMD"), "UTC", DateTimeOffset.UtcNow));
+        await db.SaveChangesAsync();
+
+        await using var connection = new NpgsqlConnection(database.ConnectionString);
+        await connection.OpenAsync();
+        foreach (var ok in new[] { "0", "12.5", "NULL" })
+        {
+            await using var good = connection.CreateCommand();
+            good.CommandText = $"UPDATE \"Organizations\" SET \"OverdueMaterialityThreshold\" = {ok} WHERE \"Id\" = @id";
+            good.Parameters.AddWithValue("id", id);
+            Assert.Equal(1, await good.ExecuteNonQueryAsync());
+        }
+
+        await using var bad = connection.CreateCommand();
+        bad.CommandText = "UPDATE \"Organizations\" SET \"OverdueMaterialityThreshold\" = -0.0001 WHERE \"Id\" = @id";
+        bad.Parameters.AddWithValue("id", id);
+        var exception = await Assert.ThrowsAsync<PostgresException>(() => bad.ExecuteNonQueryAsync());
+        Assert.Equal(("23514", "CK_Organizations_OverdueMaterialityThreshold_NotNegative"), (exception.SqlState, exception.ConstraintName));
     }
 
     [Fact]

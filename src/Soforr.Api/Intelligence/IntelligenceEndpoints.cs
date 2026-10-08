@@ -1,6 +1,7 @@
 using Soforr.Api.Http;
 using Soforr.Application.Common;
 using Soforr.Application.Intelligence.GetMarginSummary;
+using Soforr.Application.Intelligence.GetReceivables;
 using Soforr.Application.Intelligence.GetSalesSummary;
 
 namespace Soforr.Api.Intelligence;
@@ -43,6 +44,20 @@ public static class IntelligenceEndpoints
             .WithName("GetMarginSummary")
             .WithSummary("Gross margin (revenue minus the cost price recorded on each sale line) for the last N complete local days (default 30, at most 92) against the N days before them, in total and per product: margin percentage, the change in percentage points, average price and cost, products at a loss, products whose margin fell, and products with no recorded cost (their margin is not guessed). A management measure, not accounting. Needs InsightsView and ProductViewCost (Owner and Manager).")
             .Produces<MarginSummaryDto>()
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        group.MapGet(
+                "/receivables",
+                async (int? top, IQueryHandler<GetReceivablesQuery, ReceivablesDto> handler, CancellationToken cancellationToken) =>
+                {
+                    var result = await handler.HandleAsync(new GetReceivablesQuery(top), cancellationToken);
+                    return result.ToHttpResult(Results.Ok);
+                })
+            .WithName("GetReceivables")
+            .WithSummary("What customers owe, as of now: the total outstanding, the part not yet due and the overdue part split into aging buckets (0-30, 31-60, 61-90 and 91+ days past the due date, in the organization's calendar), and the most overdue customers with the sales behind each balance. A payment reduces only the sale it was recorded against. Derived from the sales and payment records on every request, never stored. Owner and Manager only.")
+            .Produces<ReceivablesDto>()
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden);

@@ -41,11 +41,11 @@ public static class OrganizationEndpoints
                 "/{id:guid}/settings",
                 async (Guid id, UpdateOrganizationSettingsRequest request, ICommandHandler<UpdateOrganizationSettingsCommand, OrganizationDto> handler, CancellationToken cancellationToken) =>
                 {
-                    var result = await handler.HandleAsync(new UpdateOrganizationSettingsCommand(id, request.Name, request.TimeZoneId), cancellationToken);
+                    var result = await handler.HandleAsync(new UpdateOrganizationSettingsCommand(id, request.Name, request.TimeZoneId, request.OverdueMaterialityThreshold), cancellationToken);
                     return result.ToHttpResult(Results.Ok);
                 })
             .WithName("UpdateOrganizationSettings")
-            .WithSummary("Changes an organization's name and time zone. The currency cannot be changed.")
+            .WithSummary("Replaces an organization's settings: name, time zone and the optional overdue materiality threshold (the smallest overdue customer balance, in the organization's currency, worth an insight; absent clears it and then every overdue balance is reported). The currency cannot be changed.")
             .Produces<OrganizationDto>()
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
@@ -57,4 +57,4 @@ public static class OrganizationEndpoints
 }
 
 /// <summary>The request body of <c>PUT /api/v1/organizations/{id}/settings</c>.</summary>
-public sealed record UpdateOrganizationSettingsRequest(string? Name, string? TimeZoneId);
+public sealed record UpdateOrganizationSettingsRequest(string? Name, string? TimeZoneId, decimal? OverdueMaterialityThreshold = null);

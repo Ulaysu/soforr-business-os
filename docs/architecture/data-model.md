@@ -37,7 +37,7 @@ Organization ─┬─ Membership ── User
 
 ## Organizations Table
 
-`Organizations(Id uuid PK, Name varchar(200), Currency varchar(3), TimeZoneId varchar(100), CreatedAtUtc timestamptz, UpdatedAtUtc timestamptz)`, all columns required. Identifiers are generated in application code. The Domain enforces the invariants; CHECK constraints are a backstop for data written by anything else: the name is not blank, the currency is exactly three upper-case letters (`^[A-Z]{3}$`), the time zone is not blank. The currency is stored as the code and read back through `Currency.Create`, so a code removed from the supported snapshot would stop loading; the snapshot is only changed deliberately.
+`Organizations(Id uuid PK, Name varchar(200), Currency varchar(3), TimeZoneId varchar(100), OverdueMaterialityThreshold numeric(19,4) NULL, CreatedAtUtc timestamptz, UpdatedAtUtc timestamptz)`, all columns required except the threshold. `OverdueMaterialityThreshold` is the smallest overdue amount of a customer that is reported as an insight; null means no threshold is set (INTEL-005), and a CHECK constraint keeps it non-negative. Identifiers are generated in application code. The Domain enforces the invariants; CHECK constraints are a backstop for data written by anything else: the name is not blank, the currency is exactly three upper-case letters (`^[A-Z]{3}$`), the time zone is not blank. The currency is stored as the code and read back through `Currency.Create`, so a code removed from the supported snapshot would stop loading; the snapshot is only changed deliberately.
 
 ## Identity Tables
 
