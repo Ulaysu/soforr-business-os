@@ -32,6 +32,10 @@ Agents **stop and ask** before:
 
 Routine implementation that follows the documented architecture is autonomous.
 
+## Web application
+
+`src/Soforr.Web` (Vue 3, TypeScript, Vite, Tailwind, Vitest) has its own commands, run from that folder: `npm ci`, `npm run dev` (proxies to the API), `npm run lint`, `npm run format:check`, `npm run build`, `npm test`. CI runs them in the `web` job. Details, the typed API client and how to regenerate the OpenAPI snapshot: [src/Soforr.Web/README.md](../../src/Soforr.Web/README.md). The client's types are generated from a committed snapshot of the API's OpenAPI document and a .NET test fails when the snapshot is stale, so an API change must be committed together with the regenerated snapshot and types.
+
 ## Repository Conventions
 
 - Branches from `main`; small focused commits with conventional prefixes (`feat:`, `fix:`, `test:`, `docs:`, `chore:`, `refactor:`).

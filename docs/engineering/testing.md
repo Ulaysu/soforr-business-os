@@ -93,6 +93,10 @@ When the offline work lands, these are required, in addition to the usual pyrami
 - **Client (Vitest with an IndexedDB implementation for tests):** persistence across reopen, durable-before-saved, ordering and dependencies, failure classification and backoff with a fake clock, one database per user and organization, schema migration of old stored operations, bounded cache limits, sign-out blocking.
 - **Real browser:** an automated offline journey (cache, go offline, sell, refresh, restart, reconnect, verify one sale, stock and audit on the server) and the lost-response scenario. Playwright is approved for this (ADR 0007, OFFLINE-007) and is added when the web and end-to-end infrastructure is built.
 
+## Web application tests
+
+Vitest (with jsdom and Vue Test Utils) in `src/Soforr.Web`, files named `*.test.ts` next to the code. They test the client's behaviour (the API client, components, later the offline store and sync engine), never business rules, which are tested on the server. The API contract is protected from the other side by `OpenApiSnapshotTests`. Real-browser tests (Playwright, approved for OFFLINE-007) are added with the end-to-end infrastructure.
+
 ## Practices
 
 - Deterministic tests: inject `IClock` and id generators; no reliance on wall time or ordering.

@@ -143,6 +143,10 @@ Vue UI → client application service → local repository (IndexedDB) + outbox 
 
 Status: accepted. The server contract is implemented (OFFLINE-001, [offline-sync-contract.md](../engineering/offline-sync-contract.md)); the web application does not exist yet, so the browser part follows FOUNDATION-007 and the online screens.
 
+## Web application
+
+`src/Soforr.Web` is the Vue 3 single-page application (TypeScript strict, Vite, Tailwind CSS, Vue Router). It is a presentation layer: it holds no business rule, talks to the API only through a typed client generated from the API's OpenAPI document, authenticates with the HttpOnly session cookie (no credential in browser storage, ADR 0002) and is served same-site with the API (a dev proxy locally, the deployment in DEPLOY-002). The offline capabilities of ADR 0007 will live in this project (OFFLINE-002 onward) as a local store, an outbox and a sync engine behind application services; Vue components do not touch them directly.
+
 ## Modules and Data
 
 Modules are folders/namespaces inside the existing projects: [modules.md](modules.md). Data conventions: [data-model.md](data-model.md).

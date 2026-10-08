@@ -32,3 +32,34 @@ jobs:
 
       - name: Test
         run: dotnet test Soforr.BusinessOS.slnx --no-build --configuration Release --verbosity normal
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/Soforr.Web
+    env:
+      CI: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/Soforr.Web/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Verify formatting
+        run: npm run format:check
+
+      - name: Build (type-check and bundle)
+        run: npm run build
+
+      - name: Test
+        run: npm test
