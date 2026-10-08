@@ -72,6 +72,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 | 5. First intelligence | INTEL-001, INTEL-002, INTEL-003 |
 | 6. Customers and the rest of the intelligence | CUSTOMER-001, CUSTOMER-002, INTEL-004, INTEL-005, INTEL-006 |
 | 7. Screens | CATALOG-004, INVENTORY-004, PURCHASING-003, SALES-003, CUSTOMER-003, INTEL-007 |
+| 7b. Connectivity resilience | OFFLINE-001 (backend, may start as soon as ADR 0007 is accepted), then OFFLINE-002..007 on top of the web scaffold and the screens |
 | 8. People and hardening | IDENTITY-004, IDENTITY-005 |
 | 9. Production | DEPLOY-001, DEPLOY-002, OBS-001, OPS-001 |
 | 10. Commercial | E2E-001, COMMERCIAL-001, COMMERCIAL-002 |
@@ -487,6 +488,68 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 - **Testing:** API tests; component tests; the end-to-end journey (E2E-001) ends on this screen.
 
 **Mapping from the earlier sequence:** old INTEL-001 (sales-velocity forecast) → INTEL-002; old INTEL-002 (stored reorder recommendations) → INTEL-008 (PRODUCT-P1); old INTEL-003 (owner approval executes a purchase order) → INTEL-009 (PRODUCT-P1); NOTIF-001 stays PRODUCT-P1.
+
+---
+
+# EPIC 20 — Connectivity Resilience (Sellable V1, owner decision 2026-10-08)
+
+Critical workflows (sales, credit sales, payments) continue offline and synchronize automatically. The server stays authoritative and the existing idempotent commands are reused. Design, boundaries and the answers to the product questions: [ADR 0007](../decisions/0007-offline-resilience.md) (Proposed until the owner accepts it). The browser items cannot start before the web scaffold and the online screens exist; OFFLINE-001 is backend-only and can start first.
+
+### OFFLINE-001 — Replay-safe server contract
+- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Description:** The additive server changes that make replay after an outage correct. (1) `CreateSale` accepts an optional `occurredAtUtc`: not in the future (small clock-skew allowance) and not older than the configurable offline window (default 72 hours), else a validation error; the sale and its credit due date follow it; the server's received time is stored separately (migration). (2) Each sale line may state `expectedCatalogPrice`; a different server catalog price refuses the sale with 409 `sale.catalog_price_changed` (nothing recorded, no id reserved). (3) A documented error taxonomy for the client (which codes are retryable, terminal or conflict). (4) Read feeds for the offline cache: product and customer listings bounded for a snapshot, with the information needed to show freshness. (5) A structured log and metric for late-arriving operations (age = received - occurred), with no personal data. Existing behaviour is unchanged when the new fields are absent.
+- **Acceptance criteria:** A replay of a sale or payment (once, twice, five times, after a lost response) has exactly one business effect; an offline sale is dated at its event time within the window and refused outside it; a changed catalog price is a conflict that records nothing; tenant isolation and permissions hold on replay; margin and insight periods follow the event time.
+- **Dependencies:** SALES-004, CUSTOMER-002, ADR 0007 accepted
+- **Affected area:** Domain, Application, Infrastructure (migration), Api, docs
+- **Testing:** PostgreSQL integration (replay matrix, window bounds, price conflict, tenant isolation, authorization), unit tests, migration reversibility.
+
+### OFFLINE-002 — Client persistence, outbox and sync engine foundation
+- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Frontend
+- **Description:** In `Soforr.Web`: the IndexedDB store (one database per user and organization, numbered migrations, persistent-storage request), the outbox with its status model, the connectivity monitor (`navigator.onLine` as a hint, verified against `/health/live`), the sync engine (sequential, dependency-aware, backoff with jitter, failure classification, triggers: start, `online`, visibility, manual, timer), the offline-session window (72 hours, no stored credential), sign-out blocking, and the status line component. No business screens. The choice of an IndexedDB wrapper (or none) is made here and needs approval as a dependency.
+- **Acceptance criteria:** Operations are durable before the UI reports them saved; they survive refresh and restart; a lost response followed by a retry produces one server-side effect (against the OFFLINE-001 contract); a different user cannot see or send another user's operations; the state shown is one of the documented connectivity states.
+- **Dependencies:** FOUNDATION-007, OFFLINE-001
+- **Affected area:** Web
+- **Testing:** Vitest with an IndexedDB test implementation and a fake clock (persistence, ordering, backoff, classification, migrations, tenant/user separation, sign-out blocking).
+
+### OFFLINE-003 — Offline product and customer cache, application shell
+- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Frontend
+- **Description:** The bounded local catalog and customer cache (limits and refresh rules in ADR 0007; cost prices only with `ProductViewCost`), local search including barcode, freshness display, and a service worker that caches the application shell and static assets only, with a safe update strategy that never touches pending operations.
+- **Acceptance criteria:** After one online session the app opens without a network and the catalog and customers can be searched; the cache cannot hold another organization's or user's data; a service-worker update does not destroy pending operations; storage-limit behaviour is explicit.
+- **Dependencies:** OFFLINE-002, CATALOG-004, CUSTOMER-003
+- **Affected area:** Web
+- **Testing:** Vitest; browser test of opening the shell offline.
+
+### OFFLINE-004 — Offline sales
+- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Frontend
+- **Description:** The sale screen works offline: local validation for usability only, durable local sale plus outbox record in one transaction, immediate display with "Saved on this device / Waiting for synchronization / Synchronized", estimated stock labelled as an estimate, synchronization through the existing `POST /api/v1/sales` with the client sale id as the idempotency key, the event time and the catalog price seen.
+- **Acceptance criteria:** A sale made offline appears immediately, survives restart, and synchronizes exactly once after reconnecting; insufficient authoritative stock and a changed price become visible conflicts; the server audit event exists after synchronization; no pricing, stock or credit rule is implemented in the client.
+- **Dependencies:** SALES-003, OFFLINE-002, OFFLINE-003
+- **Affected area:** Web
+- **Testing:** Vitest; end-to-end with the real API in OFFLINE-007.
+
+### OFFLINE-005 — Offline credit sales and payments
+- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Frontend
+- **Description:** Customer selection for credit sales from the cache, the amount paid at sale, and recording payments against synced sales through the existing idempotent `RecordPayment` (payment id as the key), ordered after their sale; over-payment and unknown sale become conflicts. Creating customers offline is out of scope (not replay-safe) and stays online-required.
+- **Acceptance criteria:** A credit sale and its payments made offline synchronize in order, exactly once each; a payment never overwrites or merges; a payment for a conflicting sale is blocked, not lost.
+- **Dependencies:** OFFLINE-004, CUSTOMER-003
+- **Affected area:** Web
+- **Testing:** Vitest; ordering and duplicate-payment tests; end-to-end in OFFLINE-007.
+
+### OFFLINE-006 — Sync reliability and conflict experience
+- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Frontend / Backend
+- **Description:** The "needs attention" experience: each conflict with the server's reason and the explicit resolutions (retry after fixing the cause, re-submit at the current price or the price shown with a reason, authorized discard with a reason kept in local history), manual "Sync now", blocked operations from an older version, retry visibility, the diagnostics view and the client counters (pending count, oldest age, attempts, failures, conflicts, latency).
+- **Acceptance criteria:** No failed operation is ever deleted silently; every conflict can be understood and resolved by a user with the right permission; an old-version operation fails safely with an explanation; metrics contain no personal data.
+- **Dependencies:** OFFLINE-005
+- **Affected area:** Web, Api (metrics)
+- **Testing:** Vitest; conflict scenarios (stock, price, inactive product or customer, permission changed, validation).
+
+### OFFLINE-007 — Offline end-to-end verification
+- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** QA
+- **Description:** Verify in a real browser against the real API and PostgreSQL: cache, go offline, sell (one, then ten), refresh, close and reopen, reconnect, synchronize, verify server sales, stock and audit; and the lost-response scenario (request reaches the server, response is lost, the client retries: exactly one sale). Browser automation is a new dependency and needs the owner's approval; until it exists the journey is run and recorded manually in the built-in browser.
+- **Acceptance criteria:** Both journeys pass and are repeatable; the results are recorded; the offline exit criteria in sellable-v1.md are checked off with evidence.
+- **Dependencies:** OFFLINE-006, E2E-001 scaffolding
+- **Affected area:** tests, CI
+- **Testing:** the journeys themselves.
 
 ---
 

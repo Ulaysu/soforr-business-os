@@ -127,6 +127,22 @@ The handler pattern is defined by [ADR 0003](../decisions/0003-commands-and-quer
 - Domain invariants are enforced by Domain constructors and methods, which throw `DomainException` with a stable `Code`. Handlers call the Domain through `DomainErrors.Run`, the one place that translates it to a Validation `Error` (with the field it is about, supplied by the module) instead of letting it escape.
 - The Domain never reads a clock or creates ids: time and ids are passed in. Handlers get them from `IClock` and `IIdGenerator` (implemented in Infrastructure), which keeps behavior deterministic in tests.
 
+## Connectivity resilience (proposed, ADR 0007)
+
+V1 critical workflows continue during network outages. This is a client-side capability around the existing server, not a second backend:
+
+```text
+Vue UI → client application service → local repository (IndexedDB) + outbox → sync engine → API client → existing API → existing commands → PostgreSQL
+```
+
+- The server and PostgreSQL remain the only source of truth. The browser keeps a bounded operational copy (products, customers, recent sales) and an outbox of pending commands.
+- The client queues the same commands the online path sends (`CreateSale`, `RecordPayment`); it does not re-implement stock, credit, payment or pricing rules. Replays use the existing client-chosen ids and strict repeat comparison for idempotency.
+- Server-side additions are small and additive (event time of a sale, the catalog price the cashier saw, the server's received time, a documented error taxonomy). Insufficient stock, a changed price, a removed product or a changed permission surface as conflicts to resolve, never as silent changes.
+- A service worker caches only the application shell. IndexedDB holds business data; the outbox holds pending mutations; the sync engine owns retries, ordering, state and failure classification.
+- Security: ADR 0002 is unchanged (cookie session, no stored credentials). Offline use is bounded to a window after the last online validation; local data is per user and organization; the server re-checks tenant, permission and rules on every replay.
+
+Status: Proposed. The web application does not exist yet; the browser part follows FOUNDATION-007 and the online screens.
+
 ## Modules and Data
 
 Modules are folders/namespaces inside the existing projects: [modules.md](modules.md). Data conventions: [data-model.md](data-model.md).

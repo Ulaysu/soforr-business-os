@@ -54,7 +54,7 @@ Do not immediately build dozens of features. Real usage decides what comes next.
 
 ## Market boundary
 
-V1 is aimed at **growing retail and light-wholesale businesses globally**, with a deliberately focused first operating model: connected web, single location/single stock pool, and no full B2B commerce or offline POS complexity. Barcode lookup, controlled price overrides and customer credit make the first release useful across both retail checkout and basic wholesale selling. Full B2B pricing catalogs, volume tiers, MOQs, sales orders/quotes, returns/refunds, multi-location inventory and offline-first POS are deliberately later.
+V1 is aimed at **growing retail and light-wholesale businesses globally**, with a deliberately focused first operating model: connectivity-resilient web (critical workflows keep working through outages and synchronize automatically), single location/single stock pool, and no full B2B commerce. Barcode lookup, controlled price overrides and customer credit make the first release useful across both retail checkout and basic wholesale selling. Full B2B pricing catalogs, volume tiers, MOQs, sales orders/quotes, returns/refunds, multi-location inventory and a fully offline application are deliberately later.
 
 ## Note on Customers
 

@@ -28,7 +28,8 @@ The product experience should compete on clarity, speed and deterministic operat
 | Products / Catalog | What the business sells and buys; SKU/barcode identification, prices and reorder settings | SELLABLE-P0 |
 | Inventory | Stock levels derived from recorded movements | SELLABLE-P0 |
 | Purchasing | Buying stock from suppliers; receiving goods | SELLABLE-P0 |
-| Sales | Fast connected sales, barcode/SKU lookup, controlled price overrides/discounts, and their effect on stock | SELLABLE-P0 |
+| Sales | Fast sales that keep working through a connectivity outage, barcode/SKU lookup, controlled price overrides/discounts, and their effect on stock | SELLABLE-P0 |
+| Connectivity resilience | Offline-capable critical workflows: local persistence, a durable outbox and automatic idempotent synchronization (ADR 0007) | SELLABLE-P0 |
 | Customers | Who the business sells to; credit sales, recorded payments and balances | SELLABLE-P0 |
 | Intelligence (deterministic) | Rule-based, explainable insights from business data: inventory risk, sales comparisons, margins, purchasing cost, customer aging, and the "things that need your attention" view | SELLABLE-P0 |
 | Production readiness | Deployment, configuration, observability, backup and recovery | SELLABLE-P0 |
@@ -81,7 +82,7 @@ Deterministic intelligence (explicit rules and calculations, no model) is in V1.
 - Statistical forecasting and anomaly detection
 - Automation of any business action
 - Expenses, receipts and file attachments
-- Native mobile applications and offline-first synchronization
+- Native mobile applications and fully offline operation of the whole application (V1 is connectivity-resilient for its critical workflows; see sellable-v1.md)
 - Advanced accounting, payroll, tax compliance and country-specific regulatory integrations
 - Persistent wholesale price lists, volume tiers, minimum-order quantities, customer-specific catalogs and self-service B2B ordering
 - Multi-location / multi-warehouse transfers (single stock pool per organization in V1; see [data-model.md](../architecture/data-model.md#inventory-integrity-model))
