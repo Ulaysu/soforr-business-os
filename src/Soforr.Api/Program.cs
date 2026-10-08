@@ -20,6 +20,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddApiJson();
 builder.Services.AddApiErrorHandling();
 builder.Services.AddApiSecurity();
+builder.Services.AddApiHardening(builder.Configuration);
 builder.Services.AddScoped<Soforr.Application.Audit.ICorrelationContext, Soforr.Api.Observability.HttpCorrelationContext>();
 builder.Services
     .AddApplication()
@@ -28,11 +29,12 @@ builder.Services
 var app = builder.Build();
 
 app.UseApiPipeline();
+app.UseApiProtections();
 app.UseAuthentication();
 app.UseAuthorization();
 
 // The authentication endpoints let anyone register, which ADR 0002 permits only after e-mail verification
-// (IDENTITY-004) and rate limiting (SECURITY-002) exist, so they (and the OpenAPI document) are mapped only in
+// (IDENTITY-004) exists (rate limiting, SECURITY-002, now does), so they (and the OpenAPI document) are mapped only in
 // Development. The organization endpoints require a signed-in user with the right permission, so they are mapped
 // everywhere; where no one can sign in they answer 401.
 if (app.Environment.IsDevelopment())

@@ -22,6 +22,9 @@ internal sealed class ApiFactory(string? connectionString = null) : WebApplicati
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:Database"] = connectionString ?? UnreachableConnectionString,
+                // The suites sign up and sign in from one address, far above the production brute-force limits; the limits have their own tests.
+                ["Hardening:AuthPermitsPerMinute"] = "1000000",
+                ["Hardening:GlobalPermitsPerMinute"] = "1000000",
             }));
     }
 }

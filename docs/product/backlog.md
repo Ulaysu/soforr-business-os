@@ -493,7 +493,7 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 # Cross-Cutting and Production Readiness (Sellable V1 Gate C)
 
 ### SECURITY-002 — Rate limiting and API hardening
-- **Status:** Ready · **Priority:** SELLABLE-P0 · **Agent:** Security
+- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Security
 - **Description:** ASP.NET Core rate limiting (strict on authentication endpoints), request size limits, security headers, CORS allowlist, HSTS.
 - **Acceptance criteria:** Limits configurable; exceeded limits return 429; headers verified. Required before any external user.
 - **Dependencies:** IDENTITY-001
