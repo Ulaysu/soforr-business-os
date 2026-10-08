@@ -441,6 +441,7 @@ public sealed class InsightsTests(PostgresDatabaseFixture database) : IClassFixt
         Assert.Contains(sources, source => source is SalesInsightSource);
         Assert.Contains(sources, source => source is MarginInsightSource);
         Assert.Contains(sources, source => source is ReceivablesInsightSource);
+        Assert.Contains(sources, source => source is PurchaseCostInsightSource);
         Assert.IsType<GetInsightsHandler>(handler);
     }
 }
