@@ -44,7 +44,7 @@ Every rule has tests with a **fixed clock** and fixtures for each edge case, an 
 ## Permissions and tenancy
 
 - `InsightsView` (Owner and Manager) is required to see any insight. Staff do not see the attention list.
-- A source whose insights reveal costs or margins sets `RequiresProductViewCost`; the evaluation runs it only for a caller who holds `ProductViewCost`, so a source never has to check that itself. *Test gap:* today every role that holds `InsightsView` also holds `ProductViewCost`, so the "skipped" half of that gate cannot be exercised through a real role; the day a role holds `InsightsView` without `ProductViewCost`, add the test for it.
+- A source whose insights reveal costs or margins sets `RequiresProductViewCost`; the evaluation runs it only for a caller who holds `ProductViewCost`, so a source never has to check that itself. `MarginInsightSource` (INTEL-004) is the first cost source. *Test gap:* today every role that holds `InsightsView` also holds `ProductViewCost`, so the "skipped" half of that gate cannot be exercised through a real role; the day a role holds `InsightsView` without `ProductViewCost`, add the test for it.
 - Sources read only through the tenant-filtered context; another organization's records cannot reach a rule. Every source gets an isolation test.
 
 ## What is out of scope
