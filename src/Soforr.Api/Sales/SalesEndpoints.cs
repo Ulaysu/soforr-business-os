@@ -14,7 +14,7 @@ namespace Soforr.Api.Sales;
 /// <summary>
 /// The Sales endpoints. They only translate HTTP to a command or query and a result to a response; the sale rules, the
 /// permission checks and the tenant scoping are in the Domain and the handlers. Signing in is required (default deny)
-/// and unsafe requests need an antiforgery token. No request carries a price, a currency or a total: the sale uses the
+/// and unsafe requests need an antiforgery token. A request never carries a currency or a total; a line may carry a final unit price and a reason only for a user allowed to override prices. Otherwise the sale uses the
 /// catalog price in the organization's currency and its totals are computed. Stock changes only through the sale and its void.
 /// </summary>
 public static class SalesEndpoints
@@ -31,12 +31,12 @@ public static class SalesEndpoints
                 "/",
                 async (SaleRequest request, ICommandHandler<CreateSaleCommand, SaleResultDto> handler, CancellationToken cancellationToken) =>
                 {
-                    var lines = request.Lines?.Select(line => new CreateSaleLine(line?.ProductId, line?.Quantity)).ToList();
+                    var lines = request.Lines?.Select(line => new CreateSaleLine(line?.ProductId, line?.Quantity, line?.UnitPrice, line?.PriceReason)).ToList();
                     var result = await handler.HandleAsync(new CreateSaleCommand(request.SaleId, lines, request.CustomerId, request.AmountPaid, request.PaymentMethod), cancellationToken);
                     return result.ToHttpResult(sale => sale.AlreadyRecorded ? Results.Ok(sale) : Results.Created($"{BasePath}/{sale.SaleId}", sale));
                 })
             .WithName("CreateSale")
-            .WithSummary("Records a sale at the catalog prices and removes the stock, atomically. Prices, costs and totals are taken and computed by the server. With a customerId it is a sale on account: amountPaid is what the customer pays now (0 up to the total; absent means paid in full), the rest is owed from a due date fixed now (sale date plus the customer's credit terms, or immediately). Without a customer the sale is paid in full. Sending the same saleId again with exactly the same products, quantities, customer and amount paid changes nothing and answers 200 with alreadyRecorded true; the same saleId with anything different is 409 (sale.id_conflict). Selling more than is in stock is 422.")
+            .WithSummary("Records a sale and removes the stock, atomically. Lines are charged the catalog price; a line may state the final unitPrice (an override or a discount, never negative) with a priceReason, which needs the SalesOverridePrice permission (Owner and Manager), and a price below the product's cost needs SalesSellBelowCost (Owner), else 403. The catalog price, the price charged, the reason and the user are recorded and a price override is audited. Costs and totals are taken and computed by the server. With a customerId it is a sale on account: amountPaid is what the customer pays now (0 up to the total; absent means paid in full), the rest is owed from a due date fixed now (sale date plus the customer's credit terms, or immediately). Without a customer the sale is paid in full. Sending the same saleId again with exactly the same products, quantities, prices, reasons, customer and amount paid changes nothing and answers 200 with alreadyRecorded true; the same saleId with anything different is 409 (sale.id_conflict). Selling more than is in stock is 422.")
             .Produces<SaleResultDto>(StatusCodes.Status201Created)
             .Produces<SaleResultDto>()
             .ProducesValidationProblem()
@@ -132,7 +132,7 @@ public static class SalesEndpoints
 }
 
 /// <summary>One line of a sale request. There is no price: the catalog price is used.</summary>
-public sealed record SaleLineRequest(Guid? ProductId, decimal? Quantity);
+public sealed record SaleLineRequest(Guid? ProductId, decimal? Quantity, decimal? UnitPrice = null, string? PriceReason = null);
 
 /// <summary>The request body of <c>POST /api/v1/sales</c>.</summary>
 public sealed record SaleRequest(Guid? SaleId, IReadOnlyList<SaleLineRequest?>? Lines, Guid? CustomerId = null, decimal? AmountPaid = null, string? PaymentMethod = null);

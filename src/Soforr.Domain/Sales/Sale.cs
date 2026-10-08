@@ -377,6 +377,27 @@ public sealed class Sale
     }
 
     /// <summary>
+    /// Whether this sale was made of exactly these requested lines, including the price asked for: a line with no price asked
+    /// for was charged the catalog price (not overridden); a line with a price was charged exactly that price for the same reason
+    /// (compared trimmed, blank meaning none). Quantities are compared by value.
+    /// </summary>
+    public bool HasSameRequestedLinesAs(IReadOnlyCollection<(Guid ProductId, Quantity Quantity, Money? UnitPrice, string? Reason)> requested)
+    {
+        ArgumentNullException.ThrowIfNull(requested);
+
+        static string? Normalize(string? reason) => string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
+
+        return requested.Count == _lines.Count
+            && requested.Select(line => line.ProductId).Distinct().Count() == requested.Count
+            && requested.All(line => _lines.Any(stored =>
+                stored.ProductId == line.ProductId
+                && stored.Quantity.Value == line.Quantity.Value
+                && (line.UnitPrice is null
+                    ? !stored.IsPriceOverridden && line.Reason is null
+                    : stored.UnitPrice.Amount == line.UnitPrice.Amount && Normalize(stored.PriceOverrideReason) == Normalize(line.Reason))));
+    }
+
+    /// <summary>
     /// What a sale of these lines would total: the same arithmetic as <see cref="Total"/> (each unit price times its quantity,
     /// rounded per line, then summed), available before the sale exists so a caller can default the amount paid to "in full"
     /// without repeating the rules.

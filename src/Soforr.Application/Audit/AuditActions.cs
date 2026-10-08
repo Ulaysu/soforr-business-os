@@ -39,6 +39,9 @@ public static class AuditActions
     /// <summary>A sale was recorded and its stock removed. The entity is the sale.</summary>
     public const string SaleCreated = "sales.sale_created";
 
+    /// <summary>A sale was recorded with at least one line charged at a price different from the catalog price. The entity is the sale; the description carries counts and amounts, never the reasons.</summary>
+    public const string SalePriceOverridden = "sales.sale_price_overridden";
+
     /// <summary>A sale was voided and its stock returned. The entity is the sale; the description never carries the reason text.</summary>
     public const string SaleVoided = "sales.sale_voided";
 

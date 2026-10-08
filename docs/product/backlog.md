@@ -369,7 +369,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 - **Testing:** atomicity and concurrency integration tests; authorization and tenant-isolation tests.
 
 ### SALES-004 — Controlled price overrides and discounts
-- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** Enforce the V1 sale pricing rule: catalog price is the default; authorized users may apply a line-price override or discount within explicit limits; the original price, final price, reason and actor are preserved.
 - **Acceptance criteria:** unauthorized users cannot override price; every override is attributable; server calculates totals; no price can fall below zero; margin intelligence uses the final sale-line price; audit event is written for sensitive overrides.
 - **Dependencies:** SALES-002, IDENTITY-002, AUDIT-001

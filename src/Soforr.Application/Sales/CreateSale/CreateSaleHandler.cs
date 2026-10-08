@@ -15,8 +15,13 @@ using Soforr.Domain.Sales;
 
 namespace Soforr.Application.Sales.CreateSale;
 
-/// <summary>One product to sell and how much of it. There is no price: the sale uses the product's catalog price at that moment (controlled overrides are SALES-004).</summary>
-public sealed record CreateSaleLine(Guid? ProductId, decimal? Quantity);
+/// <summary>
+/// One product to sell and how much of it. Without a <see cref="UnitPrice"/> the line is charged the product's catalog price at that
+/// moment. A <see cref="UnitPrice"/> is the final price charged for one unit (an override or a discount, never negative); stating one
+/// needs the <c>SalesOverridePrice</c> permission, and a price that differs from the catalog price needs a <see cref="PriceReason"/>.
+/// A price below the product's cost price additionally needs <c>SalesSellBelowCost</c>.
+/// </summary>
+public sealed record CreateSaleLine(Guid? ProductId, decimal? Quantity, decimal? UnitPrice = null, string? PriceReason = null);
 
 /// <summary>
 /// Records a sale of products. <see cref="SaleId"/> is an optional, client-chosen identifier of this sale: sending the
@@ -75,7 +80,7 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
             return Fail(SalesErrors.Invalid("sale.too_many_lines", "lines", $"A sale can have at most {SalesErrors.MaxLines} lines."));
         }
 
-        var requested = new List<(Guid ProductId, Quantity Quantity)>(lines.Count);
+        var requested = new List<RequestedLine>(lines.Count);
         for (var index = 0; index < lines.Count; index++)
         {
             if (lines[index] is not { ProductId: { } productId } line || productId == Guid.Empty)
@@ -99,7 +104,26 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
                 return Fail(SalesErrors.Invalid("sale.line_quantity_required", Field(index, "quantity"), "The quantity sold must be greater than zero."));
             }
 
-            requested.Add((productId, quantity.Value));
+            if (line.UnitPrice is null && line.PriceReason is not null)
+            {
+                return Fail(SalesErrors.Invalid("sale.line_price_reason_without_price", Field(index, "priceReason"), "A price reason can be given only together with a unit price."));
+            }
+
+            if (line.UnitPrice is { } stated)
+            {
+                // Stating a price at all is a controlled action, checked before anything is looked up or recorded.
+                if (user.Require(Permission.SalesOverridePrice) is { } notAllowed)
+                {
+                    return Fail(notAllowed);
+                }
+
+                if (stated < 0m)
+                {
+                    return Fail(SalesErrors.Invalid("sale.line_price_negative", Field(index, "unitPrice"), "The unit price cannot be negative."));
+                }
+            }
+
+            requested.Add(new RequestedLine(productId, quantity.Value, line.UnitPrice, line.PriceReason));
         }
 
         var currency = await OrganizationCurrency.ResolveAsync(db, user.OrganizationId, cancellationToken);
@@ -129,7 +153,7 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
         }
     }
 
-    private async Task<Result<SaleResultDto>> SellOnceAsync(Guid saleId, List<(Guid ProductId, Quantity Quantity)> requested, CreateSaleCommand command, Currency currency, CancellationToken cancellationToken)
+    private async Task<Result<SaleResultDto>> SellOnceAsync(Guid saleId, List<RequestedLine> requested, CreateSaleCommand command, Currency currency, CancellationToken cancellationToken)
     {
         var includeCost = user.Has(Permission.ProductViewCost);
 
@@ -138,7 +162,19 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
         var recorded = await db.Set<Sale>().AsNoTracking().Include(s => s.Lines).Include(s => s.Payments).SingleOrDefaultAsync(s => s.Id == saleId, cancellationToken);
         if (recorded is not null)
         {
-            return recorded.HasSameLinesAs(requested) && recorded.HasSameSettlementAs(command.CustomerId, command.AmountPaid)
+            var asked = new List<(Guid ProductId, Quantity Quantity, Money? UnitPrice, string? Reason)>(requested.Count);
+            foreach (var line in requested)
+            {
+                var price = line.UnitPrice is { } amount ? SalesErrors.Run(() => Money.Create(amount, currency), _ => null) : null;
+                if (price is { IsFailure: true })
+                {
+                    return Fail(price.Error!);
+                }
+
+                asked.Add((line.ProductId, line.Quantity, price?.Value, line.PriceReason));
+            }
+
+            return recorded.HasSameRequestedLinesAs(asked) && recorded.HasSameSettlementAs(command.CustomerId, command.AmountPaid)
                 ? Result.Success(new SaleResultDto(saleId, AlreadyRecorded: true, SaleDto.From(recorded, includeCost)))
                 : Fail(SalesErrors.SaleIdConflict);
         }
@@ -150,7 +186,7 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
         var inputs = new List<SaleLineInput>(requested.Count);
         for (var index = 0; index < requested.Count; index++)
         {
-            var (productId, quantity) = requested[index];
+            var (productId, quantity, requestedPrice, reason) = requested[index];
             if (!products.TryGetValue(productId, out var product))
             {
                 return Fail(SalesErrors.ProductNotFound(productId, Field(index, "productId")));
@@ -161,8 +197,25 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
                 return Fail(SalesErrors.ProductInactive(Field(index, "productId")));
             }
 
-            // The catalog price is the price charged; the cost price is recorded for margin. Both are snapshots.
-            inputs.Add(new SaleLineInput(ids.NewId(), product.Id, product.Sku, product.Name, product.UnitOfMeasure, quantity, product.SellingPrice, product.SellingPrice, product.CostPrice, PriceOverrideReason: null));
+            // The catalog price is the default price; a stated price is the final price charged. The catalog price, the price charged
+            // and the cost price are all recorded as snapshots, so margin and audit stay explainable.
+            var charged = product.SellingPrice;
+            if (requestedPrice is { } statedPrice)
+            {
+                var money = SalesErrors.Run(() => Money.Create(statedPrice, currency), _ => Field(index, "unitPrice"));
+                if (money.IsFailure)
+                {
+                    return Fail(money.Error!);
+                }
+
+                charged = money.Value;
+                if (charged.Amount < product.CostPrice.Amount && !user.Has(Permission.SalesSellBelowCost))
+                {
+                    return Fail(new Error("sale.line_price_below_cost", ErrorKind.Forbidden, "The price is below the product's cost price. Only the Owner may sell below cost.", Field(index, "unitPrice")));
+                }
+            }
+
+            inputs.Add(new SaleLineInput(ids.NewId(), product.Id, product.Sku, product.Name, product.UnitOfMeasure, quantity, product.SellingPrice, charged, product.CostPrice, reason));
         }
 
         var organizationId = user.OrganizationId!.Value;
@@ -253,6 +306,19 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
             sale.Id,
             string.Create(CultureInfo.InvariantCulture, $"A sale with {sale.Lines.Count} line(s) was recorded{(sale.CustomerId is null ? string.Empty : " on account")}.")));
 
+        if (sale.HasPriceOverride)
+        {
+            var overridden = sale.Lines.Count(line => line.IsPriceOverridden);
+            var belowCost = sale.Lines.Count(line => line.UnitPrice.Amount < line.CostPrice.Amount);
+            audit.Record(new AuditEntry(
+                organizationId,
+                AuditActions.SalePriceOverridden,
+                user.UserId,
+                "Sale",
+                sale.Id,
+                string.Create(CultureInfo.InvariantCulture, $"{overridden} of {sale.Lines.Count} line(s) were charged a price different from the catalog price (catalog total minus charged total: {sale.TotalDiscount.Amount}); {belowCost} below cost.")));
+        }
+
         try
         {
             await db.SaveChangesAsync(cancellationToken);
@@ -280,6 +346,9 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
 
         return Result.Success(new SaleResultDto(saleId, AlreadyRecorded: false, SaleDto.From(sale, includeCost)));
     }
+
+    /// <summary>A requested line: the product, the quantity and, when the caller states one, the final unit price and its reason.</summary>
+    private sealed record RequestedLine(Guid ProductId, Quantity Quantity, decimal? UnitPrice, string? PriceReason);
 
     private static string Field(int index, string name) => $"lines[{index}].{name}";
 

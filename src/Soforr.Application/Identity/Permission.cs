@@ -55,6 +55,12 @@ public enum Permission
     /// <summary>Void a sale after the fact, which returns the stock it took.</summary>
     SalesVoid,
 
+    /// <summary>Charge a price on a sale line that differs from the catalog price (an override or a discount). A cashier sells at the catalog price, so Staff does not have it.</summary>
+    SalesOverridePrice,
+
+    /// <summary>Charge a price below the product's recorded cost price. Owner only: it knowingly sells at a loss.</summary>
+    SalesSellBelowCost,
+
     /// <summary>See the insights ("things that need your attention"). Insights that reveal costs additionally need <see cref="ProductViewCost"/>. Not granted to Staff.</summary>
     InsightsView,
 
