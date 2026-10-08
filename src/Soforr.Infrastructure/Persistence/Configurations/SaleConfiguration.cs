@@ -56,6 +56,10 @@ internal sealed class SaleConfiguration : IEntityTypeConfiguration<Sale>
         // There is deliberately no foreign key to the user table: a sale outlives the people who made it (as movements do).
         builder.Property(sale => sale.CreatedByUserId).IsRequired();
         builder.Property(sale => sale.CreatedAtUtc).IsRequired();
+
+        // When the server recorded the sale, and the offline grant that vouched for CreatedAtUtc (no foreign key: grants are pruned).
+        builder.Property(sale => sale.ReceivedAtUtc).IsRequired();
+        builder.Property(sale => sale.OfflineGrantId);
         builder.Property(sale => sale.VoidedAtUtc);
         builder.Property(sale => sale.VoidedByUserId);
         builder.Property(sale => sale.VoidReason).HasMaxLength(Sale.MaxVoidReasonLength);

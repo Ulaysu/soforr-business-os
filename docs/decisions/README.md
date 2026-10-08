@@ -31,4 +31,5 @@ Only **Accepted** ADRs are authoritative (see [AGENTS.md](../../AGENTS.md)). Age
 | [0004](0004-inventory-concurrency.md) | Inventory concurrency | Accepted |
 | [0005](0005-testing-infrastructure.md) | Testing infrastructure | Accepted |
 | [0006](0006-sku-uniqueness.md) | SKU uniqueness | Accepted |
-| [0007](0007-offline-resilience.md) | Connectivity resilience (offline-capable critical workflows) | Proposed |
+| [0007](0007-offline-resilience.md) | Connectivity resilience (offline-capable critical workflows) | Accepted |
+| [0008](0008-offline-authorization-boundary.md) | Offline authorization boundary | Accepted |

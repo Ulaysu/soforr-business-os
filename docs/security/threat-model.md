@@ -45,6 +45,11 @@ Browser ↔ API · API ↔ database · API ↔ file storage · API ↔ AI provid
 | T19 | Automation executes unsafe or unintended actions | Elevation | Allow-list of safe commands, human approval for high-impact, run history | EPIC 11 |
 | T20 | Personal data over-collection or leakage (customers) | Privacy | Data minimization, tenant scoping, retention policy (to define) | EPIC 07/16 |
 
+| T21 | Backdating a sale or payment by sending an old offline event time | Tampering | The server accepts an offline event time only inside a silent gap it observed on the caller's own grant, within the 72-hour window (ADR 0008); timestamp age alone is never authorization; a refusal never falls back to server time; audited | OFFLINE-001 |
+| T22 | Using another user's or organization's offline grant | Spoofing / Elevation | The grant id is an identifier, not a secret; user and organization come from the session and are compared with the stored grant; permissions are checked at replay | OFFLINE-001 |
+
+Residual risk (accepted, bounded): a user who really stays silent can choose a time inside their own silence.
+
 ## Open Questions
 
 - Authentication mechanism and session model (ADR needed; approval required).

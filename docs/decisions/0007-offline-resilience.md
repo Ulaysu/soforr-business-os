@@ -1,10 +1,10 @@
 # 0007 — Connectivity resilience (offline-capable critical workflows)
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-10-08
 - Deciders: project owner
 
-> **Status.** This ADR stays `Proposed` until the owner sets `Accepted` (an agent never does, see [README](README.md)). OFFLINE-001, the backend task, starts after acceptance. This revision follows an architecture and security review of the first draft.
+> **Status.** Accepted by the project owner on 2026-10-08. The offline authorization mechanism it left open is decided in [ADR 0008](0008-offline-authorization-boundary.md) and implemented by OFFLINE-001; the contract is in [offline-sync-contract.md](../engineering/offline-sync-contract.md). The items below that name later work items are still open.
 
 ### Approved product decisions (owner, 2026-10-08)
 
@@ -23,7 +23,7 @@ These are decided and are not reopened by the implementation work:
 
 ### Implementation decisions that belong to the work items, not to this ADR
 
-Not finalized here, and not to be treated as decided: the exact **offline authorization mechanism** and its contract (OFFLINE-001); the exact cache-feed API (OFFLINE-001); the IndexedDB wrapper or none (OFFLINE-002); the exact sync algorithm, state-management and schema/version-migration implementation (OFFLINE-002); the conflict UI (OFFLINE-006); the telemetry implementation (OFFLINE-006). Numbers in this record (cache bounds, backoff, attempt counts) are proposed defaults.
+Not finalized here, and not to be treated as decided: the exact **offline authorization mechanism** and its contract (decided in ADR 0008, implemented in OFFLINE-001); the exact cache-feed API (OFFLINE-001); the IndexedDB wrapper or none (OFFLINE-002); the exact sync algorithm, state-management and schema/version-migration implementation (OFFLINE-002); the conflict UI (OFFLINE-006); the telemetry implementation (OFFLINE-006). Numbers in this record (cache bounds, backoff, attempt counts) are proposed defaults.
 
 ### Principle: timestamp age is not authorization
 

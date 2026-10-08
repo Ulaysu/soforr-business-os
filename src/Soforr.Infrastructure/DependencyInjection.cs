@@ -32,6 +32,14 @@ public static class DependencyInjection
             options.UseNpgsql(provider.GetRequiredService<IOptions<ConnectionStringsOptions>>().Value.Database));
         services.AddScoped<IAppDbContext>(provider => provider.GetRequiredService<AppDbContext>());
 
+        // The offline settings have defaults, so the section is optional; a value out of range stops the application at start.
+        services.AddOptions<OfflineOptions>()
+            .Bind(configuration.GetSection(OfflineOptions.SectionName))
+            .ValidateDataAnnotations()
+            .Validate(options => options.IsConsistent, "The Offline settings are inconsistent: MinGap must be at least twice ContactInterval, and GrantMaxAge at least Window.")
+            .ValidateOnStart();
+        services.AddSingleton<Soforr.Application.Offline.IOfflineSettings, OfflineSettings>();
+
         services.TryAddScoped<ICorrelationContext, NoCorrelationContext>();
         services.AddIdentityAuthentication(configuration);
 

@@ -42,6 +42,18 @@ public static class AuditActions
     /// <summary>A sale was recorded with at least one line charged at a price different from the catalog price. The entity is the sale; the description carries counts and amounts, never the reasons.</summary>
     public const string SalePriceOverridden = "sales.sale_price_overridden";
 
+    /// <summary>An offline grant was issued to a user's device (ADR 0008). The entity is the grant.</summary>
+    public const string OfflineGrantIssued = "offline.grant_issued";
+
+    /// <summary>An offline sale or payment was refused because the server could not vouch for its event time. The entity is the grant; nothing else was recorded.</summary>
+    public const string OfflineEventRefused = "offline.event_refused";
+
+    /// <summary>A sale made offline was accepted. The entity is the sale; the description gives the event time, the receipt time and the silent gap.</summary>
+    public const string OfflineSaleAccepted = "offline.sale_accepted";
+
+    /// <summary>A payment taken offline was accepted. The entity is the sale; the description gives the event time, the receipt time and the silent gap.</summary>
+    public const string OfflinePaymentAccepted = "offline.payment_accepted";
+
     /// <summary>A sale was voided and its stock returned. The entity is the sale; the description never carries the reason text.</summary>
     public const string SaleVoided = "sales.sale_voided";
 

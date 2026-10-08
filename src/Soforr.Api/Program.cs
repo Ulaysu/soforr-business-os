@@ -6,6 +6,7 @@ using Soforr.Api.Hosting;
 using Soforr.Api.Identity;
 using Soforr.Api.Intelligence;
 using Soforr.Api.Inventory;
+using Soforr.Api.Offline;
 using Soforr.Api.Organizations;
 using Soforr.Api.Purchasing;
 using Soforr.Api.Sales;
@@ -51,6 +52,7 @@ app.MapInventoryEndpoints();
 app.MapPurchasingEndpoints();
 app.MapSalesEndpoints();
 app.MapIntelligenceEndpoints();
+app.MapOfflineEndpoints();
 
 // The default-deny policy also applies to requests that match no endpoint, which would answer 401 for every
 // unknown path. A route that does not exist must stay a 404 (it is not a secret and it is not a sign-in problem),

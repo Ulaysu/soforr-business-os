@@ -40,6 +40,7 @@ Fixed roles, granted in code (`RolePermissions`). Anything not granted is denied
 | `CustomerView` | GetCustomer, SearchCustomers (contact details additionally need `CustomerManage`) | yes | yes | yes |
 | `CustomerManage` | CreateCustomer, UpdateCustomer, DeactivateCustomer; sees contact details | yes | yes | no |
 | `PaymentsRecord` | RecordPayment (money received against a sale on account; recorded, never processed) | yes | yes | yes |
+| *(offline)* | IssueOfflineGrant and RecordOfflineContact need `SalesCreate` **or** `PaymentsRecord`; the grant authorizes nothing by itself and each replayed sale or payment is checked against its own permission at replay time (ADR 0008) | yes | yes | yes |
 | `PaymentsReverse` | ReversePayment (takes a payment back, which puts it back on what a customer owes) | yes | yes | no |
 | `PurchasingReceive` | ReceivePurchase (adds stock; a receipt id can never be reused for a different receipt) | yes | yes | no |
 
@@ -83,6 +84,7 @@ Outcomes: not signed in → 401; signed in without a membership or without the p
 ## Rate Limiting
 - Built-in ASP.NET Core rate limiting: strict on authentication endpoints, per-user/per-organization limits elsewhere, tighter on expensive and AI endpoints. Required before any external user (EPIC 16).
 - **Implemented (SECURITY-002):** fixed one-minute windows per client address, no queueing. The authentication endpoints (register, login, logout) share a strict limit (`Hardening:AuthPermitsPerMinute`, default 10); the whole API has a general limit (`Hardening:GlobalPermitsPerMinute`, default 600); health checks are never limited. Over the limit: 429 with `Retry-After` and a problem body with code `rate_limit.exceeded`.
+- **Offline endpoints (OFFLINE-001):** the grant and contact endpoints share one named policy (`Hardening:OfflinePermitsPerMinute`, default 60 per minute per client address), part of the same hardening configuration.
 - **Known limits, decided later:** the client address is the connection's remote address. Behind a reverse proxy it is the proxy's address until forwarded headers are configured from a trusted proxy list (DEPLOY-002); until then do not deploy behind a proxy without that step, or every client shares one limit. Limits are per application instance and in memory; with several instances the effective limit is per instance. Per-user and per-organization limits, and tighter limits for expensive and AI endpoints, are added with those endpoints.
 
 ## Auditability

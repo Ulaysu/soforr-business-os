@@ -329,7 +329,9 @@ public sealed class SalesPersistenceTests(PostgresDatabaseFixture database) : IC
         Assert.Equal(("uuid", "YES"), sales["CustomerId"]);
         Assert.Equal(("timestamp with time zone", "YES"), sales["DueAtUtc"]);
         Assert.Equal(("integer", "NO"), sales["PaymentRevision"]);
-        Assert.Equal(12, sales.Count);
+        Assert.Equal(("timestamp with time zone", "NO"), sales["ReceivedAtUtc"]);
+        Assert.Equal(("uuid", "YES"), sales["OfflineGrantId"]);
+        Assert.Equal(14, sales.Count);
         Assert.Equal(("numeric", "NO"), lines["Quantity"]);
         Assert.Equal(("numeric", "NO"), lines["CatalogUnitPrice"]);
         Assert.Equal(("numeric", "NO"), lines["UnitPrice"]);

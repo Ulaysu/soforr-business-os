@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Soforr.Application.Audit;
 using Soforr.Application.Common;
 using Soforr.Application.Identity;
+using Soforr.Application.Offline;
 using Soforr.Application.Persistence;
 using Soforr.Domain.Common;
 using Soforr.Domain.Sales;
@@ -17,8 +18,13 @@ namespace Soforr.Application.Sales.RecordPayment;
 /// one is given); the same id with anything different is a conflict. Without an id a new payment is recorded each time.
 /// <see cref="PaidAtUtc"/> is when the money was received (default: now); it cannot be before the sale or in the future.
 /// The amount can never be more than what is still owed on the sale.
+/// <para>
+/// A payment taken offline names the <see cref="OfflineGrantId"/> that vouches for it and its <see cref="PaidAtUtc"/> (required then). The server
+/// accepts that time only inside a silent gap it observed on that grant (ADR 0008); otherwise it refuses, records nothing and reserves no id.
+/// A payment without a grant keeps the existing rules (a date no later than now). The payment permission is checked as always.
+/// </para>
 /// </summary>
-public sealed record RecordPaymentCommand(Guid SaleId, Guid? PaymentId, decimal? Amount, DateTimeOffset? PaidAtUtc, string? MethodLabel);
+public sealed record RecordPaymentCommand(Guid SaleId, Guid? PaymentId, decimal? Amount, DateTimeOffset? PaidAtUtc, string? MethodLabel, Guid? OfflineGrantId = null);
 
 /// <summary>The outcome of recording a payment or a reversal: the sale as it now stands. <see cref="AlreadyRecorded"/> is true when it had been recorded before and nothing changed.</summary>
 public sealed record PaymentResultDto(Guid PaymentId, bool AlreadyRecorded, SaleDto Sale);
@@ -31,7 +37,7 @@ public sealed record PaymentResultDto(Guid PaymentId, bool AlreadyRecorded, Sale
 /// loser is retried a bounded number of times, re-reading and re-validating, so a payment that no longer fits is reported as
 /// the rule violation it is.
 /// </summary>
-public sealed class RecordPaymentHandler(IAppDbContext db, IClock clock, IIdGenerator ids, ICurrentUser user, IAuditLog audit)
+public sealed class RecordPaymentHandler(IAppDbContext db, IClock clock, IIdGenerator ids, ICurrentUser user, IAuditLog audit, OfflineEventTimeValidator offline)
     : ICommandHandler<RecordPaymentCommand, PaymentResultDto>
 {
     private const int MaxAttempts = 3;
@@ -48,6 +54,21 @@ public sealed class RecordPaymentHandler(IAppDbContext db, IClock clock, IIdGene
         if (command.PaymentId == Guid.Empty)
         {
             return Fail(SalesErrors.Invalid("sale.payment_id_invalid", "paymentId", "The payment id must be a non-empty identifier or absent."));
+        }
+
+        if (command.OfflineGrantId == Guid.Empty)
+        {
+            return Fail(SalesErrors.Invalid("offline.grant_invalid", "offlineGrantId", "The offline grant must be a non-empty identifier or absent."));
+        }
+
+        if (command.OfflineGrantId is not null && command.PaidAtUtc is null)
+        {
+            return Fail(SalesErrors.Invalid("offline.event_time_required", "paidAtUtc", "An offline grant needs the time the payment was received."));
+        }
+
+        if (command.OfflineGrantId is not null && command.PaidAtUtc!.Value.Offset != TimeSpan.Zero)
+        {
+            return Fail(SalesErrors.Invalid("sale.timestamp_not_utc", "paidAtUtc", "Timestamps must be in UTC."));
         }
 
         if (command.Amount is not { } amount)
@@ -110,6 +131,19 @@ public sealed class RecordPaymentHandler(IAppDbContext db, IClock clock, IIdGene
                 : Fail(SalesErrors.PaymentIdConflict);
         }
 
+        // A payment taken offline is judged before it is recorded: the server must have vouched for its time (ADR 0008).
+        AcceptedOfflineEvent? accepted = null;
+        if (command.OfflineGrantId is not null)
+        {
+            var vouched = await offline.ValidateAsync(command.OfflineGrantId, command.PaidAtUtc!.Value, "payment", cancellationToken);
+            if (vouched.IsFailure)
+            {
+                return Fail(vouched.Error!);
+            }
+
+            accepted = vouched.Value;
+        }
+
         var now = clock.UtcNow;
         var recorded = SalesErrors.Run(
             () => sale.RecordPayment(paymentId, Money.Create(amount, sale.Currency), command.PaidAtUtc ?? now, command.MethodLabel, user.UserId!.Value, now),
@@ -126,6 +160,11 @@ public sealed class RecordPaymentHandler(IAppDbContext db, IClock clock, IIdGene
             "Sale",
             sale.Id,
             string.Create(CultureInfo.InvariantCulture, $"A payment of {recorded.Value.Amount.Amount:0.####} was recorded against a sale.")));
+
+        if (accepted is not null)
+        {
+            offline.RecordAccepted(accepted, AuditActions.OfflinePaymentAccepted, sale.Id, "Sale", "payment");
+        }
 
         try
         {

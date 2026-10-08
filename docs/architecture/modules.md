@@ -111,6 +111,15 @@ The model is deliberately minimal; entities are named for orientation and refine
 - **Snapshots:** a sale line must record the product's name and SKU, the unit price, the cost price and the currency at the time of the sale (and not refer to the product's current values), because products stay editable, including inactive ones. Margin reporting reads the snapshot and requires `ProductViewCost`.
 - **Depends on:** Catalog, Inventory, Customers (optional reference), Organizations.
 
+## Offline synchronization (OFFLINE-001)
+- **Class:** SELLABLE-P0 (ADR 0007, ADR 0008). Server side only; the client is OFFLINE-002 onward.
+- **Responsibility:** Make replay of sales and payments after an outage correct and safe: the server-established authorization of an offline event time, and the replay-safe contract of the existing commands.
+- **Concepts:** `OfflineGrant` (an identifier, not a secret; one active per user), `OfflineContact` (append-only server observation), `OfflineEventTimePolicy` (the pure rule), silent gap, offline window.
+- **Commands:** IssueOfflineGrant, RecordOfflineContact. `CreateSale` and `RecordPayment` accept an optional offline grant and event time and judge them through `OfflineEventTimeValidator` before anything is looked up or staged.
+- **API:** `POST /api/v1/offline/grants`, `POST /api/v1/offline/grants/{id}/contact`; `occurredAtUtc`, `offlineGrantId` and `catalogPriceShown` on `POST /api/v1/sales`; `paidAtUtc` and `offlineGrantId` on `POST /api/v1/sales/{id}/payments`.
+- **Invariants:** an offline event time is accepted only inside a silent gap the server observed on the caller's own grant, within 72 hours of the gap start, never in the future, never replaced by server time; a refusal records nothing and reserves no id; a changed catalog price is a conflict, an override is not drift; replays are idempotent (the sale id and the payment id); grants and contacts are tenant-scoped and contacts are append-only.
+- **Contract:** [offline-sync-contract.md](../engineering/offline-sync-contract.md).
+
 ## Customers
 - **Class:** SELLABLE-P0 as proposed (customer balances feed customer intelligence); the owner may move it to PRODUCT-P1.
 - **Responsibility:** Who the business sells to, and what they owe.
