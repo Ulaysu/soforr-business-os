@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Soforr.Domain.Catalog;
 using Soforr.Domain.Common;
+using Soforr.Domain.Customers;
 using Soforr.Domain.Sales;
 
 namespace Soforr.Infrastructure.Persistence.Configurations;
@@ -30,6 +31,11 @@ internal sealed class SaleConfiguration : IEntityTypeConfiguration<Sale>
                     "(\"Status\" = 'Voided') = (\"VoidedAtUtc\" IS NOT NULL) AND (\"Status\" = 'Voided') = (\"VoidedByUserId\" IS NOT NULL) AND (\"Status\" = 'Voided') = (\"VoidReason\" IS NOT NULL)");
                 table.HasCheckConstraint("CK_Sales_VoidReason_NotBlank", "\"VoidReason\" IS NULL OR char_length(btrim(\"VoidReason\")) > 0");
                 table.HasCheckConstraint("CK_Sales_VoidedAt_NotBeforeSale", "\"VoidedAtUtc\" IS NULL OR \"VoidedAtUtc\" >= \"CreatedAtUtc\"");
+
+                // A sale made on account has a customer and a due date; a walk-in sale has neither (it is paid in full).
+                table.HasCheckConstraint("CK_Sales_Customer_MatchesDueDate", "(\"CustomerId\" IS NULL) = (\"DueAtUtc\" IS NULL)");
+                table.HasCheckConstraint("CK_Sales_DueAt_NotBeforeSale", "\"DueAtUtc\" IS NULL OR \"DueAtUtc\" >= \"CreatedAtUtc\"");
+                table.HasCheckConstraint("CK_Sales_PaymentRevision_NotNegative", "\"PaymentRevision\" >= 0");
             });
 
         // The key is (organization, sale id): a sale id may be chosen by the client (to make a retry safe), so it is unique
@@ -54,6 +60,24 @@ internal sealed class SaleConfiguration : IEntityTypeConfiguration<Sale>
         builder.Property(sale => sale.VoidedByUserId);
         builder.Property(sale => sale.VoidReason).HasMaxLength(Sale.MaxVoidReasonLength);
 
+        builder.Property(sale => sale.CustomerId);
+        builder.Property(sale => sale.DueAtUtc);
+        builder.Property(sale => sale.PaymentRevision).IsRequired().HasDefaultValue(0);
+
+        // The customer is referenced together with the organization, so a sale can never be on account to another organization's customer.
+        builder.HasOne<Customer>()
+            .WithMany()
+            .HasForeignKey(sale => new { sale.CustomerId, sale.OrganizationId })
+            .HasPrincipalKey(customer => new { customer.Id, customer.OrganizationId })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasMany(sale => sale.Payments)
+            .WithOne()
+            .HasForeignKey(payment => new { payment.OrganizationId, payment.SaleId })
+            .HasPrincipalKey(sale => new { sale.OrganizationId, sale.Id })
+            .OnDelete(DeleteBehavior.Restrict); // payments are never deleted
+        builder.Navigation(sale => sale.Payments).UsePropertyAccessMode(PropertyAccessMode.Field);
+
         // The token changes on every update of the row; a void updates it.
         builder.Property<uint>("xmin")
             .HasColumnName("xmin")
@@ -70,6 +94,75 @@ internal sealed class SaleConfiguration : IEntityTypeConfiguration<Sale>
 
         builder.HasIndex(sale => new { sale.OrganizationId, sale.CreatedAtUtc });
         builder.HasIndex(sale => new { sale.OrganizationId, sale.Status, sale.CreatedAtUtc });
+        builder.HasIndex(sale => new { sale.OrganizationId, sale.CustomerId, sale.DueAtUtc });
+    }
+}
+
+/// <summary>
+/// Maps <see cref="SalePayment"/>. The key is (organization, payment id): a payment id may be chosen by the client so a retry
+/// is safe, so it is unique within an organization only. Records are append-only. A reversal points at the payment it takes
+/// back through a foreign key that includes the sale, so a reversal can only reverse a payment of its own sale; and a payment
+/// can be reversed at most once, by a unique index.
+/// </summary>
+internal sealed class SalePaymentConfiguration : IEntityTypeConfiguration<SalePayment>
+{
+    public void Configure(EntityTypeBuilder<SalePayment> builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        builder.ToTable(
+            "SalePayments",
+            table =>
+            {
+                table.HasCheckConstraint("CK_SalePayments_Kind_Known", "\"Kind\" IN ('Payment', 'Reversal')");
+                table.HasCheckConstraint("CK_SalePayments_Amount_Positive", "\"Amount\" > 0");
+                table.HasCheckConstraint("CK_SalePayments_AmountCurrency_Format", "\"AmountCurrency\" ~ '^[A-Z]{3}$'");
+                table.HasCheckConstraint("CK_SalePayments_MethodLabel_NotBlank", "\"MethodLabel\" IS NULL OR char_length(btrim(\"MethodLabel\")) > 0");
+                table.HasCheckConstraint("CK_SalePayments_PaidAt_NotAfterRecorded", "\"PaidAtUtc\" <= \"RecordedAtUtc\"");
+
+                // A reversal says which payment it takes back and why; a payment does neither.
+                table.HasCheckConstraint(
+                    "CK_SalePayments_Reversal_MatchesKind",
+                    "(\"Kind\" = 'Reversal') = (\"ReversesPaymentId\" IS NOT NULL) AND (\"Kind\" = 'Reversal') = (\"ReversalReason\" IS NOT NULL)");
+                table.HasCheckConstraint("CK_SalePayments_ReversalReason_NotBlank", "\"ReversalReason\" IS NULL OR char_length(btrim(\"ReversalReason\")) > 0");
+            });
+
+        builder.HasKey(payment => new { payment.OrganizationId, payment.Id });
+        builder.Property(payment => payment.Id).ValueGeneratedNever();
+
+        // Lets a reversal reference the payment it reverses together with the sale.
+        builder.HasAlternateKey(payment => new { payment.OrganizationId, payment.SaleId, payment.Id }).HasName("AK_SalePayments_OrganizationId_SaleId_Id");
+
+        builder.Property(payment => payment.SaleId).IsRequired();
+        builder.Property(payment => payment.Kind).IsRequired().HasMaxLength(20).HasConversion<string>();
+        builder.Property(payment => payment.PaidAtUtc).IsRequired();
+        builder.Property(payment => payment.MethodLabel).HasMaxLength(SalePayment.MaxMethodLabelLength);
+        builder.Property(payment => payment.ReversesPaymentId);
+        builder.Property(payment => payment.ReversalReason).HasMaxLength(SalePayment.MaxReversalReasonLength);
+
+        // There is deliberately no foreign key to the user table: a record outlives the people who made it (as movements do).
+        builder.Property(payment => payment.RecordedByUserId).IsRequired();
+        builder.Property(payment => payment.RecordedAtUtc).IsRequired();
+
+        builder.OwnsOne(
+            payment => payment.Amount,
+            amount =>
+            {
+                amount.Property(money => money.Amount).HasColumnName("Amount").IsRequired();
+                amount.Property(money => money.Currency).HasColumnName("AmountCurrency").IsRequired().HasMaxLength(3)
+                    .HasConversion(currency => currency.Code, code => Currency.Create(code));
+            });
+        builder.Navigation(payment => payment.Amount).IsRequired();
+
+        builder.HasOne<SalePayment>()
+            .WithMany()
+            .HasForeignKey(payment => new { payment.OrganizationId, payment.SaleId, payment.ReversesPaymentId })
+            .HasPrincipalKey(payment => new { payment.OrganizationId, payment.SaleId, payment.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // A payment can be reversed at most once. (Several rows with no reversed payment are allowed: NULLs are distinct.)
+        builder.HasIndex(payment => new { payment.OrganizationId, payment.ReversesPaymentId }).IsUnique();
+        builder.HasIndex(payment => new { payment.OrganizationId, payment.SaleId, payment.RecordedAtUtc });
     }
 }
 

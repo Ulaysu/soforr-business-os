@@ -49,6 +49,7 @@ public sealed class ListSalesHandler(IAppDbContext db, ICurrentUser user) : IQue
         var skip = (int)((long)(query.Page - 1) * query.PageSize);
         var page = await sales
             .Include(sale => sale.Lines)
+            .Include(sale => sale.Payments)
             .OrderByDescending(sale => sale.CreatedAtUtc)
             .ThenByDescending(sale => sale.Id)
             .Skip(skip)

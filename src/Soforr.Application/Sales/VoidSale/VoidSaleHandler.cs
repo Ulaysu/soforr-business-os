@@ -53,7 +53,7 @@ public sealed class VoidSaleHandler(IAppDbContext db, StockMovementRecorder reco
     private async Task<Result<SaleDto>> VoidOnceAsync(VoidSaleCommand command, CancellationToken cancellationToken)
     {
         // Filtered to the caller's organization: another organization's sale is not found.
-        var sale = await db.Set<Sale>().Include(s => s.Lines).SingleOrDefaultAsync(s => s.Id == command.Id, cancellationToken);
+        var sale = await db.Set<Sale>().Include(s => s.Lines).Include(s => s.Payments).SingleOrDefaultAsync(s => s.Id == command.Id, cancellationToken);
         if (sale is null)
         {
             return Result.Failure<SaleDto>(SalesErrors.SaleNotFound(command.Id));
