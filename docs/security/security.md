@@ -34,6 +34,8 @@ Fixed roles, granted in code (`RolePermissions`). Anything not granted is denied
 | `SalesView` | GetSale, ListSales, GetCustomerBalance (cost prices additionally need `ProductViewCost`) | yes | yes | yes |
 | `SalesCreate` | CreateSale (removes stock; a cashier needs it) | yes | yes | yes |
 | `SalesVoid` | VoidSale (returns stock) | yes | yes | no |
+| `SalesOverridePrice` | CreateSale with a stated line price (override or discount; always with a reason and audited) | yes | yes | no |
+| `SalesSellBelowCost` | CreateSale with a line price below the product's cost price | yes | no | no |
 | `InsightsView` | GetInsights (the attention list; insights that reveal costs additionally need `ProductViewCost`), GetSalesSummary (revenue, top sellers, slow movers, declining products), GetMarginSummary (also needs `ProductViewCost`: it reveals costs and margins), GetReceivables (what customers owe, aged by days past due), GetPurchaseCosts (also needs `ProductViewCost`: it reveals purchase costs) | yes | yes | no |
 | `CustomerView` | GetCustomer, SearchCustomers (contact details additionally need `CustomerManage`) | yes | yes | yes |
 | `CustomerManage` | CreateCustomer, UpdateCustomer, DeactivateCustomer; sees contact details | yes | yes | no |

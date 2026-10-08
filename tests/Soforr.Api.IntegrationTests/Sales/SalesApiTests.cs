@@ -126,12 +126,12 @@ public sealed class SalesApiTests : IClassFixture<PostgresDatabaseFixture>, IDis
     }
 
     [Fact]
-    public async Task APriceOrCurrencyOrTotalInTheRequest_IsNotHonored()
+    public async Task ACurrencyOrTotalOrUnknownPriceFieldInTheRequest_IsNotHonored()
     {
         var (owner, _) = await OwnerAsync();
         var product = await ProductAsync(owner, price: 10m, stock: 10m);
 
-        var response = await PostAsync(owner, "/api/v1/sales", new { currency = "USD", total = 1, lines = new[] { new { productId = product, quantity = 2, unitPrice = 1, price = 1, currency = "EUR" } } });
+        var response = await PostAsync(owner, "/api/v1/sales", new { currency = "USD", total = 1, lines = new[] { new { productId = product, quantity = 2, price = 1, currency = "EUR" } } });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var sale = (await ReadAsync(response)).GetProperty("sale");

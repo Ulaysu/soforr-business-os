@@ -136,6 +136,24 @@ public sealed class MarginTests(PostgresDatabaseFixture database) : IClassFixtur
     }
 
     [Fact]
+    public async Task TheMargin_UsesTheFinalPriceCharged_NotTheCatalogPrice_OfAnOverriddenLine()
+    {
+        var organization = await NewOrganizationAsync();
+        var rice = await NewProductAsync(organization, "Rice");
+        var line = new SaleLineInput(Guid.CreateVersion7(), rice, "SKU", "Rice", "bag", Quantity.Create(10m), Money.Create(10m, Gmd), Money.Create(7m, Gmd), Money.Create(6m, Gmd), "Promo");
+        await using (var db = database.CreateContext(organization))
+        {
+            db.Set<Sale>().Add(Sale.Complete(Guid.CreateVersion7(), organization, Gmd, Guid.CreateVersion7(), Utc(5, 10), [line]));
+            await db.SaveChangesAsync();
+        }
+
+        var summary = (await SummaryAsync(organization)).Value;
+
+        Assert.Equal((70m, 60m, 10m), (summary.Totals.Current.Revenue, summary.Totals.Current.Cost, summary.Totals.Current.GrossMargin)); // not 100 of catalog revenue
+        Assert.Equal(14.3m, summary.Totals.Current.MarginPercent);
+    }
+
+    [Fact]
     public async Task LinesWithNoRecordedCost_AreLeftOutOfTheMargin_AndReportedSeparately()
     {
         var organization = await NewOrganizationAsync();

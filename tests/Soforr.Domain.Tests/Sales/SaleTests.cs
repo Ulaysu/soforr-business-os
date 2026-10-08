@@ -267,6 +267,32 @@ public class SaleTests
     }
 
     [Fact]
+    public void ARequestWithoutAPrice_IsTheSameSaleOnlyIfNothingWasOverridden()
+    {
+        var a = Guid.CreateVersion7();
+        var plain = Complete(Line(quantity: 2m, product: a, sku: "A"));
+        var discounted = Complete(Line(quantity: 2m, product: a, sku: "A", price: 8m, reason: "Promo"));
+
+        Assert.True(plain.HasSameRequestedLinesAs([(a, Quantity.Create(2m), null, null)]));
+        Assert.False(discounted.HasSameRequestedLinesAs([(a, Quantity.Create(2m), null, null)]));
+    }
+
+    [Fact]
+    public void ARequestWithAPrice_IsTheSameSaleOnlyForTheSamePriceAndReason()
+    {
+        var a = Guid.CreateVersion7();
+        var discounted = Complete(Line(quantity: 2m, product: a, sku: "A", price: 8m, reason: "Promo"));
+        var plain = Complete(Line(quantity: 2m, product: a, sku: "A"));
+
+        Assert.True(discounted.HasSameRequestedLinesAs([(a, Quantity.Create(2m), M(8.0000m), " Promo ")]));
+        Assert.False(discounted.HasSameRequestedLinesAs([(a, Quantity.Create(2m), M(7m), "Promo")]));
+        Assert.False(discounted.HasSameRequestedLinesAs([(a, Quantity.Create(2m), M(8m), "Other")]));
+        Assert.True(plain.HasSameRequestedLinesAs([(a, Quantity.Create(2m), M(10m), null)])); // the catalog price stated explicitly
+        Assert.False(plain.HasSameRequestedLinesAs([(a, Quantity.Create(2m), M(9m), null)]));
+        Assert.False(plain.HasSameRequestedLinesAs([(a, Quantity.Create(3m), null, null)]));
+    }
+
+    [Fact]
     public void ADifferentQuantityProductAdditionalOrMissingLine_IsNotTheSameSale()
     {
         var a = Guid.CreateVersion7();
