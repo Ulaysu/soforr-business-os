@@ -6,8 +6,11 @@ using Soforr.Domain.Organizations;
 
 namespace Soforr.Application.Organizations.UpdateOrganizationSettings;
 
-/// <summary>Changes an organization's name and time zone. The currency is fixed at creation and cannot be changed here.</summary>
-public sealed record UpdateOrganizationSettingsCommand(Guid OrganizationId, string? Name, string? TimeZoneId);
+/// <summary>
+/// Replaces an organization's settings: its name, its time zone and the optional overdue materiality threshold (an amount in the
+/// organization's currency; absent means no minimum). The currency is fixed at creation and cannot be changed here.
+/// </summary>
+public sealed record UpdateOrganizationSettingsCommand(Guid OrganizationId, string? Name, string? TimeZoneId, decimal? OverdueMaterialityThreshold = null);
 
 /// <summary>Owner only, and only for the caller's own organization; any other organization is not found (ADR 0002).</summary>
 public sealed class UpdateOrganizationSettingsHandler(IAppDbContext db, IClock clock, ICurrentUser user)
@@ -38,7 +41,7 @@ public sealed class UpdateOrganizationSettingsHandler(IAppDbContext db, IClock c
         var updated = DomainErrors.Run(
             () =>
             {
-                organization.UpdateSettings(command.Name, command.TimeZoneId, clock.UtcNow);
+                organization.UpdateSettings(command.Name, command.TimeZoneId, command.OverdueMaterialityThreshold, clock.UtcNow);
                 return organization;
             },
             OrganizationErrors.FieldFor);

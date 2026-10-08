@@ -38,6 +38,12 @@ public sealed class Organization
     /// <summary>An IANA time zone identifier supported by the runtime's time zone database, for example <c>Europe/London</c>.</summary>
     public string TimeZoneId { get; private set; }
 
+    /// <summary>
+    /// The smallest overdue amount, in the organization's currency, that is worth an insight about a customer. It is set by the
+    /// owner and never assumed: when it is not set (null) there is no minimum and every overdue balance is reported.
+    /// </summary>
+    public decimal? OverdueMaterialityThreshold { get; private set; }
+
     public DateTimeOffset CreatedAtUtc { get; private set; }
 
     public DateTimeOffset UpdatedAtUtc { get; private set; }
@@ -56,15 +62,34 @@ public sealed class Organization
     }
 
     /// <exception cref="DomainException">An invariant is violated.</exception>
-    public void UpdateSettings(string? name, string? timeZoneId, DateTimeOffset updatedAtUtc)
+    public void UpdateSettings(string? name, string? timeZoneId, decimal? overdueMaterialityThreshold, DateTimeOffset updatedAtUtc)
     {
         var validName = ValidName(name);
         var validTimeZoneId = ValidTimeZoneId(timeZoneId);
+        var validThreshold = ValidThreshold(overdueMaterialityThreshold);
         var validUpdatedAtUtc = RequireUtc(updatedAtUtc);
 
         Name = validName;
         TimeZoneId = validTimeZoneId;
+        OverdueMaterialityThreshold = validThreshold;
         UpdatedAtUtc = validUpdatedAtUtc;
+    }
+
+    /// <summary>A threshold is an amount in the organization's currency: zero or more, with the precision and range of any money.</summary>
+    private decimal? ValidThreshold(decimal? threshold)
+    {
+        if (threshold is not { } amount)
+        {
+            return null;
+        }
+
+        if (amount < 0m)
+        {
+            throw new DomainException("organization.overdue_threshold_negative", "The overdue threshold cannot be negative.");
+        }
+
+        // Money enforces the scale and the range, so the threshold can always be stored exactly.
+        return Money.Create(amount, Currency).Amount;
     }
 
     private static string ValidName(string? name)

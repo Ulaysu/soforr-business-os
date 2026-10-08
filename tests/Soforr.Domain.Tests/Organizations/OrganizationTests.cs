@@ -107,7 +107,7 @@ public class OrganizationTests
         var organization = Organization.Create(SomeId, "Soforr", Gmd, "UTC", CreatedAt);
         var later = CreatedAt.AddDays(3);
 
-        organization.UpdateSettings("  Soforr Group ", "Europe/London", later);
+        organization.UpdateSettings("  Soforr Group ", "Europe/London", null, later);
 
         Assert.Equal("Soforr Group", organization.Name);
         Assert.Equal("Europe/London", organization.TimeZoneId);
@@ -123,7 +123,7 @@ public class OrganizationTests
     {
         var organization = Organization.Create(SomeId, "Soforr", Gmd, "UTC", CreatedAt);
 
-        var exception = Assert.Throws<DomainException>(() => organization.UpdateSettings(name, timeZoneId, CreatedAt.AddDays(1)));
+        var exception = Assert.Throws<DomainException>(() => organization.UpdateSettings(name, timeZoneId, null, CreatedAt.AddDays(1)));
 
         Assert.Equal(expectedCode, exception.Code);
         Assert.Equal("Soforr", organization.Name);
@@ -137,7 +137,7 @@ public class OrganizationTests
         var organization = Organization.Create(SomeId, "Soforr", Gmd, "UTC", CreatedAt);
 
         var exception = Assert.Throws<DomainException>(
-            () => organization.UpdateSettings("New name", "Europe/London", new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.FromHours(2))));
+            () => organization.UpdateSettings("New name", "Europe/London", null, new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.FromHours(2))));
 
         Assert.Equal("organization.timestamp_not_utc", exception.Code);
         Assert.Equal("Soforr", organization.Name);
@@ -198,7 +198,7 @@ public class OrganizationTests
     {
         var organization = Organization.Create(SomeId, "Soforr", Gmd, "UTC", CreatedAt);
 
-        Assert.Throws<DomainException>(() => organization.UpdateSettings("New name", "GMT Standard Time", CreatedAt.AddDays(1)));
+        Assert.Throws<DomainException>(() => organization.UpdateSettings("New name", "GMT Standard Time", null, CreatedAt.AddDays(1)));
 
         Assert.Equal("Soforr", organization.Name);
         Assert.Equal("UTC", organization.TimeZoneId);
@@ -211,5 +211,63 @@ public class OrganizationTests
 
         Assert.Equal(TimeSpan.Zero, organization.CreatedAtUtc.Offset);
         Assert.Equal(TimeSpan.Zero, organization.UpdatedAtUtc.Offset);
+    }
+
+    // ---- the overdue materiality threshold
+
+    [Fact]
+    public void ANewOrganization_HasNoOverdueThreshold_SoNoMinimumIsAssumed()
+    {
+        Assert.Null(Organization.Create(SomeId, "Soforr", Gmd, "UTC", CreatedAt).OverdueMaterialityThreshold);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(500)]
+    [InlineData(1234.5678)]
+    public void UpdateSettings_StoresAThreshold_InTheOrganizationsCurrency(double amount)
+    {
+        var organization = Organization.Create(SomeId, "Soforr", Gmd, "UTC", CreatedAt);
+
+        organization.UpdateSettings("Soforr", "UTC", (decimal)amount, CreatedAt.AddDays(1));
+
+        Assert.Equal((decimal)amount, organization.OverdueMaterialityThreshold);
+    }
+
+    [Fact]
+    public void UpdateSettings_WithoutAThreshold_ClearsIt()
+    {
+        var organization = Organization.Create(SomeId, "Soforr", Gmd, "UTC", CreatedAt);
+        organization.UpdateSettings("Soforr", "UTC", 500m, CreatedAt.AddDays(1));
+
+        organization.UpdateSettings("Soforr", "UTC", null, CreatedAt.AddDays(2));
+
+        Assert.Null(organization.OverdueMaterialityThreshold);
+    }
+
+    [Theory]
+    [InlineData(-0.0001, "organization.overdue_threshold_negative")]
+    [InlineData(-1, "organization.overdue_threshold_negative")]
+    [InlineData(1.00001, "money.scale_exceeded")]
+    public void UpdateSettings_WithAnInvalidThreshold_ChangesNothing(double amount, string expectedCode)
+    {
+        var organization = Organization.Create(SomeId, "Soforr", Gmd, "UTC", CreatedAt);
+        organization.UpdateSettings("Soforr", "UTC", 500m, CreatedAt.AddDays(1));
+
+        var exception = Assert.Throws<DomainException>(() => organization.UpdateSettings("Renamed", "Europe/London", (decimal)amount, CreatedAt.AddDays(2)));
+
+        Assert.Equal(expectedCode, exception.Code);
+        Assert.Equal(("Soforr", "UTC", 500m, CreatedAt.AddDays(1)), (organization.Name, organization.TimeZoneId, organization.OverdueMaterialityThreshold, organization.UpdatedAtUtc));
+    }
+
+    [Fact]
+    public void AThresholdTooLargeToStore_IsRefused()
+    {
+        var organization = Organization.Create(SomeId, "Soforr", Gmd, "UTC", CreatedAt);
+
+        var exception = Assert.Throws<DomainException>(() => organization.UpdateSettings("Soforr", "UTC", Money.MaxAmount + 1m, CreatedAt.AddDays(1)));
+
+        Assert.Equal("money.amount_out_of_range", exception.Code);
+        Assert.Null(organization.OverdueMaterialityThreshold);
     }
 }

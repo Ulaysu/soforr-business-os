@@ -398,6 +398,10 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<decimal?>("OverdueMaterialityThreshold")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("numeric(19,4)");
+
                     b.Property<string>("TimeZoneId")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -413,6 +417,8 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("CK_Organizations_Currency_Format", "\"Currency\" ~ '^[A-Z]{3}$'");
 
                             t.HasCheckConstraint("CK_Organizations_Name_NotBlank", "char_length(btrim(\"Name\")) > 0");
+
+                            t.HasCheckConstraint("CK_Organizations_OverdueMaterialityThreshold_NotNegative", "\"OverdueMaterialityThreshold\" IS NULL OR \"OverdueMaterialityThreshold\" >= 0");
 
                             t.HasCheckConstraint("CK_Organizations_TimeZoneId_NotBlank", "char_length(btrim(\"TimeZoneId\")) > 0");
                         });

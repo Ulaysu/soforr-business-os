@@ -463,7 +463,7 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 - **Testing:** unit tests (price or cost changes, no cost, zero sales); authorization for `ProductViewCost`; tenant isolation.
 
 ### INTEL-005 — Customer balance and aging intelligence
-- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** Outstanding balance per customer, overdue balance, **aging buckets** (0-30, 31-60, 61-90, 91+ days past the due date). Due dates come from customer-specific credit terms when present, otherwise the organization default. Customer balance insights use an explicit organization-configured materiality threshold; no hidden monetary threshold.
 - **Acceptance criteria:** Ages are measured from an explicit due date; the insight lists the amount, the days and the sales behind it; payments reduce the right balances by a documented rule.
 - **Dependencies:** INTEL-001, CUSTOMER-002

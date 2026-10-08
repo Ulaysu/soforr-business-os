@@ -16,6 +16,7 @@ internal static class OrganizationErrors
     {
         "organization.name_required" or "organization.name_too_long" => "name",
         "organization.timezone_invalid" => "timeZoneId",
+        "organization.overdue_threshold_negative" or "money.scale_exceeded" or "money.amount_out_of_range" => "overdueMaterialityThreshold",
         "currency.invalid" => "currency",
         _ => null,
     };

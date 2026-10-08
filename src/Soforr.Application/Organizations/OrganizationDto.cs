@@ -8,6 +8,7 @@ public sealed record OrganizationDto(
     string Name,
     string Currency,
     string TimeZoneId,
+    decimal? OverdueMaterialityThreshold,
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset UpdatedAtUtc)
 {
@@ -20,6 +21,7 @@ public sealed record OrganizationDto(
             organization.Name,
             organization.Currency.Code,
             organization.TimeZoneId,
+            organization.OverdueMaterialityThreshold,
             organization.CreatedAtUtc,
             organization.UpdatedAtUtc);
     }
