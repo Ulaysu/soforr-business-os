@@ -89,9 +89,9 @@ Tests that need a real database use the harness in `tests/Soforr.Api.Integration
 
 When the offline work lands, these are required, in addition to the usual pyramid:
 
-- **Server (PostgreSQL integration):** replay of every replayable command (sent once, twice, five times, and again after the response was lost: exactly one business effect, same answer shape); the bounds of `occurredAtUtc` and the offline window; `catalog_price_changed`; insufficient stock on replay leaves nothing behind; tenant isolation on replay; the error taxonomy used by the client to decide retry or conflict.
+- **Server (PostgreSQL integration):** replay of every replayable command (sent once, twice, five times, and again after the response was lost: exactly one business effect, same answer shape); the offline authorization boundary and the bounds of `occurredAtUtc` (including a backdated request that is inside the age window but outside any authorization, and an invalid offline time that must never fall back to server time); `catalog_price_changed`; insufficient stock on replay leaves nothing behind; tenant isolation on replay; the error taxonomy used by the client to decide retry or conflict.
 - **Client (Vitest with an IndexedDB implementation for tests):** persistence across reopen, durable-before-saved, ordering and dependencies, failure classification and backoff with a fake clock, one database per user and organization, schema migration of old stored operations, bounded cache limits, sign-out blocking.
-- **Real browser:** an automated offline journey (cache, go offline, sell, refresh, restart, reconnect, verify one sale, stock and audit on the server) and the lost-response scenario. Browser automation is a new dependency and needs the owner's approval.
+- **Real browser:** an automated offline journey (cache, go offline, sell, refresh, restart, reconnect, verify one sale, stock and audit on the server) and the lost-response scenario. Playwright is approved for this (ADR 0007, OFFLINE-007) and is added when the web and end-to-end infrastructure is built.
 
 ## Practices
 

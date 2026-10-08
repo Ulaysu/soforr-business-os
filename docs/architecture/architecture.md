@@ -137,9 +137,9 @@ Vue UI → client application service → local repository (IndexedDB) + outbox 
 
 - The server and PostgreSQL remain the only source of truth. The browser keeps a bounded operational copy (products, customers, recent sales) and an outbox of pending commands.
 - The client queues the same commands the online path sends (`CreateSale`, `RecordPayment`); it does not re-implement stock, credit, payment or pricing rules. Replays use the existing client-chosen ids and strict repeat comparison for idempotency.
-- Server-side additions are small and additive (event time of a sale, the catalog price the cashier saw, the server's received time, a documented error taxonomy). Insufficient stock, a changed price, a removed product or a changed permission surface as conflicts to resolve, never as silent changes.
+- Server-side additions are small and additive (an offline event time honored only inside a server-established offline authorization, the catalog price the cashier saw kept distinct from SALES-004 overrides, the server's received time, a documented error taxonomy); the authorization mechanism is an OFFLINE-001 design decision. Insufficient stock, a changed price, a removed product or a changed permission surface as conflicts to resolve, never as silent changes.
 - A service worker caches only the application shell. IndexedDB holds business data; the outbox holds pending mutations; the sync engine owns retries, ordering, state and failure classification.
-- Security: ADR 0002 is unchanged (cookie session, no stored credentials). Offline use is bounded to a window after the last online validation; local data is per user and organization; the server re-checks tenant, permission and rules on every replay.
+- Security: ADR 0002 is unchanged (cookie session, no stored credentials). Offline use is bounded to a window after the last online validation; local data is scoped to a user and organization as a logical guard (not encryption; the server derives identity itself); the server re-checks tenant, permission and rules on every replay.
 
 Status: Proposed. The web application does not exist yet; the browser part follows FOUNDATION-007 and the online screens.
 

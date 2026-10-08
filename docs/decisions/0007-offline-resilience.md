@@ -4,7 +4,30 @@
 - Date: 2026-10-08
 - Deciders: project owner
 
-> **What is approved and what is not.** The owner's instruction of 2026-10-08 is an explicit **product decision**: offline reliability is part of Sellable V1, the server stays authoritative, and the offline layer reuses the existing commands. That decision is recorded here and in [sellable-v1.md](../product/sellable-v1.md). The owner also answered four design questions (sections 5, 6, 7 and 8). Everything else in this record is **a proposed implementation detail** and stays `Proposed` until the owner sets `Accepted` (an agent never does, see [README](README.md)). Work that needs no browser code (OFFLINE-001) may start once this ADR is accepted.
+> **Status.** This ADR stays `Proposed` until the owner sets `Accepted` (an agent never does, see [README](README.md)). OFFLINE-001, the backend task, starts after acceptance. This revision follows an architecture and security review of the first draft.
+
+### Approved product decisions (owner, 2026-10-08)
+
+These are decided and are not reopened by the implementation work:
+
+1. Offline reliability is part of Sellable V1: V1 is connectivity-resilient; critical workflows continue during temporary connectivity loss. The claim is never "the whole Business OS works offline".
+2. The server and PostgreSQL remain authoritative; the browser holds an operational copy and a durable outbox.
+3. The existing commands and their idempotency (client-chosen ids) are reused; no second idempotency system.
+4. Offline operation is allowed for up to **72 hours** after a successful online validation, configurable within safe bounds.
+5. An offline sale's business time is the **client event time**, bounded by a server-established offline authorization (section 5); the server separately records its receipt/synchronization time.
+6. If the normal catalog price changed while a device was offline, synchronization produces a **conflict that needs attention**; a sale is never silently re-priced (section 6).
+7. **Sign-out is blocked while operations are pending**, with an explicit "sign out anyway" override (section 7).
+8. Pending operations stay bound to their original user and organization.
+9. **Playwright is approved** as the browser automation dependency for OFFLINE-007. It is not installed by this ADR or by any documentation-only change; it is introduced when the web and end-to-end infrastructure is built.
+10. OFFLINE-001 is the next backend task after acceptance.
+
+### Implementation decisions that belong to the work items, not to this ADR
+
+Not finalized here, and not to be treated as decided: the exact **offline authorization mechanism** and its contract (OFFLINE-001); the exact cache-feed API (OFFLINE-001); the IndexedDB wrapper or none (OFFLINE-002); the exact sync algorithm, state-management and schema/version-migration implementation (OFFLINE-002); the conflict UI (OFFLINE-006); the telemetry implementation (OFFLINE-006). Numbers in this record (cache bounds, backoff, attempt counts) are proposed defaults.
+
+### Principle: timestamp age is not authorization
+
+A timestamp that falls inside the offline window proves nothing: any client can send one. The server accepts an offline event time only for an operation covered by an **offline authorization boundary that the server itself established** at a successful online validation (section 5). Without that evidence a business time other than the server's own is refused, never trusted.
 
 ## Context
 
@@ -69,7 +92,7 @@ Voiding, reversing and receiving are online-required because they correct or add
 ### 3. Local persistence
 
 - **IndexedDB**, through the smallest mature wrapper the scaffold justifies (decided in OFFLINE-002; a dependency needs approval). Never `localStorage`, `sessionStorage` or memory for business data. `navigator.storage.persist()` is requested and storage pressure is surfaced.
-- One database **per user and organization** (`soforr:{organizationId}:{userId}`), so another organization's or user's data cannot be reached by construction. On sign-in the stored identity must equal the server-confirmed identity, otherwise the store is not opened.
+- One database **per user and organization** (`soforr:{organizationId}:{userId}`) as a logical guard against accidental mixing (not a security boundary, see section 7). The application opens a store only after the server-confirmed identity and organization equal the ones recorded in it.
 - Stores: `products`, `customers`, `sales` (with lines), `payments`, `outbox`, `meta` (identity, last sync times, schema version, last online validation).
 - **Bounds (V1 defaults, configurable):** all active products up to 5,000 (more is refused with a clear message), active customers up to 2,000, the user's sales of the last 14 days or 200, whichever is fewer, pending operations unbounded but a visible warning at 500. Cost prices are cached only for a user who holds `ProductViewCost`. The cache is for operating the business, not a copy of PostgreSQL; history and intelligence stay on the server.
 - Reference data (products, customers): the server snapshot replaces the local copy on each successful refresh (full or "changed since", decided in OFFLINE-001); no merge. Each record carries `fetchedAtUtc`; the UI shows how old the data is.
@@ -91,29 +114,77 @@ SyncOperation
 ```
 
 - **Durability rule:** the local transaction and its outbox record are written in **one IndexedDB transaction**, and the UI says "Saved on this device" only after it commits. Nothing is reported saved from memory.
-- **Idempotency is the existing one.** `operationId` is the sale id or payment id sent to the API, so every retry of the same operation carries the same identity. The server answers a repeat with 200 `alreadyRecorded`, which the client treats as success. A lost response after a server commit is therefore harmless.
+- **Idempotency is the existing one.** `operationId` is the sale id or payment id sent to the API, so every retry of the same operation carries the same identity. The server answers a repeat with 200 `alreadyRecorded`, which the client treats as success. This is the core reliability property, and it is exactly the existing behaviour:
+
+  ```text
+  client sends the operation → server commits → the response is lost
+  → client retries the same operation id → server recognizes the existing operation
+  → server returns already-recorded (the same result) → client marks the operation synchronized
+  ```
+
+  For offline V1 **only operations that are already safely replayable are replayed** (`CreateSale`, `RecordPayment`). No generic idempotency framework is introduced unless OFFLINE-001 proves one is technically necessary. The other identified commands (`ReversePayment`, `ReceivePurchase`, `AdjustInventory`) already have ids but remain online-required.
 - **Ordering.** The engine processes operations sequentially in `occurredAtUtc` order (then id), but an operation waits for its `dependsOn`. A payment recorded for an unsynced sale waits for it; a conflicting sale blocks its payments (`blocked`) and never blocks unrelated sales.
 - A synced operation is kept locally for the history window and then removed; an operation in `conflict`, `error` or `blocked` is **never deleted automatically**.
 
-### 5. Event time of an offline sale (owner decision: client time, bounded)
+### 5. Event time of an offline sale, and the offline authorization boundary
 
-`CreateSale` gains an optional `occurredAtUtc`. The server accepts it only when it is not in the future (a small clock-skew allowance) and not older than the **offline window**; otherwise the request is refused with a validation error. The sale is dated at `occurredAtUtc` (so its due date, margin period and insight periods follow the real sale), and the server records its own **received time** separately. Without the field the server uses its clock, as today. The server's received time and the gap between the two are part of the audit trail and of sync metrics. Payments keep their existing `paidAtUtc`.
+**Decision (owner): client time, bounded by a server-established authorization.** `CreateSale` gains an optional `occurredAtUtc`. The sale (and so its credit due date, margin period and insight periods) is dated at that event time, and the server records its own **received time** separately; the gap is part of the audit trail and of sync metrics. Payments keep their existing `paidAtUtc`.
 
-### 6. Price drift (owner decision: conflict, needs attention)
+**The boundary.** The server accepts `occurredAtUtc` only for an operation covered by an **offline authorization boundary originating from a successful online validation**, and the operation's event time must lie inside that boundary. The server must be able to tell apart:
 
-Each offline sale line also states the catalog price the cashier saw (`expectedCatalogPrice`). If the server's catalog price differs, the sale is **not** recorded: the server answers 409 `sale.catalog_price_changed`, the operation becomes `conflict`, and a user with `SalesOverridePrice` chooses to re-submit with the price the customer was shown (an override with a reason, audited) or the current price. Nothing is silently charged differently. A stated `unitPrice` keeps its existing meaning and permission.
+- a legitimate offline operation, created inside an authorized offline window, from
+- an arbitrary request trying to backdate a transaction (for example a sale made today at 14:00 sent with an event time of yesterday 10:00, which is inside any 72-hour window).
 
-### 7. Authentication and the offline security boundary (owner decision: 72 hours)
+Being "not older than 72 hours" is therefore necessary but never sufficient. The 72 hours are the product policy (configurable within safe bounds); *how* the server establishes and later validates the boundary is **an OFFLINE-001 design decision**. This ADR deliberately does not choose a token, signature, device credential or encryption scheme. Repository inspection found no existing offline-grant mechanism to reuse; the nearest existing facts are the session ticket (which already carries the sign-in time and is re-validated against the security stamp and membership every minute, ADR 0002) and the antiforgery token (bound to an identity). OFFLINE-001 must define the **minimum secure contract** to establish and validate the boundary, say what it does and does not protect against (it must not add a long-lived bearer secret that outlives the policy, ADR 0002), and prove it with tests, including the backdating attack above.
 
-ADR 0002 stands: the cookie is the only credential, nothing credential-like is stored in the browser, passwords are never stored.
+**Fail safely.** An event time outside the authorized boundary, or an offline operation with no valid boundary, is refused with an explicit error. The server **never silently falls back to server time**: re-dating an offline sale as if it happened at sync time would corrupt due dates, margins and history. The operation becomes a conflict/error the user can see. A request without `occurredAtUtc` is an ordinary online sale at server time, as today.
 
-- **Eligibility.** Offline operation exists only on a device where the user signed in online and the app has validated the session online. The app records `lastOnlineValidationAtUtc` (not a secret).
-- **Bounded window.** Local use continues for **72 hours** after the last successful online validation (configurable, bounded by a maximum). After that the app **locks local access**; the pending operations stay stored and are synced after the user signs in again. There is no indefinite offline bypass and no offline credential.
-- **Same user only.** Outbox operations are bound to their user and organization. They sync only in a session of that same user and organization; a different user signing in on the device cannot send, see or discard them. The sale is attributed by the server to the authenticated user, so this also keeps attribution truthful.
-- **Server re-checks everything on replay.** Permission, tenant, product/customer state and stock are evaluated at sync time with the user's *current* membership. A role change or deactivation while offline makes the operation fail (403/401) into `conflict`/`error`, not into a bypass.
+### 6. Catalog price drift, overrides and negotiated prices
+
+**Decision (owner): conflict, needs attention.** Three different things must never be confused:
+
+1. **The normal catalog price**, which can change while a device is offline.
+2. **An authorized price override** (SALES-004: a stated final `unitPrice` with a reason, needing `SalesOverridePrice`; below cost needs `SalesSellBelowCost`). Its meaning and permissions are unchanged by this ADR.
+3. **A negotiated or customer-specific final price**, which in V1 is simply an authorized override (there are no price lists).
+
+An offline sale line therefore preserves the price context the cashier actually saw: the **catalog price shown** (so the server can detect that the catalog moved) and, when the cashier used an override, the **final price and reason as today**. Catalog drift is decided only by comparing the catalog price the cashier saw with the current authoritative catalog price. A legitimate override or negotiated price is **not** drift merely because its final price differs from the catalog, and drift is never inferred from the final price.
+
+When the normal catalog price changed, the sale is not recorded: the server answers 409 `sale.catalog_price_changed`, nothing is reserved, the operation becomes `conflict`, and a user with the right permission resolves it explicitly (accept the price the customer was shown as a reasoned, audited override, or re-submit at the current price). Nothing is silently charged differently. The exact wire shape, and how a sale that carries both an override and a changed catalog price is judged, are OFFLINE-001 decisions; the invariant is that the final price the customer was shown is never silently altered and that the SALES-004 semantics are not redesigned.
+
+### 7. Authentication, the offline security boundary and local storage
+
+ADR 0002 stands: the cookie is the only credential, nothing credential-like is stored in the browser, passwords are never stored. The security flow is:
+
+```text
+Successful online authentication / validation
+        ↓
+Server establishes the offline authorization boundary (mechanism: OFFLINE-001)
+        ↓
+The user may operate offline within the bounded window (72 hours, configurable)
+        ↓
+The client records operations with their event time, in the local outbox
+        ↓
+Connectivity returns
+        ↓
+The server validates, for every operation, on its own authority:
+   authenticated user · organization · the offline authorization boundary · event time and age
+   · permission · product and customer state · stock · price state · business rules
+        ↓
+Commit  /  conflict  /  retry
+```
+
+**The client is authoritative for none of these decisions.** Everything the client stores or sends about identity, organization, time or prices is a claim the server verifies or ignores.
+
+- **Eligibility.** Offline operation exists only on a device where the user signed in online and the app validated the session online. The app records `lastOnlineValidationAtUtc` (not a secret) for its own UI; the server-side boundary of section 5 is what the server relies on.
+- **Bounded window.** Local use continues for the policy window after the last successful online validation. After that the app **locks local access**; pending operations stay stored and sync after the user authenticates again. There is no indefinite offline bypass and no offline credential.
+- **Logical isolation (a guard, not a security boundary).** Each local store is scoped to `organizationId + userId`, and the application verifies the currently authenticated server identity and organization before opening or using that store. This is application-level isolation that prevents accidental mixing; it is **not** cryptographic protection. The client-side `userId` and `organizationId` are local metadata and guards only and are **never** treated as authoritative claims: the server derives user and organization from the authenticated session (ADR 0002) and ignores any client-supplied value.
+- **Synchronization authorization.** An operation created by user A must never be synchronized with user B's server session. The server remains authoritative for user identity, organization membership, permissions, tenant isolation, product/customer authorization, stock validation and the financial and business rules. Because the server attributes a sale to the authenticated user, a replay by the original user also keeps attribution truthful.
+- **Server re-checks everything on replay**, with the user's *current* membership. A role change or deactivation while offline makes the operation fail (403/401) into `conflict`/`error`, not into a bypass.
 - **Antiforgery.** The sync engine fetches a fresh antiforgery token before sending. An expired session (401) pauses syncing with "sign in to continue"; the operations wait.
-- **Sign-out (owner decision).** Sign-out is **blocked while operations are pending**; an explicit "sign out anyway" keeps the pending operations on the device, locked to that user and organization. With nothing pending, sign-out clears the local store.
-- **Data at rest.** IndexedDB is not encrypted. The cache is therefore limited to what the user may see anyway (no cost prices without `ProductViewCost`, no passwords, no tokens, minimal customer contact details: name and credit terms only). A lost or shared device is a recognised residual risk, mitigated by the bounded window, clear-on-sign-out and the rule above; local encryption is deferred and would need its own review.
+- **Sign-out with pending operations (owner decision).**
+  - *Normal sign-out:* if operations are pending, sign-out shows the pending count and offers "Sync now" or waiting; once everything is synchronized, sign-out proceeds normally and the local store is cleared.
+  - *Explicit override:* if synchronization cannot complete, "Sign out anyway" requires explicit confirmation. The pending operations **remain stored**, bound to their original user and organization; they cannot be synchronized (or seen, edited or discarded) by another user; they can resume after the original user authenticates again, **subject to the same offline/security rules** (the override does not extend the window, and operations outside the authorization boundary still fail safely). Pending business operations are never deleted by signing out.
+- **Data at rest.** IndexedDB provides application-level storage isolation, **not strong protection** against someone with access to the same browser or device profile. V1 does **not** promise encrypted local storage. No passwords, session cookies, authentication tokens or other credentials are stored in IndexedDB. The cache is limited to what the user may see anyway (no cost prices without `ProductViewCost`, minimal customer details: name and credit terms only). Exposure on a lost, shared or compromised device is a **recognized residual risk**, reduced by the bounded window, identity binding, the sign-out behaviour, server-side authorization on replay and the minimal cache. Local encryption is deferred and would need its own security review and decision.
 
 ### 8. Conflict policy (per entity, no generic last-write-wins)
 
@@ -150,7 +221,7 @@ Client: pending count, oldest pending age, attempts, successes, failures, confli
 
 | Item | What |
 |---|---|
-| OFFLINE-001 | Replay-safe server contract: `occurredAtUtc`, expected catalog price, received time, error taxonomy, cache feeds. **Backend; can start first.** |
+| OFFLINE-001 | Replay-safe server contract: the offline authorization boundary and the event-time rule, the catalog price seen (distinct from overrides), received time, error taxonomy, cache feeds. **Backend; starts first, after acceptance.** |
 | OFFLINE-002 | Client persistence, outbox, sync engine and connectivity foundation (after FOUNDATION-007) |
 | OFFLINE-003 | Offline product and customer cache, service-worker shell |
 | OFFLINE-004 | Offline sales (needs SALES-003) |
@@ -161,8 +232,8 @@ Client: pending count, oldest pending age, attempts, successes, failures, confli
 ## Consequences
 
 - Positive: businesses keep selling through outages; the server's guarantees (idempotency, atomic stock, append-only money, tenant isolation, audit) are reused, not duplicated.
-- The client grows a real subsystem (store, outbox, engine) that must be tested as seriously as the server; browser tests (a real offline browser) are required, and a browser-automation dependency needs the owner's approval (OFFLINE-007).
-- Two small server contract changes (event time, expected catalog price) touch sales; both are additive and optional.
+- The client grows a real subsystem (store, outbox, engine) that must be tested as seriously as the server; real-browser tests are required, and Playwright is approved for them (OFFLINE-007; installed when the web and end-to-end infrastructure is built, not before).
+- Two server contract changes touch sales (event time under an offline authorization boundary, the catalog price the cashier saw); both are additive and optional, and the authorization boundary is a security-relevant design that OFFLINE-001 must specify and test before anything depends on it.
 - Offline conflicts can concern goods that already left the shop. The product accepts that and makes resolution explicit instead of hiding it.
 - Estimated stock offline can be wrong; it is labelled, never authoritative.
 - The offline window, caps and retry numbers are defaults to be tuned with the first customer.
@@ -175,7 +246,9 @@ Offline creation of customers/products (needs replay-safe create), offline void/
 
 - **CRDTs / event sourcing / local-first database with automatic merge:** unsafe for money and stock (merge would manufacture stock or lose payments) and a large new subsystem. Rejected.
 - **Last-write-wins on stock or sales:** rejected by the owner and by ADR 0004.
-- **Long-lived offline token or stored credentials:** a permanent bypass and a theft target. Rejected.
+- **Long-lived offline token or stored credentials:** a permanent bypass and a theft target. Rejected. (A short-lived, narrowly scoped server-issued authorization for the offline window is not this; its form is OFFLINE-001's decision.)
 - **Server-time dating of offline sales:** unforgeable but wrong for due dates and periods. Rejected by the owner.
+- **Trusting any client timestamp inside the window:** a backdating hole; timestamp age is not authorization. Rejected.
+- **Silently re-dating an invalid offline sale to server time:** corrupts business history. Rejected.
 - **Charging the server's current price on replay:** silent change of what the customer paid. Rejected by the owner.
 - **Native app:** out of V1 scope.

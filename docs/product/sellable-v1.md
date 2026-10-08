@@ -171,7 +171,7 @@ Nothing in this list may be built to claim that Soforr is "AI-powered". There is
 | Local history of recent operations, the sync queue and its status | Purchasing, receiving, stock adjustments, voids and payment reversals |
 | Cached insights shown with their freshness time | Insight recalculation, reporting, anything needing fresh server-wide data |
 
-The rules that make this safe (decided with the owner on 2026-10-08, detailed in ADR 0007): the server stays the source of truth and the browser holds a bounded operational copy plus a durable outbox; a sale keeps the time it happened on the device (bounded by the offline window) and the server records when it received it; a catalog price that changed while offline is a conflict that needs attention, never a silent re-price; an offline session lasts at most 72 hours after the last online validation and never stores a credential; unsynchronized operations are bound to their user and organization, and sign-out is blocked while any are pending; replays reuse the existing idempotent commands (sale, payment), so a retry never duplicates a sale or a payment; conflicts (such as insufficient authoritative stock) are surfaced, never resolved silently.
+The rules that make this safe (decided with the owner on 2026-10-08, detailed in ADR 0007): the server stays the source of truth and the browser holds a bounded operational copy plus a durable outbox; a sale keeps the time it happened on the device, accepted only inside an offline authorization the server established at an online validation (a timestamp inside 72 hours is not enough on its own; an invalid one is refused, never silently re-dated), and the server records when it received it; a normal catalog price that changed while offline is a conflict that needs attention, never a silent re-price, and a legitimate SALES-004 override is not mistaken for that; an offline session lasts at most 72 hours after the last online validation and never stores a credential; unsynchronized operations are bound to their user and organization, and sign-out is blocked while any are pending; replays reuse the existing idempotent commands (sale, payment), so a retry never duplicates a sale or a payment; conflicts (such as insufficient authoritative stock) are surfaced, never resolved silently.
 
 ## V1 Exit Criteria
 
@@ -194,7 +194,7 @@ Soforr is not Sellable V1 until **all** of these hold, each verified rather than
 - Inventory integrity is preserved and the server remains authoritative; offline stock is only an estimate and is labelled as one
 - Conflicts (insufficient stock, changed price, inactive product or customer, changed permission) are surfaced to the user rather than resolved silently
 - Tenant isolation is preserved in the local store and during synchronization; a queued operation can never reach another organization or be sent by another user
-- Offline authentication does not create an indefinite bypass: the offline window is bounded and no credential is stored
+- Offline authentication does not create an indefinite bypass: the offline window is bounded, backdating a transaction is refused by the server, and no credential is stored
 - The UI always shows whether the device is online, whether a change is saved, whether it is synchronized, what is waiting and what needs attention
 - The critical offline scenarios are covered by automated tests, and a real-browser offline journey has been verified (refresh, restart, lost response, reconnect)
 
