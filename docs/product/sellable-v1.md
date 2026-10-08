@@ -18,7 +18,7 @@ Soforr is a **global business product**, not an Africa-specific POS. A business 
 
 The product is intentionally **retail-and-light-wholesale**, not a full enterprise POS/ERP or B2B commerce portal. Retail software commonly combines inventory, sales, customer data and analytics; wholesale systems add account-specific pricing, quantity rules and payment terms. Soforr competes through a simpler experience and a stronger operational-intelligence layer rather than by copying every feature of mature enterprise suites.
 
-For the first release, Soforr is **connected-first** and web-based. Offline-first synchronization, multi-location inventory, native mobile POS, payment-terminal integrations and advanced wholesale pricing are deliberately deferred because they materially increase complexity. They are product boundaries for V1, not permanent limitations or regional omissions.
+For the first release, Soforr is **connectivity-resilient** and web-based: critical operational workflows (sales, credit sales and recorded payments) continue during temporary network outages, with durable local persistence and automatic synchronization when connectivity returns. The server stays the source of truth; the browser keeps an operational copy and a queue of pending operations ([ADR 0007](../decisions/0007-offline-resilience.md)). Multi-location inventory, native mobile POS, payment-terminal integrations and advanced wholesale pricing are deliberately deferred because they materially increase complexity. They are product boundaries for V1, not permanent limitations or regional omissions.
 
 ## Global product principles
 
@@ -129,10 +129,10 @@ V1 includes the minimum controls needed to sell credibly to both sides of the ma
 - **Product identification:** SKU remains the business identifier; an optional barcode/GTIN may be attached to a product and used for search and fast checkout. A product has one primary barcode in V1; multiple barcodes, case/unit barcodes and advanced 2D/GS1 data are later.
 - **Price integrity:** the product selling price is the default. A sale may use an explicit line-price override or discount when permitted by the user's permission. The sale line stores the final applied price and, where applicable, the original price and reason/actor so margin and audit data remain explainable.
 - **Wholesale reality without wholesale-platform complexity:** customers can buy on credit and sales can use negotiated line prices. Persistent customer price lists, quantity breaks, minimum-order quantities, customer-specific catalogs and self-service B2B ordering are Product P1/Future until real customers justify them. These are established wholesale requirements, so they are deliberately named rather than accidentally omitted.
-- **Retail reality without a full POS stack:** the web sale screen is designed for rapid product lookup and barcode-scanner input, but V1 does not promise offline checkout, payment-terminal integration, receipt-printer integration or a native mobile app.
+- **Retail reality without a full POS stack:** the web sale screen is designed for rapid product lookup and barcode-scanner input, and it keeps working through a connectivity outage (see Connectivity resilience below). V1 does not promise payment-terminal integration, receipt-printer integration or a native mobile app.
 - **Returns:** ordinary corrections use void. A proper merchandise-return/refund workflow is Product P1 because it requires explicit refund, stock disposition and fraud-control rules rather than pretending a void is a return.
 
-This makes the commercial claim honest: **Soforr V1 is a global, connected operations system for growing retail and light-wholesale businesses—not yet a complete offline POS, multi-location platform or full B2B commerce suite.**
+This makes the commercial claim honest: **Soforr V1 is a global, connectivity-resilient operations system for growing retail and light-wholesale businesses: critical operations continue offline and synchronize automatically when connectivity returns. It is not a fully offline application, a multi-location platform or a full B2B commerce suite.**
 
 ## Production readiness (Gate C)
 
@@ -154,9 +154,24 @@ A customer can understand what Soforr does, who it is for, what they get and how
 | Statistical forecasting, anomaly detection, demand prediction | Layer 2 | Future |
 | LLM assistant, natural-language questions, generated explanations | Layer 3; needs approval (paid service) | Future |
 | Automation and autonomous workflows | Layer 4 | Future |
-| Persistent wholesale price lists, volume pricing, minimum-order quantities, customer catalogs, sales orders/quotes, returns/refunds, multi-location inventory, offline-first sync, native mobile apps, payment-terminal integrations and third-party integrations | Valuable market capabilities, but each adds meaningful workflow/state complexity; build from observed customer demand | Product P1 / Future |
+| Persistent wholesale price lists, volume pricing, minimum-order quantities, customer catalogs, sales orders/quotes, returns/refunds, multi-location inventory, native mobile apps, payment-terminal integrations and third-party integrations | Valuable market capabilities, but each adds meaningful workflow/state complexity; build from observed customer demand | Product P1 / Future |
 
 Nothing in this list may be built to claim that Soforr is "AI-powered". There is no LLM platform, agent, vector store, embedding pipeline or forecasting infrastructure in V1.
+
+## Connectivity resilience (offline-capable critical workflows)
+
+**The promise:** critical business operations continue offline; cloud synchronization resumes automatically when connectivity returns. Not the whole Business OS is offline.
+
+| Offline-capable in V1 | Online-required in V1 |
+|---|---|
+| Product lookup and search (SKU, barcode) from the cached catalog | Organization settings and administration |
+| Customer lookup from the cached customers | User invitations, role and permission changes |
+| Sales, including credit sales to cached customers | Sign-in, e-mail verification, password reset |
+| Recording payments against synced sales | Creating products, customers and suppliers |
+| Local history of recent operations, the sync queue and its status | Purchasing, receiving, stock adjustments, voids and payment reversals |
+| Cached insights shown with their freshness time | Insight recalculation, reporting, anything needing fresh server-wide data |
+
+The rules that make this safe (decided with the owner on 2026-10-08, detailed in ADR 0007): the server stays the source of truth and the browser holds a bounded operational copy plus a durable outbox; a sale keeps the time it happened on the device, accepted only inside an offline authorization the server established at an online validation (a timestamp inside 72 hours is not enough on its own; an invalid one is refused, never silently re-dated), and the server records when it received it; a normal catalog price that changed while offline is a conflict that needs attention, never a silent re-price, and a legitimate SALES-004 override is not mistaken for that; an offline session lasts at most 72 hours after the last online validation and never stores a credential; unsynchronized operations are bound to their user and organization, and sign-out is blocked while any are pending; replays reuse the existing idempotent commands (sale, payment), so a retry never duplicates a sale or a payment; conflicts (such as insufficient authoritative stock) are surfaced, never resolved silently.
 
 ## V1 Exit Criteria
 
@@ -169,7 +184,19 @@ Soforr is not Sellable V1 until **all** of these hold, each verified rather than
 - Sales work and inventory updates correctly after a sale
 - Price overrides/discounts are permission-controlled and auditable
 - Customers and balances work
-- A connected retail/wholesale operator can complete the core workflow without relying on spreadsheets
+- An operator can complete the core workflow without relying on spreadsheets, including during a temporary outage
+
+**Offline reliability**
+- A previously authenticated user can operate the critical workflows (sales, credit sales, payments) during temporary connectivity loss
+- Offline sales survive a browser refresh and restart, and are durably queued before the UI says they are saved
+- Restoring connectivity triggers synchronization automatically; the user can also sync on demand
+- Synchronization is idempotent: duplicate network retries, including a lost response after the server committed, cannot duplicate sales or payments
+- Inventory integrity is preserved and the server remains authoritative; offline stock is only an estimate and is labelled as one
+- Conflicts (insufficient stock, changed price, inactive product or customer, changed permission) are surfaced to the user rather than resolved silently
+- Tenant isolation is preserved in the local store and during synchronization; a queued operation can never reach another organization or be sent by another user
+- Offline authentication does not create an indefinite bypass: the offline window is bounded, backdating a transaction is refused by the server, and no credential is stored
+- The UI always shows whether the device is online, whether a change is saved, whether it is synchronized, what is waiting and what needs attention
+- The critical offline scenarios are covered by automated tests, and a real-browser offline journey has been verified (refresh, restart, lost response, reconnect)
 
 **Deterministic intelligence**
 - Inventory risk, stock coverage and reorder calculations work
@@ -246,6 +273,6 @@ These are canonical product-scope decisions for the first sellable release:
 4. **Inviting organization users is in V1.** Roles without an invitation workflow are not practically usable for a business with staff.
 5. **Barcode/GTIN lookup is in V1.** One primary barcode per product is the deliberately narrow first implementation; multiple identifiers and advanced barcode workflows are later.
 6. **V1 supports light wholesale, not full B2B commerce.** Negotiated sale-line pricing and customer credit are supported. Persistent price lists, volume tiers, MOQs, customer-specific catalogs, quotes and self-service ordering remain outside V1.
-7. **V1 is connected-first.** Offline synchronization, native mobile POS, multi-location stock and payment-terminal integrations are not V1 requirements. This is an explicit product boundary, not an accidental omission.
+7. **V1 is connectivity-resilient (revised 2026-10-08, owner decision).** Critical workflows continue offline and synchronize automatically; the server stays authoritative ([ADR 0007](../decisions/0007-offline-resilience.md)). Native mobile POS, multi-location stock and payment-terminal integrations are not V1 requirements. This is an explicit product boundary, not an accidental omission. This replaces the earlier decision that V1 is connected-first with offline synchronization deferred.
 
 Any later change goes through the major product-scope approval rule in `AGENTS.md`.
