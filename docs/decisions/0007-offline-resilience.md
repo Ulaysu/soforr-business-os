@@ -1,10 +1,10 @@
 # 0007 — Connectivity resilience (offline-capable critical workflows)
 
-- Status: Accepted (by the owner, stated in the OFFLINE-001 instruction of 2026-10-09)
+- Status: Accepted
 - Date: 2026-10-08
 - Deciders: project owner
 
-> **Status.** Accepted by the owner. The offline authorization mechanism it left open is decided in [ADR 0008](0008-offline-authorization-boundary.md) and implemented by OFFLINE-001; the contract is in [offline-sync-contract.md](../engineering/offline-sync-contract.md). The items below that name later work items are still open.
+> **Status.** Accepted by the project owner on 2026-10-08. The offline authorization mechanism it left open is decided in [ADR 0008](0008-offline-authorization-boundary.md) and implemented by OFFLINE-001; the contract is in [offline-sync-contract.md](../engineering/offline-sync-contract.md). The items below that name later work items are still open.
 
 ### Approved product decisions (owner, 2026-10-08)
 

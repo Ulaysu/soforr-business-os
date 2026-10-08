@@ -1,6 +1,6 @@
 # 0008 — Offline authorization boundary
 
-- Status: Accepted (Option A chosen by the owner in the OFFLINE-001 instruction of 2026-10-09; implemented by OFFLINE-001)
+- Status: Accepted (Option A chosen by the owner in the OFFLINE-001 instruction of 2026-10-09)
 - Date: 2026-10-09
 - Deciders: project owner
 

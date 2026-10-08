@@ -493,7 +493,7 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 
 # EPIC 20 — Connectivity Resilience (Sellable V1, owner decision 2026-10-08)
 
-Critical workflows (sales, credit sales, payments) continue offline and synchronize automatically. The server stays authoritative and the existing idempotent commands are reused. Design, boundaries and the answers to the product questions: [ADR 0007](../decisions/0007-offline-resilience.md) (Accepted). The browser items cannot start before the web scaffold and the online screens exist; OFFLINE-001 is backend-only and can start first.
+Critical workflows (sales, credit sales, payments) continue offline and synchronize automatically. The server stays authoritative and the existing idempotent commands are reused. Design, boundaries and the answers to the product questions: [ADR 0007](../decisions/0007-offline-resilience.md) (Accepted by the owner on 2026-10-08). The browser items cannot start before the web scaffold and the online screens exist; OFFLINE-001 is backend-only and can start first.
 
 ### OFFLINE-001 — Replay-safe server contract
 - **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
