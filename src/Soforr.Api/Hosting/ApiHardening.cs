@@ -23,6 +23,9 @@ public sealed class ApiHardeningOptions
     /// <summary>Requests per client address per minute to the authentication endpoints (register, sign in, sign out): the brute-force limit.</summary>
     public int AuthPermitsPerMinute { get; set; } = 10;
 
+    /// <summary>Requests per client address per minute to the offline grant endpoints (issuing a grant and reporting contact, about 12 an hour per device).</summary>
+    public int OfflinePermitsPerMinute { get; set; } = 60;
+
     /// <summary>The largest request body accepted, in bytes. Bigger requests are answered 413.</summary>
     public long MaxRequestBodyBytes { get; set; } = 1_048_576;
 
@@ -50,6 +53,11 @@ internal sealed class ApiHardeningOptionsValidator : IValidateOptions<ApiHardeni
         if (options.AuthPermitsPerMinute < 1)
         {
             failures.Add("Hardening:AuthPermitsPerMinute must be at least 1.");
+        }
+
+        if (options.OfflinePermitsPerMinute < 1)
+        {
+            failures.Add("Hardening:OfflinePermitsPerMinute must be at least 1.");
         }
 
         if (options.MaxRequestBodyBytes < 1)
@@ -83,6 +91,8 @@ internal sealed class ApiHardeningOptionsValidator : IValidateOptions<ApiHardeni
 public static class ApiHardeningExtensions
 {
     public const string AuthPolicy = "auth";
+
+    public const string OfflinePolicy = "offline";
 
     private const string CorsPolicy = "soforr-allowlist";
 
@@ -128,6 +138,7 @@ public static class ApiHardeningExtensions
                     : FixedPerMinute("global:" + ClientOf(context), settings.GlobalPermitsPerMinute));
 
             limiter.AddPolicy(AuthPolicy, context => FixedPerMinute("auth:" + ClientOf(context), settings.AuthPermitsPerMinute));
+            limiter.AddPolicy(OfflinePolicy, context => FixedPerMinute("offline:" + ClientOf(context), settings.OfflinePermitsPerMinute));
 
             limiter.OnRejected = async (context, cancellationToken) =>
             {

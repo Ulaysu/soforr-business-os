@@ -7,6 +7,8 @@ using Soforr.Application.Audit;
 using Soforr.Application.Common;
 using Soforr.Application.Identity;
 using Soforr.Application.Organizations;
+using Soforr.Api.IntegrationTests.Offline;
+using Soforr.Application.Offline;
 using Soforr.Application.Sales;
 using Soforr.Application.Sales.GetCustomerBalance;
 using Soforr.Application.Sales.RecordPayment;
@@ -131,7 +133,7 @@ public sealed class PaymentsHandlerTests(PostgresDatabaseFixture database) : ICl
     {
         var user = FakeUser.In(organization, role);
         await using var db = NewContext(database.ConnectionString, user, interceptor);
-        return await new RecordPaymentHandler(db, new FixedClock(), new NewIds(), user, new UnitOfWorkAuditLog(db))
+        return await new RecordPaymentHandler(db, new FixedClock(), new NewIds(), user, new UnitOfWorkAuditLog(db), new OfflineEventTimeValidator(db, new FixedClock(), user, TestOfflineSettings.Default, new UnitOfWorkAuditLog(db)))
             .HandleAsync(new RecordPaymentCommand(sale, paymentId, amount, null, "Cash"), CancellationToken.None);
     }
 
@@ -239,7 +241,7 @@ public sealed class PaymentsHandlerTests(PostgresDatabaseFixture database) : ICl
         await using (var db = NewContext(database.ConnectionString, user, new OnceBeforeSaveInterceptor(() => throw new InvalidOperationException("simulated failure before the save"))))
         {
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
-                new RecordPaymentHandler(db, new FixedClock(), new NewIds(), user, new UnitOfWorkAuditLog(db)).HandleAsync(new RecordPaymentCommand(sale, id, 40m, null, "Cash"), CancellationToken.None));
+                new RecordPaymentHandler(db, new FixedClock(), new NewIds(), user, new UnitOfWorkAuditLog(db), new OfflineEventTimeValidator(db, new FixedClock(), user, TestOfflineSettings.Default, new UnitOfWorkAuditLog(db))).HandleAsync(new RecordPaymentCommand(sale, id, 40m, null, "Cash"), CancellationToken.None));
         }
 
         Assert.Equal((0, 0, 0m, 0), await StateAsync(organization, sale));

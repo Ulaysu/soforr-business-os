@@ -8,6 +8,7 @@ using Soforr.Domain.Catalog;
 using Soforr.Domain.Customers;
 using Soforr.Domain.Identity;
 using Soforr.Domain.Inventory;
+using Soforr.Domain.Offline;
 using Soforr.Domain.Organizations;
 using Soforr.Domain.Purchasing;
 using Soforr.Domain.Sales;
@@ -61,6 +62,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IOrgani
         builder.Entity<Sale>().HasQueryFilter(sale => CurrentOrganizationId != null && sale.OrganizationId == CurrentOrganizationId);
         builder.Entity<SalePayment>().HasQueryFilter(payment => CurrentOrganizationId != null && payment.OrganizationId == CurrentOrganizationId);
         builder.Entity<SaleLine>().HasQueryFilter(line => CurrentOrganizationId != null && line.OrganizationId == CurrentOrganizationId);
+        builder.Entity<OfflineGrant>().HasQueryFilter(grant => CurrentOrganizationId != null && grant.OrganizationId == CurrentOrganizationId);
+        builder.Entity<OfflineContact>().HasQueryFilter(contact => CurrentOrganizationId != null && contact.OrganizationId == CurrentOrganizationId);
     }
 
     public void ClearChangeTracker() => ChangeTracker.Clear();
@@ -117,7 +120,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IOrgani
     private void EnsureAppendOnlyRecordsAreNotChanged()
     {
         var changed = ChangeTracker.Entries()
-            .Where(entry => entry.Entity is InventoryMovement or AuditEvent or SalePayment or SaleLine)
+            .Where(entry => entry.Entity is InventoryMovement or AuditEvent or SalePayment or SaleLine or OfflineContact)
             .FirstOrDefault(entry => entry.State is EntityState.Modified or EntityState.Deleted);
 
         if (changed is not null)

@@ -6,6 +6,8 @@ using Soforr.Application.Common;
 using Soforr.Application.Identity;
 using Soforr.Application.Inventory;
 using Soforr.Application.Organizations;
+using Soforr.Api.IntegrationTests.Offline;
+using Soforr.Application.Offline;
 using Soforr.Application.Sales;
 using Soforr.Application.Sales.CreateSale;
 using Soforr.Application.Sales.VoidSale;
@@ -117,7 +119,7 @@ public sealed class SalesHandlerTests(PostgresDatabaseFixture database) : IClass
     }
 
     private static CreateSaleHandler SaleHandler(AppDbContext db, FakeUser user) =>
-        new(db, new StockMovementRecorder(db, user, new FixedClock(), new NewIds()), new FixedClock(), new NewIds(), user, new UnitOfWorkAuditLog(db));
+        new(db, new StockMovementRecorder(db, user, new FixedClock(), new NewIds()), new FixedClock(), new NewIds(), user, new UnitOfWorkAuditLog(db), new OfflineEventTimeValidator(db, new FixedClock(), user, TestOfflineSettings.Default, new UnitOfWorkAuditLog(db)));
 
     private static VoidSaleHandler VoidHandler(AppDbContext db, FakeUser user) =>
         new(db, new StockMovementRecorder(db, user, new FixedClock(), new NewIds()), new FixedClock(), user, new UnitOfWorkAuditLog(db));

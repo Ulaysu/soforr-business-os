@@ -35,6 +35,10 @@ Organization ─┬─ Membership ── User
               └─ AuditEvent
 ```
 
+## Offline tables (OFFLINE-001)
+
+`OfflineGrants(OrganizationId, Id, UserId, IssuedAtUtc, AbsoluteExpiresAtUtc, RevokedAtUtc?, SupersededAtUtc?)`, key (organization, id), a concurrency token, CHECK constraints (expiry after issue; superseded and revoked not before issue) and a **partial unique index** allowing one active (not superseded, not revoked) grant per (organization, user). `OfflineContacts(OrganizationId, Id, GrantId, ObservedAtUtc)`: append-only server observations, referencing the grant together with the organization (restrict), indexed by (organization, grant, time). Neither table has a foreign key to the user table. `Sales` gains `ReceivedAtUtc` (when the server recorded the sale; existing rows were backfilled with `CreatedAtUtc`) and `OfflineGrantId` (nullable provenance, deliberately no foreign key because grants are pruned after their retention). For an offline sale `CreatedAtUtc` is the vouched event time.
+
 ## Organizations Table
 
 `Organizations(Id uuid PK, Name varchar(200), Currency varchar(3), TimeZoneId varchar(100), OverdueMaterialityThreshold numeric(19,4) NULL, CreatedAtUtc timestamptz, UpdatedAtUtc timestamptz)`, all columns required except the threshold. `OverdueMaterialityThreshold` is the smallest overdue amount of a customer that is reported as an insight; null means no threshold is set (INTEL-005), and a CHECK constraint keeps it non-negative. Identifiers are generated in application code. The Domain enforces the invariants; CHECK constraints are a backstop for data written by anything else: the name is not blank, the currency is exactly three upper-case letters (`^[A-Z]{3}$`), the time zone is not blank. The currency is stored as the code and read back through `Currency.Create`, so a code removed from the supported snapshot would stop loading; the snapshot is only changed deliberately.

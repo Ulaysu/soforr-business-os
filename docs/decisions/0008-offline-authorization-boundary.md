@@ -1,6 +1,6 @@
 # 0008 — Offline authorization boundary
 
-- Status: Proposed
+- Status: Accepted (Option A chosen by the owner in the OFFLINE-001 instruction of 2026-10-09; implemented by OFFLINE-001)
 - Date: 2026-10-09
 - Deciders: project owner
 
@@ -35,7 +35,7 @@ The server records *contact observations* for an **offline grant** and accepts a
   3. `t` lies inside a silent gap of that grant, and `t ≤ gapStart + 72 hours` (the policy window, configurable within bounds);
   4. only then the sale is dated `t`; the server stores its own `receivedAtUtc` and the grant id.
 - **Order does not matter.** Whether the client syncs the operations before or after reporting contact again, the gap is already recorded by the contact call that closes it, so a legitimate operation is not invalidated by reconnecting.
-- **Refusal.** An event time outside every silent gap, or past the window, or with no/foreign/revoked grant, is refused with a specific error (409/422 `sale.event_time_unverifiable`); nothing is recorded, no id is reserved, the operation becomes a visible conflict. **Never** silently dated at server time. The resolution is an explicit, audited user action: an authorized user may re-submit it as a sale dated at the moment of synchronization (the flag is kept on the sale) or discard it with a reason. This also covers an honest sale made during an outage shorter than `MinGap`, which the server cannot verify.
+- **Refusal.** An event time outside every silent gap, or past the window, or with no/foreign/revoked grant, is refused with a specific error (409 `offline.event_time_unverifiable`); nothing is recorded, no id is reserved, the operation becomes a visible conflict. **Never** silently dated at server time. The resolution is an explicit, audited user action: an authorized user may re-submit it as a sale dated at the moment of synchronization (the flag is kept on the sale) or discard it with a reason. This also covers an honest sale made during an outage shorter than `MinGap`, which the server cannot verify.
 - **Audit.** Issuing a grant, a refusal, and every accepted offline sale (with the gap length and receipt delay) are audit events or structured log entries; no personal data.
 - **Cost.** One table for grants, one append-only table of contact observations (about 12 per hour per active device, pruned with the grant), three small endpoints, configuration, tests.
 
@@ -60,6 +60,19 @@ Adopt **Option A**. The data model, the exact error codes and the parameter defa
 - The client must report contact while open and online (OFFLINE-002); a closed browser is silent time, which is correct.
 - Event time is now meaningful business data with provenance (grant, gap, receipt delay), useful for audit and for spotting abuse.
 - Residual risk stated honestly: a user can choose any time inside their own real silence.
+
+## Implementation notes (OFFLINE-001)
+
+How the decision was implemented; the guarantee and the refusal rule are unchanged. The full contract is [offline-sync-contract.md](../engineering/offline-sync-contract.md).
+
+- **Pure rule:** `OfflineEventTimePolicy` in the Domain (no clock, database or framework), so every boundary is a unit test. Lower gap bound inclusive; the closing contact's instant exclusive; the open gap ends at `min(receipt, supersededAt, absoluteExpiry)`, inclusive; a gap counts only if longer than `MinGap` (the open gap included, so the answer does not depend on whether the next contact or the sale arrives first); exactly the window is valid; the clock skew only decides "in the future" and never lengthens a gap or the window.
+- **One active grant per user.** Issuing supersedes the previous one (the stream of observations is per user); enforced by a partial unique index, with a bounded retry for simultaneous issuances. This closes the trick of keeping a silent grant while using another.
+- **Tables:** `OfflineGrants` (immutable except supersede/revoke, concurrency token) and append-only `OfflineContacts`; `Sales.ReceivedAtUtc` (existing rows backfilled with `CreatedAtUtc`) and `Sales.OfflineGrantId` (no foreign key: grants are pruned).
+- **Error codes** are `offline.*` for grants and event times (they apply to sales and payments alike) and `sale.catalog_price_changed` for price drift.
+- **Permissions:** a grant is held by a user allowed `SalesCreate` or `PaymentsRecord` and authorizes nothing else; each replayed operation checks its own permission at replay time.
+- **Payments:** an offline payment names the grant and its `paidAtUtc` (required), judged by the same rule; a payment without a grant keeps the existing online rule.
+- **Pruning:** inside every grant issuance for the caller's organization, through the tenant-filtered context (no filter bypass, no background job); evidence is kept until its last vouchable time plus the retention (default 90 days).
+- **Not done here (later work items):** flagging a sale that was resubmitted at synchronization time, grant revocation wired to member management (IDENTITY-005), the cache feeds (OFFLINE-003 will define what it needs), and the client.
 
 ## Tests required by OFFLINE-001
 

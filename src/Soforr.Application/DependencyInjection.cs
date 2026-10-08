@@ -15,6 +15,7 @@ public static class DependencyInjection
 
         services.AddScoped<Inventory.StockMovementRecorder>();
         services.AddScoped<Audit.IAuditLog, Audit.AuditLog>();
+        services.AddScoped<Offline.OfflineEventTimeValidator>();
 
         services.AddInsightSources(typeof(DependencyInjection).Assembly);
 

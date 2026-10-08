@@ -31,12 +31,12 @@ public static class SalesEndpoints
                 "/",
                 async (SaleRequest request, ICommandHandler<CreateSaleCommand, SaleResultDto> handler, CancellationToken cancellationToken) =>
                 {
-                    var lines = request.Lines?.Select(line => new CreateSaleLine(line?.ProductId, line?.Quantity, line?.UnitPrice, line?.PriceReason)).ToList();
-                    var result = await handler.HandleAsync(new CreateSaleCommand(request.SaleId, lines, request.CustomerId, request.AmountPaid, request.PaymentMethod), cancellationToken);
+                    var lines = request.Lines?.Select(line => new CreateSaleLine(line?.ProductId, line?.Quantity, line?.UnitPrice, line?.PriceReason, line?.CatalogPriceShown)).ToList();
+                    var result = await handler.HandleAsync(new CreateSaleCommand(request.SaleId, lines, request.CustomerId, request.AmountPaid, request.PaymentMethod, request.OccurredAtUtc, request.OfflineGrantId), cancellationToken);
                     return result.ToHttpResult(sale => sale.AlreadyRecorded ? Results.Ok(sale) : Results.Created($"{BasePath}/{sale.SaleId}", sale));
                 })
             .WithName("CreateSale")
-            .WithSummary("Records a sale and removes the stock, atomically. Lines are charged the catalog price; a line may state the final unitPrice (an override or a discount, never negative) with a priceReason, which needs the SalesOverridePrice permission (Owner and Manager), and a price below the product's cost needs SalesSellBelowCost (Owner), else 403. The catalog price, the price charged, the reason and the user are recorded and a price override is audited. Costs and totals are taken and computed by the server. With a customerId it is a sale on account: amountPaid is what the customer pays now (0 up to the total; absent means paid in full), the rest is owed from a due date fixed now (sale date plus the customer's credit terms, or immediately). Without a customer the sale is paid in full. Sending the same saleId again with exactly the same products, quantities, prices, reasons, customer and amount paid changes nothing and answers 200 with alreadyRecorded true; the same saleId with anything different is 409 (sale.id_conflict). Selling more than is in stock is 422.")
+            .WithSummary("Records a sale and removes the stock, atomically. Lines are charged the catalog price; a line may state the final unitPrice (an override or a discount, never negative) with a priceReason, which needs the SalesOverridePrice permission (Owner and Manager), and a price below the product's cost needs SalesSellBelowCost (Owner), else 403. The catalog price, the price charged, the reason and the user are recorded and a price override is audited. Costs and totals are taken and computed by the server. With a customerId it is a sale on account: amountPaid is what the customer pays now (0 up to the total; absent means paid in full), the rest is owed from a due date fixed now (sale date plus the customer's credit terms, or immediately). Without a customer the sale is paid in full. Sending the same saleId again with exactly the same products, quantities, prices, reasons, customer and amount paid changes nothing and answers 200 with alreadyRecorded true; the same saleId with anything different is 409 (sale.id_conflict). Selling more than is in stock is 422. A sale recorded offline (synchronization after an outage) also sends occurredAtUtc, the offlineGrantId that vouches for it and, on every line, catalogPriceShown (the catalog price the cashier saw). The server accepts occurredAtUtc only inside a silent gap it observed on that grant, within the offline window (72 hours by default, from the start of the gap), not in the future (a small clock-skew allowance that never widens a gap), and the grant must be the caller's and not revoked; otherwise nothing is recorded, no id is reserved and the sale is never dated at server time (409 offline.event_time_unverifiable / offline.event_time_outside_window / offline.grant_*, 400 offline.event_time_in_future). A catalogPriceShown different from the current catalog price is 409 sale.catalog_price_changed (the final unitPrice is never compared). The server records its own receipt time. The server cannot prove a device was physically offline, only that it observed no contact.")
             .Produces<SaleResultDto>(StatusCodes.Status201Created)
             .Produces<SaleResultDto>()
             .ProducesValidationProblem()
@@ -95,7 +95,7 @@ public static class SalesEndpoints
                 "/{id:guid}/payments",
                 async (Guid id, PaymentRequest request, ICommandHandler<RecordPaymentCommand, PaymentResultDto> handler, CancellationToken cancellationToken) =>
                 {
-                    var result = await handler.HandleAsync(new RecordPaymentCommand(id, request.PaymentId, request.Amount, request.PaidAtUtc, request.Method), cancellationToken);
+                    var result = await handler.HandleAsync(new RecordPaymentCommand(id, request.PaymentId, request.Amount, request.PaidAtUtc, request.Method, request.OfflineGrantId), cancellationToken);
                     return result.ToHttpResult(payment => payment.AlreadyRecorded ? Results.Ok(payment) : Results.Created($"{BasePath}/{id}", payment));
                 })
             .WithName("RecordPayment")
@@ -132,16 +132,16 @@ public static class SalesEndpoints
 }
 
 /// <summary>One line of a sale request. There is no price: the catalog price is used.</summary>
-public sealed record SaleLineRequest(Guid? ProductId, decimal? Quantity, decimal? UnitPrice = null, string? PriceReason = null);
+public sealed record SaleLineRequest(Guid? ProductId, decimal? Quantity, decimal? UnitPrice = null, string? PriceReason = null, decimal? CatalogPriceShown = null);
 
 /// <summary>The request body of <c>POST /api/v1/sales</c>.</summary>
-public sealed record SaleRequest(Guid? SaleId, IReadOnlyList<SaleLineRequest?>? Lines, Guid? CustomerId = null, decimal? AmountPaid = null, string? PaymentMethod = null);
+public sealed record SaleRequest(Guid? SaleId, IReadOnlyList<SaleLineRequest?>? Lines, Guid? CustomerId = null, decimal? AmountPaid = null, string? PaymentMethod = null, DateTimeOffset? OccurredAtUtc = null, Guid? OfflineGrantId = null);
 
 /// <summary>The request body of <c>POST /api/v1/sales/{id}/void</c>.</summary>
 public sealed record VoidSaleRequest(string? Reason);
 
 /// <summary>The request body of <c>POST /api/v1/sales/{id}/payments</c>.</summary>
-public sealed record PaymentRequest(Guid? PaymentId, decimal? Amount, DateTimeOffset? PaidAtUtc, string? Method);
+public sealed record PaymentRequest(Guid? PaymentId, decimal? Amount, DateTimeOffset? PaidAtUtc, string? Method, Guid? OfflineGrantId = null);
 
 /// <summary>The request body of <c>POST /api/v1/sales/{id}/payments/{paymentId}/reverse</c>.</summary>
 public sealed record ReversalRequest(Guid? ReversalId, string? Reason);

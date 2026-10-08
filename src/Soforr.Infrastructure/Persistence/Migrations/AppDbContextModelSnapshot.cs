@@ -380,6 +380,75 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Soforr.Domain.Offline.OfflineContact", b =>
+                {
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GrantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ObservedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("OrganizationId", "Id");
+
+                    b.HasIndex("OrganizationId", "GrantId", "ObservedAtUtc");
+
+                    b.ToTable("OfflineContacts", (string)null);
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Offline.OfflineGrant", b =>
+                {
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AbsoluteExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("IssuedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("RevokedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("SupersededAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("OrganizationId", "Id");
+
+                    b.HasIndex("OrganizationId", "IssuedAtUtc");
+
+                    b.HasIndex("OrganizationId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_OfflineGrants_OneActivePerUser")
+                        .HasFilter("\"SupersededAtUtc\" IS NULL AND \"RevokedAtUtc\" IS NULL");
+
+                    b.ToTable("OfflineGrants", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_OfflineGrants_Expiry_AfterIssue", "\"AbsoluteExpiresAtUtc\" > \"IssuedAtUtc\"");
+
+                            t.HasCheckConstraint("CK_OfflineGrants_Revoked_NotBeforeIssue", "\"RevokedAtUtc\" IS NULL OR \"RevokedAtUtc\" >= \"IssuedAtUtc\"");
+
+                            t.HasCheckConstraint("CK_OfflineGrants_Superseded_NotBeforeIssue", "\"SupersededAtUtc\" IS NULL OR \"SupersededAtUtc\" >= \"IssuedAtUtc\"");
+                        });
+                });
+
             modelBuilder.Entity("Soforr.Domain.Organizations.Organization", b =>
                 {
                     b.Property<Guid>("Id")
@@ -670,10 +739,16 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("DueAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("OfflineGrantId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("PaymentRevision")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(0);
+
+                    b.Property<DateTimeOffset>("ReceivedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -1086,6 +1161,15 @@ namespace Soforr.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("ProductId", "OrganizationId")
                         .HasPrincipalKey("Id", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Soforr.Domain.Offline.OfflineContact", b =>
+                {
+                    b.HasOne("Soforr.Domain.Offline.OfflineGrant", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "GrantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

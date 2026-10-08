@@ -127,7 +127,7 @@ The handler pattern is defined by [ADR 0003](../decisions/0003-commands-and-quer
 - Domain invariants are enforced by Domain constructors and methods, which throw `DomainException` with a stable `Code`. Handlers call the Domain through `DomainErrors.Run`, the one place that translates it to a Validation `Error` (with the field it is about, supplied by the module) instead of letting it escape.
 - The Domain never reads a clock or creates ids: time and ids are passed in. Handlers get them from `IClock` and `IIdGenerator` (implemented in Infrastructure), which keeps behavior deterministic in tests.
 
-## Connectivity resilience (proposed, ADR 0007)
+## Connectivity resilience (ADR 0007, ADR 0008)
 
 V1 critical workflows continue during network outages. This is a client-side capability around the existing server, not a second backend:
 
@@ -141,7 +141,7 @@ Vue UI → client application service → local repository (IndexedDB) + outbox 
 - A service worker caches only the application shell. IndexedDB holds business data; the outbox holds pending mutations; the sync engine owns retries, ordering, state and failure classification.
 - Security: ADR 0002 is unchanged (cookie session, no stored credentials). Offline use is bounded to a window after the last online validation; local data is scoped to a user and organization as a logical guard (not encryption; the server derives identity itself); the server re-checks tenant, permission and rules on every replay.
 
-Status: Proposed. The web application does not exist yet; the browser part follows FOUNDATION-007 and the online screens.
+Status: accepted. The server contract is implemented (OFFLINE-001, [offline-sync-contract.md](../engineering/offline-sync-contract.md)); the web application does not exist yet, so the browser part follows FOUNDATION-007 and the online screens.
 
 ## Modules and Data
 

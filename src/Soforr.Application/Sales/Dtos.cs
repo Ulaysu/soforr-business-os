@@ -61,7 +61,7 @@ public sealed record SalePaymentDto(
 }
 
 /// <summary>
-/// A sale with its lines. <see cref="Total"/> is computed by the Domain, never supplied. <see cref="TotalCost"/> is null for a
+/// A sale with its lines. <see cref="ReceivedAtUtc"/> is when the server recorded it; it differs from <see cref="CreatedAtUtc"/> (when it happened) for a sale synchronized after an outage, which also carries the <see cref="OfflineGrantId"/> that vouched for its time. <see cref="Total"/> is computed by the Domain, never supplied. <see cref="TotalCost"/> is null for a
 /// caller who may not see costs. A sale made on account has a <see cref="CustomerId"/>, a fixed <see cref="DueAtUtc"/>, the
 /// <see cref="AmountPaid"/> (payments minus reversals) and what is still <see cref="Outstanding"/>; a walk-in sale has no
 /// customer or due date, is paid in full and has nothing outstanding.
@@ -83,7 +83,9 @@ public sealed record SaleDto(
     DateTimeOffset? DueAtUtc,
     decimal AmountPaid,
     decimal Outstanding,
-    IReadOnlyList<SalePaymentDto> Payments)
+    IReadOnlyList<SalePaymentDto> Payments,
+    DateTimeOffset ReceivedAtUtc,
+    Guid? OfflineGrantId)
 {
     internal static SaleDto From(Sale sale, bool includeCost)
     {
@@ -112,7 +114,9 @@ public sealed record SaleDto(
             sale.DueAtUtc,
             sale.AmountPaid.Amount,
             sale.Outstanding.Amount,
-            sale.Payments.OrderBy(payment => payment.RecordedAtUtc).ThenBy(payment => payment.Kind).ThenBy(payment => payment.Id).Select(SalePaymentDto.From).ToList());
+            sale.Payments.OrderBy(payment => payment.RecordedAtUtc).ThenBy(payment => payment.Kind).ThenBy(payment => payment.Id).Select(SalePaymentDto.From).ToList(),
+            sale.ReceivedAtUtc,
+            sale.OfflineGrantId);
     }
 }
 

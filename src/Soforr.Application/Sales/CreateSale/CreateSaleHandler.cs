@@ -5,6 +5,7 @@ using Soforr.Application.Audit;
 using Soforr.Application.Common;
 using Soforr.Application.Identity;
 using Soforr.Application.Inventory;
+using Soforr.Application.Offline;
 using Soforr.Application.Organizations;
 using Soforr.Application.Persistence;
 using Soforr.Domain.Catalog;
@@ -20,8 +21,14 @@ namespace Soforr.Application.Sales.CreateSale;
 /// moment. A <see cref="UnitPrice"/> is the final price charged for one unit (an override or a discount, never negative); stating one
 /// needs the <c>SalesOverridePrice</c> permission, and a price that differs from the catalog price needs a <see cref="PriceReason"/>.
 /// A price below the product's cost price additionally needs <c>SalesSellBelowCost</c>.
+/// <para>
+/// <see cref="CatalogPriceShown"/> is the catalog price the cashier saw when the sale was made; it is required for a sale recorded
+/// offline and, when given, must equal the product's current catalog price, otherwise the sale is refused as a conflict
+/// (<c>sale.catalog_price_changed</c>). It is compared with the catalog price only: a final price charged is never taken as evidence
+/// of a changed catalog price, so a legitimate override or negotiated price is not mistaken for drift.
+/// </para>
 /// </summary>
-public sealed record CreateSaleLine(Guid? ProductId, decimal? Quantity, decimal? UnitPrice = null, string? PriceReason = null);
+public sealed record CreateSaleLine(Guid? ProductId, decimal? Quantity, decimal? UnitPrice = null, string? PriceReason = null, decimal? CatalogPriceShown = null);
 
 /// <summary>
 /// Records a sale of products. <see cref="SaleId"/> is an optional, client-chosen identifier of this sale: sending the
@@ -36,8 +43,21 @@ public sealed record CreateSaleLine(Guid? ProductId, decimal? Quantity, decimal?
 /// amount must equal the total. <see cref="PaymentMethod"/> is a free-text label recorded with the payment taken now (a walk-in
 /// sale records no payment, so it has no label).
 /// </para>
+/// <para>
+/// A sale recorded offline names the time it happened (<see cref="OccurredAtUtc"/>) and the <see cref="OfflineGrantId"/> that vouches for
+/// it (ADR 0008). The server accepts that time only inside a silent gap it observed on that grant, within the offline window; otherwise
+/// the sale is refused (nothing recorded, no id reserved) and is never silently dated at server time. The server records its own receipt
+/// time separately. Without these the sale happens at server time, as always.
+/// </para>
 /// </summary>
-public sealed record CreateSaleCommand(Guid? SaleId, IReadOnlyList<CreateSaleLine>? Lines, Guid? CustomerId = null, decimal? AmountPaid = null, string? PaymentMethod = null);
+public sealed record CreateSaleCommand(
+    Guid? SaleId,
+    IReadOnlyList<CreateSaleLine>? Lines,
+    Guid? CustomerId = null,
+    decimal? AmountPaid = null,
+    string? PaymentMethod = null,
+    DateTimeOffset? OccurredAtUtc = null,
+    Guid? OfflineGrantId = null);
 
 /// <summary>
 /// The selling use case (ADR 0004). In one transaction it records the sale (with the prices and costs of its products as
@@ -48,7 +68,7 @@ public sealed record CreateSaleCommand(Guid? SaleId, IReadOnlyList<CreateSaleLin
 /// recorder; each attempt starts from a cleared change tracker and re-validates, so stock that ran out meanwhile is
 /// reported as the business error it is.
 /// </summary>
-public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder recorder, IClock clock, IIdGenerator ids, ICurrentUser user, IAuditLog audit)
+public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder recorder, IClock clock, IIdGenerator ids, ICurrentUser user, IAuditLog audit, OfflineEventTimeValidator offline)
     : ICommandHandler<CreateSaleCommand, SaleResultDto>
 {
     public async Task<Result<SaleResultDto>> HandleAsync(CreateSaleCommand command, CancellationToken cancellationToken)
@@ -68,6 +88,32 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
         if (command.CustomerId == Guid.Empty)
         {
             return Fail(SalesErrors.Invalid("sale.customer_invalid", "customerId", "The customer must be a non-empty identifier or absent."));
+        }
+
+        if (command.OfflineGrantId == Guid.Empty)
+        {
+            return Fail(SalesErrors.Invalid("offline.grant_invalid", "offlineGrantId", "The offline grant must be a non-empty identifier or absent."));
+        }
+
+        if (command.OfflineGrantId is not null && command.OccurredAtUtc is null)
+        {
+            return Fail(OfflineErrors.EventTimeRequired);
+        }
+
+        if (command.OccurredAtUtc is { } claimed)
+        {
+            if (command.OfflineGrantId is null)
+            {
+                return Fail(OfflineErrors.GrantRequired);
+            }
+
+            if (claimed.Offset != TimeSpan.Zero)
+            {
+                return Fail(SalesErrors.Invalid("sale.timestamp_not_utc", "occurredAtUtc", "Timestamps must be in UTC."));
+            }
+
+            // The database keeps microseconds. The time is truncated the same way before it is judged, stored and compared on a repeat.
+            command = command with { OccurredAtUtc = new DateTimeOffset(claimed.Ticks - (claimed.Ticks % 10), claimed.Offset) };
         }
 
         if (command.Lines is not { Count: > 0 } lines)
@@ -123,7 +169,12 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
                 }
             }
 
-            requested.Add(new RequestedLine(productId, quantity.Value, line.UnitPrice, line.PriceReason));
+            if (command.OccurredAtUtc is not null && line.CatalogPriceShown is null)
+            {
+                return Fail(SalesErrors.Invalid("sale.catalog_price_required", Field(index, "catalogPriceShown"), "A sale recorded offline must state the catalog price the cashier saw on every line."));
+            }
+
+            requested.Add(new RequestedLine(productId, quantity.Value, line.UnitPrice, line.PriceReason, line.CatalogPriceShown));
         }
 
         var currency = await OrganizationCurrency.ResolveAsync(db, user.OrganizationId, cancellationToken);
@@ -174,9 +225,27 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
                 asked.Add((line.ProductId, line.Quantity, price?.Value, line.PriceReason));
             }
 
-            return recorded.HasSameRequestedLinesAs(asked) && recorded.HasSameSettlementAs(command.CustomerId, command.AmountPaid)
+            var sameTime = command.OccurredAtUtc is null
+                ? recorded.OfflineGrantId is null
+                : recorded.OfflineGrantId == command.OfflineGrantId && recorded.CreatedAtUtc == command.OccurredAtUtc;
+
+            return sameTime && recorded.HasSameRequestedLinesAs(asked) && recorded.HasSameSettlementAs(command.CustomerId, command.AmountPaid)
                 ? Result.Success(new SaleResultDto(saleId, AlreadyRecorded: true, SaleDto.From(recorded, includeCost)))
                 : Fail(SalesErrors.SaleIdConflict);
+        }
+
+        // An offline sale is judged before anything is looked up or staged: the server must have vouched for its time (ADR 0008).
+        // A refusal records nothing (but its audit event) and reserves no id.
+        AcceptedOfflineEvent? accepted = null;
+        if (command.OccurredAtUtc is { } eventTime)
+        {
+            var vouched = await offline.ValidateAsync(command.OfflineGrantId, eventTime, "sale", cancellationToken);
+            if (vouched.IsFailure)
+            {
+                return Fail(vouched.Error!);
+            }
+
+            accepted = vouched.Value;
         }
 
         // Filtered to the caller's organization: another organization's product is not found.
@@ -186,7 +255,7 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
         var inputs = new List<SaleLineInput>(requested.Count);
         for (var index = 0; index < requested.Count; index++)
         {
-            var (productId, quantity, requestedPrice, reason) = requested[index];
+            var (productId, quantity, requestedPrice, reason, shownCatalogPrice) = requested[index];
             if (!products.TryGetValue(productId, out var product))
             {
                 return Fail(SalesErrors.ProductNotFound(productId, Field(index, "productId")));
@@ -215,11 +284,21 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
                 }
             }
 
+            // The catalog price the cashier saw must still be the catalog price. Only the catalog price decides this: the final price
+            // charged (an authorized override or a negotiated price) is never evidence of drift.
+            if (shownCatalogPrice is { } shown && shown != product.SellingPrice.Amount)
+            {
+                return Fail(new Error("sale.catalog_price_changed", ErrorKind.Conflict, "The catalog price changed since the cashier saw it. Nothing was recorded; review the price and submit again.", Field(index, "catalogPriceShown")));
+            }
+
             inputs.Add(new SaleLineInput(ids.NewId(), product.Id, product.Sku, product.Name, product.UnitOfMeasure, quantity, product.SellingPrice, charged, product.CostPrice, reason));
         }
 
         var organizationId = user.OrganizationId!.Value;
-        var now = clock.UtcNow;
+
+        // When the sale happened: the vouched event time for an offline sale, the server's clock otherwise. The server's receipt time is separate.
+        var receivedAt = accepted?.ReceivedAtUtc ?? clock.UtcNow;
+        var now = accepted?.EventTimeUtc ?? receivedAt;
 
         // How the sale is settled: a walk-in sale is paid in full and records no payment; a sale on account takes what the
         // customer pays now (the whole total when nothing is stated) and is due after the customer's terms, fixed from today.
@@ -264,7 +343,7 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
             }
         }
 
-        var created = SalesErrors.Run(() => Sale.Complete(saleId, organizationId, currency, user.UserId!.Value, now, inputs, command.CustomerId, dueAtUtc, initialPayment, command.PaymentMethod), SaleField);
+        var created = SalesErrors.Run(() => Sale.Complete(saleId, organizationId, currency, user.UserId!.Value, now, inputs, command.CustomerId, dueAtUtc, initialPayment, command.PaymentMethod, receivedAt, accepted?.GrantId), SaleField);
         if (created.IsFailure)
         {
             return Fail(created.Error!);
@@ -305,6 +384,11 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
             "Sale",
             sale.Id,
             string.Create(CultureInfo.InvariantCulture, $"A sale with {sale.Lines.Count} line(s) was recorded{(sale.CustomerId is null ? string.Empty : " on account")}.")));
+
+        if (accepted is not null)
+        {
+            offline.RecordAccepted(accepted, AuditActions.OfflineSaleAccepted, sale.Id, "Sale", "sale");
+        }
 
         if (sale.HasPriceOverride)
         {
@@ -348,7 +432,7 @@ public sealed class CreateSaleHandler(IAppDbContext db, StockMovementRecorder re
     }
 
     /// <summary>A requested line: the product, the quantity and, when the caller states one, the final unit price and its reason.</summary>
-    private sealed record RequestedLine(Guid ProductId, Quantity Quantity, decimal? UnitPrice, string? PriceReason);
+    private sealed record RequestedLine(Guid ProductId, Quantity Quantity, decimal? UnitPrice, string? PriceReason, decimal? CatalogPriceShown);
 
     private static string Field(int index, string name) => $"lines[{index}].{name}";
 

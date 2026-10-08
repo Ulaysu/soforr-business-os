@@ -52,13 +52,15 @@ public sealed class Sale
         Currency = null!;
     }
 
-    private Sale(Guid id, Guid organizationId, Currency currency, Guid createdByUserId, DateTimeOffset createdAtUtc)
+    private Sale(Guid id, Guid organizationId, Currency currency, Guid createdByUserId, DateTimeOffset createdAtUtc, DateTimeOffset receivedAtUtc, Guid? offlineGrantId)
     {
         Id = id;
         OrganizationId = organizationId;
         Currency = currency;
         CreatedByUserId = createdByUserId;
         CreatedAtUtc = createdAtUtc;
+        ReceivedAtUtc = receivedAtUtc;
+        OfflineGrantId = offlineGrantId;
         Status = SaleStatus.Completed;
     }
 
@@ -76,8 +78,14 @@ public sealed class Sale
     /// <summary>The user who recorded the sale, and who is accountable for any price override on it.</summary>
     public Guid CreatedByUserId { get; private set; }
 
-    /// <summary>When the sale happened.</summary>
+    /// <summary>When the sale happened. For a sale recorded offline this is the event time the device reported and the server vouched for (ADR 0008); otherwise it is the server's time.</summary>
     public DateTimeOffset CreatedAtUtc { get; private set; }
+
+    /// <summary>When the server received and recorded the sale (server clock). Equal to <see cref="CreatedAtUtc"/> for a sale made online; later for one synchronized after an outage.</summary>
+    public DateTimeOffset ReceivedAtUtc { get; private set; }
+
+    /// <summary>The offline grant that vouched for <see cref="CreatedAtUtc"/>; null for a sale made online. Provenance only: there is no foreign key, because grants are pruned.</summary>
+    public Guid? OfflineGrantId { get; private set; }
 
     public DateTimeOffset? VoidedAtUtc { get; private set; }
 
@@ -136,7 +144,9 @@ public sealed class Sale
         Guid? customerId = null,
         DateTimeOffset? dueAtUtc = null,
         Money? initialPayment = null,
-        string? paymentMethodLabel = null)
+        string? paymentMethodLabel = null,
+        DateTimeOffset? receivedAtUtc = null,
+        Guid? offlineGrantId = null)
     {
         ArgumentNullException.ThrowIfNull(currency);
         ArgumentNullException.ThrowIfNull(lines);
@@ -156,7 +166,12 @@ public sealed class Sale
             throw new DomainException("sale.user_required", "A sale must be recorded by a user.");
         }
 
-        var sale = new Sale(id, organizationId, currency, createdByUserId, RequireUtc(createdAtUtc));
+        if (offlineGrantId == Guid.Empty)
+        {
+            throw new DomainException("sale.offline_grant_invalid", "The offline grant must be a non-empty identifier or absent.");
+        }
+
+        var sale = new Sale(id, organizationId, currency, createdByUserId, RequireUtc(createdAtUtc), RequireUtc(receivedAtUtc ?? createdAtUtc), offlineGrantId);
 
         if (lines.Count == 0)
         {
