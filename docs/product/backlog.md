@@ -400,12 +400,12 @@ Needed for customer balance and aging intelligence. Customers, credit sales and 
 - **Testing:** unit, handler, API, persistence, authorization, tenant-isolation tests.
 
 ### CUSTOMER-002 — Credit sales and recorded payments
-- **Status:** In Progress · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** A sale can reference a customer and be paid in full, in part or not at all; payments are recorded against a sale (amount, date, method label), never processed. Outstanding balance per sale and per customer is derived from sales and payments (deterministic, never edited). Payment recording is append-only with a void/reversal by new record.
 - **Acceptance criteria:** Balance = sum of sale totals − sum of payments, reproducible from records; over-payment rejected or recorded as a credit by an explicit documented rule; no money processing; audited.
 - **Dependencies:** SALES-002, CUSTOMER-001, AUDIT-001
 - **Decisions (product owner):** over-payment is rejected; only sales with a customer can be unpaid or part-paid (a walk-in sale is paid in full); a customer without credit terms is due immediately; `CreateSale` takes an optional amount paid and records the payment in the same transaction.
-- **Progress:** part 1 (sale on account, fixed due date, append-only payment records, derived balance in the Domain, `CreateSale` with customer and amount paid, void refused while money is on the sale) is In Review; part 2 (`RecordPayment`, `ReversePayment`, `GetCustomerBalance`, their endpoints and permissions) is pending.
+- **Progress:** part 1 (sale on account, fixed due date, append-only payment records, derived balance in the Domain, `CreateSale` with customer and amount paid, void refused while money is on the sale) is Done; part 2 (`RecordPayment`, `ReversePayment`, `GetCustomerBalance`, their endpoints and permissions) is In Review.
 - **Affected area:** Domain, Application, Infrastructure, Api
 - **Testing:** unit tests for the balance; concurrency and idempotency of payment recording; authorization; tenant isolation.
 

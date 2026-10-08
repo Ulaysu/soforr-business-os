@@ -5,6 +5,8 @@ using Soforr.Application.Sales;
 using Soforr.Application.Sales.CreateSale;
 using Soforr.Application.Sales.GetSale;
 using Soforr.Application.Sales.ListSales;
+using Soforr.Application.Sales.RecordPayment;
+using Soforr.Application.Sales.ReversePayment;
 using Soforr.Application.Sales.VoidSale;
 
 namespace Soforr.Api.Sales;
@@ -89,6 +91,42 @@ public static class SalesEndpoints
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
+        group.MapPost(
+                "/{id:guid}/payments",
+                async (Guid id, PaymentRequest request, ICommandHandler<RecordPaymentCommand, PaymentResultDto> handler, CancellationToken cancellationToken) =>
+                {
+                    var result = await handler.HandleAsync(new RecordPaymentCommand(id, request.PaymentId, request.Amount, request.PaidAtUtc, request.Method), cancellationToken);
+                    return result.ToHttpResult(payment => payment.AlreadyRecorded ? Results.Ok(payment) : Results.Created($"{BasePath}/{id}", payment));
+                })
+            .WithName("RecordPayment")
+            .WithSummary("Records a payment received against a sale made on account. Money is recorded, never processed. The amount cannot be more than what is still owed (422). paidAtUtc is when the money was received (default now; not before the sale, not in the future). Sending the same paymentId again with exactly the same sale, amount, method and date changes nothing and answers 200 with alreadyRecorded true; the same paymentId with anything different is 409 (sale.payment_id_conflict).")
+            .Produces<PaymentResultDto>(StatusCodes.Status201Created)
+            .Produces<PaymentResultDto>()
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapPost(
+                "/{id:guid}/payments/{paymentId:guid}/reverse",
+                async (Guid id, Guid paymentId, ReversalRequest request, ICommandHandler<ReversePaymentCommand, PaymentResultDto> handler, CancellationToken cancellationToken) =>
+                {
+                    var result = await handler.HandleAsync(new ReversePaymentCommand(id, paymentId, request.ReversalId, request.Reason), cancellationToken);
+                    return result.ToHttpResult(reversal => reversal.AlreadyRecorded ? Results.Ok(reversal) : Results.Created($"{BasePath}/{id}", reversal));
+                })
+            .WithName("ReversePayment")
+            .WithSummary("Takes back one recorded payment in full, as a new record that points at it (the payment is never changed). A reason is required. A payment can be reversed once and a reversal cannot be reversed (422). Sending the same reversalId again for the same payment and reason answers 200 with alreadyRecorded true. Owner and Manager only.")
+            .Produces<PaymentResultDto>(StatusCodes.Status201Created)
+            .Produces<PaymentResultDto>()
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
         return app;
     }
 }
@@ -101,3 +139,9 @@ public sealed record SaleRequest(Guid? SaleId, IReadOnlyList<SaleLineRequest?>? 
 
 /// <summary>The request body of <c>POST /api/v1/sales/{id}/void</c>.</summary>
 public sealed record VoidSaleRequest(string? Reason);
+
+/// <summary>The request body of <c>POST /api/v1/sales/{id}/payments</c>.</summary>
+public sealed record PaymentRequest(Guid? PaymentId, decimal? Amount, DateTimeOffset? PaidAtUtc, string? Method);
+
+/// <summary>The request body of <c>POST /api/v1/sales/{id}/payments/{paymentId}/reverse</c>.</summary>
+public sealed record ReversalRequest(Guid? ReversalId, string? Reason);

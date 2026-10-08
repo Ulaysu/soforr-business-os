@@ -31,12 +31,14 @@ Fixed roles, granted in code (`RolePermissions`). Anything not granted is denied
 | `InventoryAdjust` | AdjustInventory | yes | yes | no |
 | `PurchasingView` | ListSuppliers, GetPurchaseOrder, ListPurchaseOrders (orders carry unit costs) | yes | yes | no |
 | `PurchasingManage` | CreateSupplier, CreatePurchaseOrder, PlacePurchaseOrder, CancelPurchaseOrder | yes | yes | no |
-| `SalesView` | GetSale, ListSales (cost prices additionally need `ProductViewCost`) | yes | yes | yes |
+| `SalesView` | GetSale, ListSales, GetCustomerBalance (cost prices additionally need `ProductViewCost`) | yes | yes | yes |
 | `SalesCreate` | CreateSale (removes stock; a cashier needs it) | yes | yes | yes |
 | `SalesVoid` | VoidSale (returns stock) | yes | yes | no |
 | `InsightsView` | GetInsights (the attention list; insights that reveal costs additionally need `ProductViewCost`), GetSalesSummary (revenue, top sellers, slow movers, declining products) | yes | yes | no |
 | `CustomerView` | GetCustomer, SearchCustomers (contact details additionally need `CustomerManage`) | yes | yes | yes |
 | `CustomerManage` | CreateCustomer, UpdateCustomer, DeactivateCustomer; sees contact details | yes | yes | no |
+| `PaymentsRecord` | RecordPayment (money received against a sale on account; recorded, never processed) | yes | yes | yes |
+| `PaymentsReverse` | ReversePayment (takes a payment back, which puts it back on what a customer owes) | yes | yes | no |
 | `PurchasingReceive` | ReceivePurchase (adds stock; a receipt id can never be reused for a different receipt) | yes | yes | no |
 
 Outcomes: not signed in → 401; signed in without a membership or without the permission → 403; another organization's resource → 404 (after the permission check). Registration, sign-in and sign-out are the only operations that need no permission. Planned permissions (`Members.Manage`, price override and discount permissions with SALES-004) are added with their features.

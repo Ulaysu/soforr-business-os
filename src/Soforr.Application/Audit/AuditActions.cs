@@ -49,4 +49,10 @@ public static class AuditActions
     public const string CustomerUpdated = "customers.customer_updated";
 
     public const string CustomerDeactivated = "customers.customer_deactivated";
+
+    /// <summary>A payment was recorded against a sale. The entity is the sale; the description gives the amount, never the method or the customer.</summary>
+    public const string PaymentRecorded = "sales.payment_recorded";
+
+    /// <summary>A payment was reversed. The entity is the sale; the description never carries the reason text.</summary>
+    public const string PaymentReversed = "sales.payment_reversed";
 }

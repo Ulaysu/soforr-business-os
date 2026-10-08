@@ -75,6 +75,12 @@ public class AuthorizationTests
         { Role.Owner, Permission.CustomerManage, true },
         { Role.Manager, Permission.CustomerManage, true },
         { Role.Staff, Permission.CustomerManage, false },
+        { Role.Owner, Permission.PaymentsRecord, true },
+        { Role.Manager, Permission.PaymentsRecord, true },
+        { Role.Staff, Permission.PaymentsRecord, true },
+        { Role.Owner, Permission.PaymentsReverse, true },
+        { Role.Manager, Permission.PaymentsReverse, true },
+        { Role.Staff, Permission.PaymentsReverse, false },
     };
 
     [Theory]
