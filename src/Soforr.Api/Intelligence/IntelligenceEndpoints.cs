@@ -1,6 +1,7 @@
 using Soforr.Api.Http;
 using Soforr.Application.Common;
 using Soforr.Application.Intelligence.GetMarginSummary;
+using Soforr.Application.Intelligence.GetPurchaseCosts;
 using Soforr.Application.Intelligence.GetReceivables;
 using Soforr.Application.Intelligence.GetSalesSummary;
 
@@ -44,6 +45,20 @@ public static class IntelligenceEndpoints
             .WithName("GetMarginSummary")
             .WithSummary("Gross margin (revenue minus the cost price recorded on each sale line) for the last N complete local days (default 30, at most 92) against the N days before them, in total and per product: margin percentage, the change in percentage points, average price and cost, products at a loss, products whose margin fell, and products with no recorded cost (their margin is not guessed). A management measure, not accounting. Needs InsightsView and ProductViewCost (Owner and Manager).")
             .Produces<MarginSummaryDto>()
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        group.MapGet(
+                "/purchase-costs",
+                async (int? days, int? top, IQueryHandler<GetPurchaseCostsQuery, PurchaseCostsDto> handler, CancellationToken cancellationToken) =>
+                {
+                    var result = await handler.HandleAsync(new GetPurchaseCostsQuery(days, top), cancellationToken);
+                    return result.ToHttpResult(Results.Ok);
+                })
+            .WithName("GetPurchaseCosts")
+            .WithSummary("Purchase unit costs from placed purchase orders: per product and supplier, the latest cost against the supplier's previous purchase (a change of at least 10% is notable), the gap between suppliers, and the volume (orders, quantity, spend) of the last N complete local days (default 30, at most 92). A single costed purchase is reported as insufficient history, never as no change. Needs InsightsView and ProductViewCost (Owner and Manager).")
+            .Produces<PurchaseCostsDto>()
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden);

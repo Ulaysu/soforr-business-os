@@ -471,7 +471,7 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 - **Testing:** unit tests (partial payments, boundaries, no terms); reconciliation with sales and payments; tenant isolation.
 
 ### INTEL-006 — Purchasing cost intelligence
-- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** Compare the latest purchase unit cost with the immediately previous purchase for the same product and supplier, and show supplier-to-supplier differences when multiple suppliers exist. Show purchase volume and recent activity. A "notable cost change" is at least 10% relative change. Visible only with `ProductViewCost`; missing history is reported as insufficient data.
 - **Acceptance criteria:** Insights show the two costs, dates and suppliers; documented threshold for "notable"; handles a single purchase and missing costs.
 - **Dependencies:** INTEL-001, PURCHASING-002
