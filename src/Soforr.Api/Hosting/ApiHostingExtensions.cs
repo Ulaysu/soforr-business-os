@@ -78,7 +78,7 @@ public static class ApiHostingExtensions
     }
 
     /// <summary>
-    /// Adds, in order: correlation ID, request logging, exception handling, and problem-details status pages.
+    /// Adds, in order: correlation ID, security headers and the request size limit, request logging, exception handling, and problem-details status pages.
     /// Must be placed before routing and endpoints.
     /// </summary>
     public static IApplicationBuilder UseApiPipeline(this IApplicationBuilder app)
@@ -86,6 +86,7 @@ public static class ApiHostingExtensions
         ArgumentNullException.ThrowIfNull(app);
 
         app.UseMiddleware<CorrelationIdMiddleware>();
+        app.UseApiHardening();
         app.UseSerilogRequestLogging(options => options.Logger = app.ApplicationServices.GetRequiredService<Serilog.ILogger>());
         app.UseExceptionHandler();
         app.UseStatusCodePages();

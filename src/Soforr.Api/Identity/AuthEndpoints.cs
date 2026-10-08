@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.Extensions.Options;
+using Soforr.Api.Hosting;
 using Soforr.Api.Http;
 using Soforr.Application.Common;
 using Soforr.Application.Identity;
@@ -23,7 +24,7 @@ public static class AuthEndpoints
         ArgumentNullException.ThrowIfNull(app);
 
         // These endpoints are how anyone signs in, so they are the anonymous exceptions to the default-deny policy.
-        var group = app.MapGroup(BasePath).WithTags("Authentication").AllowAnonymous().RequireAntiforgery();
+        var group = app.MapGroup(BasePath).WithTags("Authentication").AllowAnonymous().RequireAntiforgery().RequireRateLimiting(ApiHardeningExtensions.AuthPolicy);
 
         group.MapGet(
                 "/antiforgery",

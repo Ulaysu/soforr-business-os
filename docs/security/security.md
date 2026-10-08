@@ -7,7 +7,7 @@ This is the baseline. Authentication is implemented (IDENTITY-001, see below); t
 - Passwords hashed with a modern adaptive algorithm; lockout/throttling on repeated failures; short-lived access tokens; refresh/session handling defined in the IDENTITY-001 design.
 - Secure cookie / token transport only over HTTPS; HSTS enabled outside development.
 - **Implemented (IDENTITY-001, [ADR 0002](../decisions/0002-authentication.md)):** ASP.NET Core Identity with an `HttpOnly`, `Secure`, `SameSite=Lax` `__Host-` cookie session (no token in JavaScript or storage); passwords hashed with Identity's adaptive hasher, minimum length 12, lockout after 5 failures; identical answers for unknown address, wrong password and locked account; sliding idle timeout plus an absolute lifetime; sessions re-validated every minute so a security-stamp change ends them; antiforgery token required on register, sign-in and sign-out.
-- **Not yet:** e-mail verification and password reset (IDENTITY-004), rate limiting (SECURITY-002), the CORS allowlist (with the web client). Until then the authentication endpoints are mapped only in Development.
+- **Not yet:** e-mail verification and password reset (IDENTITY-004). Until then the authentication endpoints are mapped only in Development, because they let anyone register. Rate limiting, security headers, HSTS and the CORS allowlist exist (SECURITY-002, below).
 
 ## Authorization
 - Authenticated ≠ authorized. Every command and query checks a permission server-side.
@@ -70,13 +70,20 @@ Outcomes: not signed in → 401; signed in without a membership or without the p
 - CI scans for committed secrets (SECURITY-001).
 
 ## API Security
-- HTTPS only; CORS restricted to the known web origin; security headers; request size limits.
+- HTTPS only; CORS restricted to the known web origin; security headers; request size limits (SECURITY-002, implemented in `ApiHardening.cs`, configured in the `Hardening` section and validated at start).
+  - **Security headers** on every response, including errors and 429: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Cross-Origin-Resource-Policy: same-origin`, `Permissions-Policy` denying camera, microphone and geolocation, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'` (the API serves data, not pages), and `Cache-Control: no-store` on `/api`.
+  - **HSTS** outside Development (`Hardening:HstsDays`, default 365, includeSubDomains); browsers only honor it over HTTPS. The HTTPS redirect stays.
+  - **Request size:** bodies over `Hardening:MaxRequestBodyBytes` (default 1 MiB) get 413 `request.too_large`, decided from the declared length before the body is read and enforced by the server for chunked bodies.
+  - **CORS:** no origin is allowed by default (the Web app is same-site, ADR 0002). `Hardening:CorsAllowedOrigins` is an explicit list of origins (scheme://host[:port], no path, never a wildcard); an allowed origin gets credentials, the methods GET, POST, PUT, PATCH, DELETE and only the `Content-Type` and `X-CSRF-TOKEN` headers.
+  - A setting that makes no sense (a wildcard or path in an origin, a limit below 1) stops the application at start.
 - Centralized error handling exposes no internals (CLAUDE.md §17).
 - Versioned routes; idempotency keys for retry-sensitive writes.
 - Anti-forgery/CSRF handling follows [ADR 0002](../decisions/0002-authentication.md) (Accepted: cookie session with antiforgery on unsafe methods).
 
 ## Rate Limiting
 - Built-in ASP.NET Core rate limiting: strict on authentication endpoints, per-user/per-organization limits elsewhere, tighter on expensive and AI endpoints. Required before any external user (EPIC 16).
+- **Implemented (SECURITY-002):** fixed one-minute windows per client address, no queueing. The authentication endpoints (register, login, logout) share a strict limit (`Hardening:AuthPermitsPerMinute`, default 10); the whole API has a general limit (`Hardening:GlobalPermitsPerMinute`, default 600); health checks are never limited. Over the limit: 429 with `Retry-After` and a problem body with code `rate_limit.exceeded`.
+- **Known limits, decided later:** the client address is the connection's remote address. Behind a reverse proxy it is the proxy's address until forwarded headers are configured from a trusted proxy list (DEPLOY-002); until then do not deploy behind a proxy without that step, or every client shares one limit. Limits are per application instance and in memory; with several instances the effective limit is per instance. Per-user and per-organization limits, and tighter limits for expensive and AI endpoints, are added with those endpoints.
 
 ## Auditability
 - Append-only audit events for authentication events, permission changes, inventory adjustments, purchase approvals, reorder approvals, voids, and destructive operations: who, what, when, organization, correlation ID.
