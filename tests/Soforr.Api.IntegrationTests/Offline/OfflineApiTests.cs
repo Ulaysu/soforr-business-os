@@ -183,6 +183,24 @@ public sealed class OfflineApiTests(PostgresDatabaseFixture database) : IClassFi
         Assert.Equal((HttpStatusCode.NotFound, "offline.grant_not_found"), (unknown.StatusCode, (await ReadAsync(unknown)).GetProperty("code").GetString()));
     }
 
+    [Fact]
+    public async Task AContactRequest_CannotCarryATime_TheServerClockIsTheOnlySource()
+    {
+        var clock = new TestClock(At(10));
+        using var factory = Factory(clock);
+        using var client = NewClient(factory);
+        var (_, organization, _) = await RegisterAndSignInAsync(client);
+        var grant = await IssueAsync(client);
+        clock.UtcNow = At(15);
+
+        var response = await PostAsync(client, $"/api/v1/offline/grants/{grant}/contact", new { observedAtUtc = At(11), contactAtUtc = At(11), lastContactAtUtc = At(11) });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await using var db = database.CreateContext(organization);
+        var times = await db.Set<OfflineContact>().Where(c => c.GrantId == grant).Select(c => c.ObservedAtUtc).ToListAsync();
+        Assert.Equal([At(10), At(15)], times.Order().ToArray());
+    }
+
     // ---- security
 
     [Fact]

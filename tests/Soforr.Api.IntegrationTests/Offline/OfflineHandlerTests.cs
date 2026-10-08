@@ -384,6 +384,14 @@ public sealed class OfflineHandlerTests(PostgresDatabaseFixture database) : ICla
         Assert.Equal("offline.event_time_unverifiable", attack.Error!.Code);
         Assert.Equal(ErrorKind.Conflict, attack.Error.Kind);
         Assert.Equal((0, 0, 0, 0, 1, 100m), await StateAsync(env));
+        await using (var db = database.CreateContext(env.Organization))
+        {
+            Assert.Equal(0, await db.Set<Sale>().CountAsync());
+            Assert.Equal(0, await db.Set<SaleLine>().CountAsync());
+            Assert.Equal(0, await db.Set<SalePayment>().CountAsync());
+            Assert.Equal(0, await db.Set<InventoryMovement>().CountAsync(m => m.Reason == InventoryMovementReason.SaleCompleted));
+            Assert.Equal(0, await db.Set<AuditEvent>().CountAsync(e => e.Action == AuditActions.SaleCreated || e.Action == AuditActions.OfflineSaleAccepted));
+        }
 
         // The refused request did not reserve the id: the same id with a time the server can vouch for is accepted.
         var corrected = await SellAsync(env, grant, At(13), saleId);
@@ -633,6 +641,73 @@ public sealed class OfflineHandlerTests(PostgresDatabaseFixture database) : ICla
         Assert.Equal((1, 1, 1, 0, 0, 98m), await StateAsync(env));
     }
 
+    [Fact]
+    public async Task ACatalogChange_IsDrift_EvenWhenTheFinalPriceIsAnAuthorizedOverride()
+    {
+        // The catalog was 10 and the cashier saw 10 and charged an authorized 8; the catalog became 12 while offline.
+        var env = await NewEnvAsync();
+        var grant = await GrantWithContactUntil1015Async(env);
+        await using (var db = database.CreateContext(env.Organization))
+        {
+            var product = await db.Set<Product>().SingleAsync(p => p.Id == env.Product);
+            product.Update(product.Sku, product.Name, product.UnitOfMeasure, Money.Create(12m, Gmd), product.CostPrice, null, At(11, 30));
+            await db.SaveChangesAsync();
+        }
+
+        env.Clock.UtcNow = At(12);
+
+        var drifted = await SellAsync(env, grant, At(11), shown: 10m, unitPrice: 8m, reason: "Negotiated");
+        var seenCurrent = await SellAsync(env, grant, At(11), shown: 12m, unitPrice: 8m, reason: "Negotiated");
+
+        Assert.Equal("sale.catalog_price_changed", drifted.Error!.Code); // the drift is the catalog moving from what was seen, not the override
+        Assert.True(seenCurrent.IsSuccess, seenCurrent.Error?.Code);
+        Assert.Equal((12m, 8m), (seenCurrent.Value.Sale.Lines.Single().CatalogUnitPrice, seenCurrent.Value.Sale.Lines.Single().UnitPrice));
+    }
+
+    [Fact]
+    public async Task AContactAfterTheFact_CannotCreateAnOldGap_BecauseItIsRecordedAtTheServersReceiptTime()
+    {
+        var env = await NewEnvAsync();
+        env.Clock.UtcNow = At(10);
+        var grant = (await IssueAsync(env)).Value.GrantId;
+        for (var minute = 5; minute <= 120; minute += 5)
+        {
+            env.Clock.UtcNow = At(10).AddMinutes(minute);
+            Assert.True((await ContactAsync(env, grant)).IsSuccess);
+        }
+
+        // Silent from 12:00; the attacker reports contact at Tuesday 15:00 and then claims Monday 11:00.
+        env.Clock.UtcNow = At(15, day: 1);
+        var contact = await ContactAsync(env, grant);
+        var attack = await SellAsync(env, grant, At(11));
+        var honestSilence = await SellAsync(env, grant, At(14));
+
+        Assert.Equal(At(15, day: 1), contact.Value.LastContactAtUtc);
+        Assert.Equal("offline.event_time_unverifiable", attack.Error!.Code);
+        Assert.True(honestSilence.IsSuccess, honestSilence.Error?.Code);
+        await using var db = database.CreateContext(env.Organization);
+        Assert.Equal(At(15, day: 1), await db.Set<OfflineContact>().Where(c => c.GrantId == grant).MaxAsync(c => c.ObservedAtUtc));
+    }
+
+    [Fact]
+    public async Task AnOnlinePaymentAndAnOnlineSale_AreAdditivelyUnchanged_NoGrantNoEventTime()
+    {
+        var env = await NewEnvAsync();
+        env.Clock.UtcNow = At(12);
+        var sale = (await SellAsync(env, null, null, shown: null, onAccount: true, amountPaid: 0m)).Value.Sale;
+        env.Clock.UtcNow = At(12, 5);
+
+        var payment = await PayAsync(env, sale.Id, 5m, null, null);
+        var datedPayment = await PayAsync(env, sale.Id, 5m, null, At(12, 1));
+        var tooEarly = await PayAsync(env, sale.Id, 5m, null, At(11, 59));
+
+        Assert.True(payment.IsSuccess, payment.Error?.Code);
+        Assert.True(datedPayment.IsSuccess, datedPayment.Error?.Code);
+        Assert.Equal("sale.payment_before_sale", tooEarly.Error!.Code);
+        Assert.Equal(At(12, 5), payment.Value.Sale.Payments.Max(p => p.RecordedAtUtc));
+        Assert.Equal((1, 1, 1, 0, 0, 98m), await StateAsync(env));
+    }
+
     // ---- idempotent replay
 
     [Fact]
@@ -714,10 +789,12 @@ public sealed class OfflineHandlerTests(PostgresDatabaseFixture database) : ICla
 
         var refusedForQuantity = await SellAsync(env, grant, At(11), saleId, quantity: 1000m);
         var refusedForPrice = await SellAsync(env, grant, At(11), saleId, shown: 9m);
-        var corrected = await SellAsync(env, grant, At(11), saleId);
 
         Assert.Equal("stock_level.insufficient_stock", refusedForQuantity.Error!.Code);
         Assert.Equal("sale.catalog_price_changed", refusedForPrice.Error!.Code);
+        Assert.Equal((0, 0, 0, 0, 0, 100m), await StateAsync(env)); // a failure after the event time was vouched leaves no accepted audit event behind
+
+        var corrected = await SellAsync(env, grant, At(11), saleId);
         Assert.True(corrected.IsSuccess, corrected.Error?.Code);
         Assert.Equal((1, 1, 1, 1, 0, 98m), await StateAsync(env));
     }
@@ -896,6 +973,13 @@ public sealed class OfflineHandlerTests(PostgresDatabaseFixture database) : ICla
 
         Assert.Equal(grant, sale.OfflineGrantId);
         Assert.Equal("offline.grant_not_found", late.Error!.Code);
+        // The repeat of the already recorded sale does not need the pruned evidence, and the audit trail is not pruned.
+        var repeat = await SellAsync(env, grant, At(11), saleId);
+        Assert.True(repeat.IsSuccess, repeat.Error?.Code);
+        Assert.True(repeat.Value.AlreadyRecorded);
+        await using var db = database.CreateContext(env.Organization);
+        Assert.Equal(1, await db.Set<AuditEvent>().CountAsync(e => e.Action == AuditActions.OfflineSaleAccepted && e.EntityId == saleId));
+        Assert.Equal(1, await db.Set<AuditEvent>().CountAsync(e => e.Action == AuditActions.OfflineGrantIssued && e.EntityId == grant));
     }
 
     private async Task<Sale> LoadSaleAsync(Env env, Guid id)

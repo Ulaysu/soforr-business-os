@@ -1,13 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Soforr.Api.IntegrationTests.Offline;
 using Soforr.Api.IntegrationTests.Postgres;
 using Soforr.Application.Audit;
 using Soforr.Application.Common;
 using Soforr.Application.Identity;
 using Soforr.Application.Inventory;
-using Soforr.Application.Organizations;
-using Soforr.Api.IntegrationTests.Offline;
 using Soforr.Application.Offline;
+using Soforr.Application.Organizations;
 using Soforr.Application.Sales;
 using Soforr.Application.Sales.CreateSale;
 using Soforr.Application.Sales.VoidSale;
