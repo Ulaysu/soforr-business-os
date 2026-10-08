@@ -34,7 +34,7 @@ Fixed roles, granted in code (`RolePermissions`). Anything not granted is denied
 | `SalesView` | GetSale, ListSales, GetCustomerBalance (cost prices additionally need `ProductViewCost`) | yes | yes | yes |
 | `SalesCreate` | CreateSale (removes stock; a cashier needs it) | yes | yes | yes |
 | `SalesVoid` | VoidSale (returns stock) | yes | yes | no |
-| `InsightsView` | GetInsights (the attention list; insights that reveal costs additionally need `ProductViewCost`), GetSalesSummary (revenue, top sellers, slow movers, declining products) | yes | yes | no |
+| `InsightsView` | GetInsights (the attention list; insights that reveal costs additionally need `ProductViewCost`), GetSalesSummary (revenue, top sellers, slow movers, declining products), GetMarginSummary (also needs `ProductViewCost`: it reveals costs and margins) | yes | yes | no |
 | `CustomerView` | GetCustomer, SearchCustomers (contact details additionally need `CustomerManage`) | yes | yes | yes |
 | `CustomerManage` | CreateCustomer, UpdateCustomer, DeactivateCustomer; sees contact details | yes | yes | no |
 | `PaymentsRecord` | RecordPayment (money received against a sale on account; recorded, never processed) | yes | yes | yes |

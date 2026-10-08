@@ -455,7 +455,7 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 - **Testing:** unit tests (period boundaries, time zones, voids, no data); reconciliation integration test against raw sales; tenant isolation.
 
 ### INTEL-004 — Product margin intelligence
-- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** Gross margin = final sale revenue − sale-line cost snapshot. Margin percentage = gross margin ÷ final sale revenue when revenue is non-zero. Margin change is compared in percentage points between equal-length periods. This is a management margin measure, not accounting-grade COGS: no FIFO, weighted-average costing or inventory valuation in V1. Visible only with `ProductViewCost`.
 - **Acceptance criteria:** Margin uses snapshots only, never the product's current price; the explanation shows previous and current cost, price and both margins; missing cost or sales data is reported as "not enough data", not guessed.
 - **Dependencies:** INTEL-003, SALES-001, PURCHASING-002

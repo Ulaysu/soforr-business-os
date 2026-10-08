@@ -1,7 +1,13 @@
 namespace Soforr.Application.Intelligence.Rules;
 
-/// <summary>One line of a completed sale: what was sold, when, how much and what it was charged. <see cref="Revenue"/> is the line total (final unit price × quantity, as the Domain computes it).</summary>
-public sealed record SoldLine(Guid SaleId, Guid ProductId, DateTimeOffset SoldAtUtc, decimal Quantity, decimal Revenue);
+/// <summary>
+/// One line of a completed sale: what was sold, when, how much and what it was charged. <see cref="Revenue"/> is the line total
+/// (final unit price × quantity, as the Domain computes it). <see cref="Cost"/> is the line cost from the cost price recorded on
+/// the line at the time of the sale (never the product's current cost), and <see cref="CostRecorded"/> says whether a cost was
+/// recorded at all: the catalog cannot say "unknown", so a cost price of 0 is how an owner who does not track cost leaves it, and
+/// margin intelligence treats such a line as having no recorded cost instead of guessing.
+/// </summary>
+public sealed record SoldLine(Guid SaleId, Guid ProductId, DateTimeOffset SoldAtUtc, decimal Quantity, decimal Revenue, decimal Cost = 0m, bool CostRecorded = false);
 
 /// <summary>A product as the calculator sees it. <see cref="CreatedAtUtc"/> decides whether it existed for a whole period.</summary>
 public sealed record CatalogProduct(Guid ProductId, string Sku, string Name, string UnitOfMeasure, bool IsActive, DateTimeOffset CreatedAtUtc);

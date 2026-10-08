@@ -49,7 +49,7 @@ internal static class SalesMetricsGatherer
         // A sale voided between the two reads has no entry above and is left out, as it should be.
         var lines = saleLines
             .Where(line => soldAt.ContainsKey(line.SaleId))
-            .Select(line => new SoldLine(line.SaleId, line.ProductId, soldAt[line.SaleId], line.Quantity.Value, line.LineTotal.Amount))
+            .Select(line => new SoldLine(line.SaleId, line.ProductId, soldAt[line.SaleId], line.Quantity.Value, line.LineTotal.Amount, line.LineCost.Amount, line.CostPrice.Amount > 0m))
             .ToList();
 
         var products = await db.Set<Product>().AsNoTracking()
