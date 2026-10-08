@@ -1,10 +1,10 @@
 # 0007 — Connectivity resilience (offline-capable critical workflows)
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-10-08
 - Deciders: project owner
 
-> **Status.** This ADR stays `Proposed` until the owner sets `Accepted` (an agent never does, see [README](README.md)). OFFLINE-001, the backend task, starts after acceptance. This revision follows an architecture and security review of the first draft.
+> **Status.** Accepted by the project owner on 2026-10-08. OFFLINE-001 may proceed. This revision follows an architecture and security review of the first draft.
 
 ### Approved product decisions (owner, 2026-10-08)
 
