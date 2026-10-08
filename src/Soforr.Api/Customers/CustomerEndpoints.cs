@@ -7,6 +7,7 @@ using Soforr.Application.Customers.DeactivateCustomer;
 using Soforr.Application.Customers.GetCustomer;
 using Soforr.Application.Customers.SearchCustomers;
 using Soforr.Application.Customers.UpdateCustomer;
+using Soforr.Application.Sales.GetCustomerBalance;
 
 namespace Soforr.Api.Customers;
 
@@ -100,6 +101,20 @@ public static class CustomerEndpoints
             .WithName("DeactivateCustomer")
             .WithSummary("Takes a customer out of use. Customers are never deleted. Deactivating an inactive customer changes nothing.")
             .Produces<CustomerDto>()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapGet(
+                "/{id:guid}/balance",
+                async (Guid id, IQueryHandler<GetCustomerBalanceQuery, CustomerBalanceDto> handler, CancellationToken cancellationToken) =>
+                {
+                    var result = await handler.HandleAsync(new GetCustomerBalanceQuery(id), cancellationToken);
+                    return result.ToHttpResult(Results.Ok);
+                })
+            .WithName("GetCustomerBalance")
+            .WithSummary("What a customer owes: the total outstanding and the overdue part, and the sales on account that still owe something (earliest due first). Derived from the sales and payment records on every request, never stored. A sale is overdue when its due date has passed.")
+            .Produces<CustomerBalanceDto>()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);

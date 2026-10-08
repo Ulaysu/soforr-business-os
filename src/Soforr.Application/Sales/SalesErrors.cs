@@ -26,6 +26,10 @@ internal static class SalesErrors
     public static Error CustomerInactive { get; } =
         new("sale.customer_inactive", ErrorKind.RuleViolation, "A sale cannot be made on account to an inactive customer.", "customerId");
 
+    /// <summary>A payment (or reversal) id that was already used for a different payment: another sale, amount, method or reason.</summary>
+    public static Error PaymentIdConflict { get; } =
+        new("sale.payment_id_conflict", ErrorKind.Conflict, "This payment id was already used for a different payment. Use a new payment id, or send exactly the same payment again.");
+
     /// <summary>A sale id that was already used for a different sale (other products or other quantities).</summary>
     public static Error SaleIdConflict { get; } =
         new("sale.id_conflict", ErrorKind.Conflict, "This sale id was already used for a different sale. Use a new sale id, or send exactly the same sale again.");

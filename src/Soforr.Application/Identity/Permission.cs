@@ -63,4 +63,10 @@ public enum Permission
 
     /// <summary>Create, update and deactivate customers, and see their contact details.</summary>
     CustomerManage,
+
+    /// <summary>Record a payment received against a sale on account. A cashier takes payments, so Staff has it.</summary>
+    PaymentsRecord,
+
+    /// <summary>Reverse a recorded payment (a refund or a correction). It puts money back on what a customer owes, so it is not granted to Staff.</summary>
+    PaymentsReverse,
 }
