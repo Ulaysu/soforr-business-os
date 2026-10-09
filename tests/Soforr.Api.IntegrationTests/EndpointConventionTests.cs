@@ -23,6 +23,11 @@ public class EndpointConventionTests
         "POST /api/v1/auth/logout",
         "GET /api/v1/auth/me",
         "GET /openapi/{documentName}.json",
+        // The API reference page (Scalar), mapped in Development only, with the three static files it serves.
+        "GET /scalar/{documentName?}",
+        "GET /scalar/scalar.js",
+        "GET /scalar/scalar.aspnetcore.js",
+        "GET /scalar/favicon.svg",
         "ANY /health/live",
         "ANY /health/ready",
     ];
