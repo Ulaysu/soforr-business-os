@@ -564,7 +564,7 @@ Critical workflows (sales, credit sales, payments) continue offline and synchron
 - **Testing:** integration tests for 429 and headers.
 
 ### DEPLOY-001 — Local container development
-- **Status:** Ready · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** Dockerfile for the API and compose profile running API + PostgreSQL locally. No production deployment.
 - **Acceptance criteria:** `docker compose up` starts a working local system.
 - **Dependencies:** FOUNDATION-003

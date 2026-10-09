@@ -1,0 +1,12 @@
+**/bin
+**/obj
+**/node_modules
+.git
+.github
+.env
+.local
+tests
+docs
+src/Soforr.Web
+*.md
+!README.md
