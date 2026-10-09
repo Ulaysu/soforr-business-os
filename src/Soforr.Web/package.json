@@ -15,7 +15,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "api:types": "openapi-typescript openapi/openapi.json -o src/api/schema.d.ts"
+    "api:types": "openapi-typescript openapi/openapi.json -o src/api/schema.d.ts",
+    "api:types:check": "node scripts/check-api-types.mjs"
   },
   "dependencies": {
     "openapi-fetch": "0.17.0",

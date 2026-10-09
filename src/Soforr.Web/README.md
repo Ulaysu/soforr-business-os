@@ -33,6 +33,14 @@ cd src/Soforr.Web && npm run api:types                                          
 
 Commit both files. `src/api/schema.d.ts` is generated and not edited by hand.
 
+To verify that the committed types are exactly what the snapshot generates (CI does the equivalent and fails on any difference), run from `src/Soforr.Web`:
+
+```bash
+npm run api:types:check
+```
+
+It generates into a temporary folder and compares, so it never changes your working tree. CI runs `npm run api:types` followed by `git diff --exit-code -- src/api/schema.d.ts`, then restores the file.
+
 ## Layout
 
 ```text
