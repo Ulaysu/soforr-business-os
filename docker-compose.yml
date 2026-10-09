@@ -26,6 +26,10 @@ services:
     build:
       context: .
       target: migrate
+    # The bundle starts the application's host to find the DbContext, which validates its configuration, so the connection string
+    # is supplied both as configuration and as the bundle's own --connection argument.
+    environment:
+      ConnectionStrings__Database: "Host=postgres;Port=5432;Database=soforr;Username=soforr;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}"
     command:
       - "--connection"
       - "Host=postgres;Port=5432;Database=soforr;Username=soforr;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}"
