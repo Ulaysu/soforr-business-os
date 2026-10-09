@@ -32,3 +32,45 @@ jobs:
 
       - name: Test
         run: dotnet test Soforr.BusinessOS.slnx --no-build --configuration Release --verbosity normal
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/Soforr.Web
+    env:
+      CI: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/Soforr.Web/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      # The client's types must be exactly what the committed OpenAPI snapshot generates. Regenerate them and fail on any
+      # difference; the .NET job separately proves the snapshot matches the API itself (OpenApiSnapshotTests).
+      - name: Regenerate API types and verify no changes
+        run: |
+          npm run api:types
+          git diff --exit-code -- src/api/schema.d.ts
+
+      - name: Restore generated files
+        if: always()
+        run: git checkout -- src/api/schema.d.ts
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Verify formatting
+        run: npm run format:check
+
+      - name: Build (type-check and bundle)
+        run: npm run build
+
+      - name: Test
+        run: npm test

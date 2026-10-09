@@ -148,7 +148,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 - **Testing:** the harness's own migration-apply test. Test-only package: `Testcontainers.PostgreSql`.
 
 ### FOUNDATION-007 — Web project scaffold
-- **Status:** Ready · **Priority:** SELLABLE-P0 · **Agent:** Frontend
+- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Frontend
 - **Description:** Create `src/Soforr.Web` with Vue 3, TypeScript (strict), Vite, Tailwind, ESLint/Prettier, Vitest, router, and a typed API client approach aligned with the OpenAPI document. A placeholder shell page only; no business screens.
 - **Acceptance criteria:** `npm ci && npm run build && npm test` pass; dev server proxies to the API; CI builds the frontend; no business rules in the client.
 - **Dependencies:** none
@@ -353,7 +353,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 # EPIC 06 — Sales
 
 ### SALES-001 — Sales domain and persistence
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** `Sale`/`SaleLine` (walk-in; no customer required), server-computed totals, controlled line-price override/discount fields, void semantics, EF mapping and migration. **Each line records the product's name and SKU, the catalog unit price, the final applied unit price, the discount/override reason when applicable, the cost price and the currency at the time of the sale** (snapshots), so sales and margin intelligence never read the product's current values and history does not change when a product is edited.
 - **Price rule:** product selling price is the default. A different line price or discount is allowed only through an explicit permission and server-side rule; the final price can never be negative and every override is attributable. V1 does not implement complex price lists or volume tiers.
 - **Acceptance criteria:** Totals computed only by server code; completed sales immutable except void; tenant-scoped; line snapshots are stored and never updated.
@@ -362,7 +362,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 - **Testing:** unit tests for totals/rounding/void/price-override rules; persistence integration tests.
 
 ### SALES-002 — CreateSale and VoidSale commands
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** `CreateSale` writes `SaleCompleted` movements in the same transaction; rejects insufficient stock; `VoidSale` restores stock via new movements; endpoints and permissions.
 - **Acceptance criteria:** No partial state on failure; concurrent sales of the last unit result in one success; void restores stock exactly once; audited.
 - **Dependencies:** SALES-001, INVENTORY-002, IDENTITY-002, AUDIT-001
@@ -370,7 +370,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 - **Testing:** atomicity and concurrency integration tests; authorization and tenant-isolation tests.
 
 ### SALES-004 — Controlled price overrides and discounts
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** Enforce the V1 sale pricing rule: catalog price is the default; authorized users may apply a line-price override or discount within explicit limits; the original price, final price, reason and actor are preserved.
 - **Acceptance criteria:** unauthorized users cannot override price; every override is attributable; server calculates totals; no price can fall below zero; margin intelligence uses the final sale-line price; audit event is written for sensitive overrides.
 - **Dependencies:** SALES-002, IDENTITY-002, AUDIT-001
@@ -393,7 +393,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 Needed for customer balance and aging intelligence. Customers, credit sales and recorded payments are an accepted V1 product decision; see [sellable-v1.md](sellable-v1.md#accepted-v1-product-decisions).
 
 ### CUSTOMER-001 — Customers (domain, persistence, API)
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** `Customer` (name, contact details, optional credit terms such as days until a balance is overdue), tenant-owned, never deleted (deactivated). Create, update, deactivate, get, search (paginated). Permissions in the matrix.
 - **Acceptance criteria:** Invariants in Domain; tenant filter and write guard; OpenAPI; permissions enforced; authorization and tenant-isolation tests.
 - **Dependencies:** IDENTITY-003
@@ -401,7 +401,7 @@ Needed for customer balance and aging intelligence. Customers, credit sales and 
 - **Testing:** unit, handler, API, persistence, authorization, tenant-isolation tests.
 
 ### CUSTOMER-002 — Credit sales and recorded payments
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** A sale can reference a customer and be paid in full, in part or not at all; payments are recorded against a sale (amount, date, method label), never processed. Outstanding balance per sale and per customer is derived from sales and payments (deterministic, never edited). Payment recording is append-only with a void/reversal by new record.
 - **Acceptance criteria:** Balance = sum of sale totals − sum of payments, reproducible from records; over-payment rejected or recorded as a credit by an explicit documented rule; no money processing; audited.
 - **Dependencies:** SALES-002, CUSTOMER-001, AUDIT-001
@@ -432,7 +432,7 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 - No LLM, no forecasting infrastructure, no agent. Smallest structure that works: a module inside `Soforr.Application` (see [architecture.md](../architecture/architecture.md#deterministic-intelligence)).
 
 ### INTEL-001 — Intelligence foundation
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend / Architecture
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Backend / Architecture
 - **Description:** The smallest shared structure for insights: an `Insight` (type, severity, subject, named facts, reason, recommended action), a rule contract (a pure function from a typed input snapshot and explicit thresholds to insights), the clock as an input, an evaluation query that gathers authoritative data and applies the rules, the `InsightsView` permission, and the conventions for formulas, periods and thresholds. Decide, and record in a short ADR if it is a real choice, whether insights are computed on request (the default) or materialized.
 - **Acceptance criteria:** A rule is testable without a database; the result is reproducible from data and clock; facts and reason are always present; tenant scoping and permission checks are in place; no insight is persisted as a source of truth; an example rule proves the structure end to end.
 - **Dependencies:** IDENTITY-002, INVENTORY-002
@@ -440,7 +440,7 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 - **Testing:** unit tests with a fixed clock and fixtures; tenant-isolation and authorization tests.
 
 ### INTEL-002 — Inventory risk intelligence
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** Low-stock and reorder-threshold detection; **estimated stock coverage in days** = current stock ÷ average daily quantity sold over the trailing 30 calendar days; zero sales means "no recent sales", never infinite; products at risk of running out within their lead time; suggested reorder quantity = `max(0, reorder point + average daily sales × lead-time days - current stock)` when both reorder point and lead time exist. No quantity is suggested when required inputs are missing.
 - **Acceptance criteria:** Insights name the product, current stock, threshold or velocity used and window; handles no history, zero velocity, zero stock, inactive products and products without reorder settings by documented rules.
 - **Dependencies:** INTEL-001, INVENTORY-003, SALES-002
@@ -448,7 +448,7 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 - **Testing:** unit tests with fixed clock and fixtures for every edge case; integration test against real data; tenant isolation.
 
 ### INTEL-003 — Sales metrics and comparisons
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** Revenue and quantity for a period against the **immediately preceding period of equal length**; growth = `(current - previous) / previous × 100` when previous is non-zero; otherwise report "no comparable previous sales". Top sellers are ordered by quantity sold. Slow movers are the bottom 20% by quantity among active products with sufficient data; if fewer than 5 qualify, show the ordered list. A declining product has sales in both periods and at least a 20% quantity decline. Voided sales are excluded.
 - **Acceptance criteria:** Periods, time zone (the organization's) and exclusions are explicit; results reconcile with the underlying sales; documented rounding.
 - **Dependencies:** INTEL-001, SALES-002
@@ -456,7 +456,7 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 - **Testing:** unit tests (period boundaries, time zones, voids, no data); reconciliation integration test against raw sales; tenant isolation.
 
 ### INTEL-004 — Product margin intelligence
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** Gross margin = final sale revenue − sale-line cost snapshot. Margin percentage = gross margin ÷ final sale revenue when revenue is non-zero. Margin change is compared in percentage points between equal-length periods. This is a management margin measure, not accounting-grade COGS: no FIFO, weighted-average costing or inventory valuation in V1. Visible only with `ProductViewCost`.
 - **Acceptance criteria:** Margin uses snapshots only, never the product's current price; the explanation shows previous and current cost, price and both margins; missing cost or sales data is reported as "not enough data", not guessed.
 - **Dependencies:** INTEL-003, SALES-001, PURCHASING-002
@@ -464,7 +464,7 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 - **Testing:** unit tests (price or cost changes, no cost, zero sales); authorization for `ProductViewCost`; tenant isolation.
 
 ### INTEL-005 — Customer balance and aging intelligence
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** Outstanding balance per customer, overdue balance, **aging buckets** (0-30, 31-60, 61-90, 91+ days past the due date). Due dates come from customer-specific credit terms when present, otherwise the organization default. Customer balance insights use an explicit organization-configured materiality threshold; no hidden monetary threshold.
 - **Acceptance criteria:** Ages are measured from an explicit due date; the insight lists the amount, the days and the sales behind it; payments reduce the right balances by a documented rule.
 - **Dependencies:** INTEL-001, CUSTOMER-002
@@ -472,7 +472,7 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 - **Testing:** unit tests (partial payments, boundaries, no terms); reconciliation with sales and payments; tenant isolation.
 
 ### INTEL-006 — Purchasing cost intelligence
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** Compare the latest purchase unit cost with the immediately previous purchase for the same product and supplier, and show supplier-to-supplier differences when multiple suppliers exist. Show purchase volume and recent activity. A "notable cost change" is at least 10% relative change. Visible only with `ProductViewCost`; missing history is reported as insufficient data.
 - **Acceptance criteria:** Insights show the two costs, dates and suppliers; documented threshold for "notable"; handles a single purchase and missing costs.
 - **Dependencies:** INTEL-001, PURCHASING-002
@@ -496,7 +496,7 @@ Layer 1 intelligence ([sellable-v1.md](sellable-v1.md#intelligence-layers)): exp
 Critical workflows (sales, credit sales, payments) continue offline and synchronize automatically. The server stays authoritative and the existing idempotent commands are reused. Design, boundaries and the answers to the product questions: [ADR 0007](../decisions/0007-offline-resilience.md) (Accepted by the owner on 2026-10-08). The browser items cannot start before the web scaffold and the online screens exist; OFFLINE-001 is backend-only and can start first.
 
 ### OFFLINE-001 — Replay-safe server contract
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** The additive server changes that make replay after an outage correct. (1) The **offline authorization boundary**: OFFLINE-001 first defines the minimum secure contract by which the server establishes, at a successful online validation, an authorization covering an offline period (bounded by the 72-hour policy, configurable within safe bounds), and validates it on replay; the mechanism is decided there (timestamp age alone is never authorization; no long-lived bearer secret; reuse of existing session facts where sensible). (2) `CreateSale` accepts an optional `occurredAtUtc`, honored only inside that boundary; the sale and its credit due date follow it; the server's received time is stored separately (migration); an event time outside the boundary is refused and never silently replaced by server time. (3) Each sale line preserves the price context the cashier saw: the catalog price shown, so a changed normal catalog price refuses the sale with 409 `sale.catalog_price_changed` (nothing recorded, no id reserved), distinct from an authorized SALES-004 override or negotiated final price, which keeps its existing semantics and permissions. (4) A documented error taxonomy for the client (which codes are retryable, terminal or conflict). (5) *Deferred to OFFLINE-003, which defines what the cache needs (the existing product and customer search endpoints are the starting point):* read feeds for the offline cache. (6) A structured log line for every offline operation accepted or refused (delay, gap, code; no personal data); metrics built on it belong to OBS-001. Existing behaviour is unchanged when the new fields are absent.
 - **Acceptance criteria:** A replay of a sale or payment (once, twice, five times, after a lost response) has exactly one business effect; an offline sale is dated at its event time within the window and refused outside it; a changed catalog price is a conflict that records nothing while a legitimate override is not mistaken for drift; **a backdated request inside the 72-hour age but outside any server-established offline authorization is refused**; tenant isolation and permissions hold on replay; margin and insight periods follow the event time.
 - **Dependencies:** SALES-004, CUSTOMER-002, ADR 0007 accepted
@@ -556,7 +556,7 @@ Critical workflows (sales, credit sales, payments) continue offline and synchron
 # Cross-Cutting and Production Readiness (Sellable V1 Gate C)
 
 ### SECURITY-002 — Rate limiting and API hardening
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Security
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Security
 - **Description:** ASP.NET Core rate limiting (strict on authentication endpoints), request size limits, security headers, CORS allowlist, HSTS.
 - **Acceptance criteria:** Limits configurable; exceeded limits return 429; headers verified. Required before any external user.
 - **Dependencies:** IDENTITY-001
