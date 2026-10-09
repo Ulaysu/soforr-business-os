@@ -1,0 +1,6 @@
+# gitleaks configuration (SECURITY-001). The default rules apply; this adds only narrowly scoped allowances for values that
+# are deliberately fake. Every entry says why. Adding one is a security decision for review.
+title = "Soforr gitleaks configuration"
+
+[extend]
+useDefault = true

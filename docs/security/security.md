@@ -68,7 +68,7 @@ Outcomes: not signed in → 401; signed in without a membership or without the p
 ## Secrets
 - None in source control, images or logs. Use user-secrets locally, environment/secret store in deployment. `.env` is git-ignored.
 - Rotate on suspicion; provider API keys (e.g. AI) scoped and budget-limited.
-- CI scans for committed secrets (SECURITY-001).
+- **Secret scanning (SECURITY-001):** a `secret-scan` job in CI runs gitleaks over the whole git history on every pull request (default rules plus `.gitleaks.toml`; an allowance there needs a written reason and review). Enable GitHub's own **secret scanning and push protection** in the repository settings too: it blocks a push that contains a known secret format before it reaches the history. Locally, an optional pre-commit check is described in the [development guide](../engineering/development.md#secret-scanning-and-vulnerable-packages). If a secret is ever committed, rotate it first; deleting it from history does not make it safe.
 
 ## API Security
 - HTTPS only; CORS restricted to the known web origin; security headers; request size limits (SECURITY-002, implemented in `ApiHardening.cs`, configured in the `Hardening` section and validated at start).
@@ -103,10 +103,13 @@ Outcomes: not signed in → 401; signed in without a membership or without the p
 - No payment processing or automatic financial transactions without human approval and design review.
 
 ## Dependencies and Supply Chain
-- Minimal dependencies; pin versions; enable Dependabot and `dotnet list package --vulnerable` in CI (SECURITY-001).
+- Minimal dependencies; pin versions (NuGet through central package management, npm exact versions and a lockfile).
+- **Known-vulnerable packages fail the build (SECURITY-001):** NuGet audits direct and transitive packages at restore (`NuGetAuditMode=all`, `NuGetAuditLevel=high` in `Directory.Build.props`), and NU1903 (high) and NU1904 (critical) are errors, locally and in CI. The `web` job runs `npm audit --audit-level=high`. Lower severities are visible in Dependabot but do not fail the build. Offline, NuGet reports NU1900 (it could not reach the vulnerability database), which does not fail a local build; CI has network access.
+- **Dependabot** (`.github/dependabot.yml`) opens weekly update pull requests for NuGet, npm (`src/Soforr.Web`) and GitHub Actions; they go through the same CI and review. Enable Dependabot security updates in the repository settings as well.
+- The first `npm audit` run found a critical advisory in the test runner's dependency chain (tinypool, through Vitest 3); Vitest was upgraded to 5.0.3, which clears it.
 
 ## Security Review
 Every pull request records a security check (see PR template). The Security Agent reviews changes touching authN/authZ, tenancy, file handling, and AI tools.
 
 ## Reporting Vulnerabilities
-Use the "Security issue" template only for non-sensitive hardening work. Report exploitable vulnerabilities privately to the project owner, not in public issues.
+Use the "Security issue" template only for non-sensitive hardening work. Report exploitable vulnerabilities privately through GitHub's **Report a vulnerability** (private advisory), as described in [SECURITY.md](../../SECURITY.md), not in public issues. Private vulnerability reporting must be enabled in the repository settings for that link to work.

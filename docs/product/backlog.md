@@ -156,7 +156,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 - **Testing:** Vitest smoke test; build in CI.
 
 ### SECURITY-001 — Repository security baseline
-- **Status:** Ready · **Priority:** SELLABLE-P0 · **Agent:** Security
+- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Security
 - **Description:** Dependabot config, NuGet vulnerability check in CI, secret scanning guidance (and a pre-commit/CI secret scan if free tooling suffices), `SECURITY.md` describing private vulnerability reporting.
 - **Acceptance criteria:** Vulnerable-package check fails CI on high severity; Dependabot enabled for NuGet, npm, GitHub Actions; `SECURITY.md` present.
 - **Dependencies:** none

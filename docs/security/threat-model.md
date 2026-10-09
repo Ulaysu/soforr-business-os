@@ -40,7 +40,7 @@ Browser ↔ API · API ↔ database · API ↔ file storage · API ↔ AI provid
 | T14 | Injection (SQL, XSS, header) | Tampering | Parameterized EF queries, Vue output encoding, CSP, validation | ongoing |
 | T15 | CSRF / token theft | Spoofing | HttpOnly cookie session so JavaScript cannot read a credential, SameSite=Lax, antiforgery token on unsafe methods (IDENTITY-001); CSP with the web client | IDENTITY-001, FOUNDATION-007 |
 | T16 | Denial of service via expensive queries/uploads/AI calls | DoS | Pagination bounds, request limits, rate limiting, AI cost caps | SECURITY-002 |
-| T17 | Vulnerable or malicious dependency | Supply chain | Minimal deps, Dependabot, vulnerability scan in CI | SECURITY-001 |
+| T17 | Vulnerable or malicious dependency | Supply chain | Minimal deps, pinned versions and lockfile, Dependabot, high/critical vulnerabilities fail the build (NuGet audit, npm audit) | SECURITY-001 (implemented) |
 | T18 | Tampering with audit logs | Repudiation | Append-only, no update/delete paths, restricted DB role | AUDIT-001 |
 | T19 | Automation executes unsafe or unintended actions | Elevation | Allow-list of safe commands, human approval for high-impact, run history | EPIC 11 |
 | T20 | Personal data over-collection or leakage (customers) | Privacy | Data minimization, tenant scoping, retention policy (to define) | EPIC 07/16 |

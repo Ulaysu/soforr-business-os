@@ -11,6 +11,18 @@
     <WarningsAsErrors>$(WarningsAsErrors);nullable</WarningsAsErrors>
   </PropertyGroup>
 
+  <!--
+    Known-vulnerable packages (SECURITY-001): NuGet audits direct and transitive packages at restore. Only high and critical
+    findings warn (NU1903, NU1904), and those two always fail the build, locally and in CI; lower severities do not. When the
+    vulnerability database cannot be reached the audit reports NU1900, which does not fail a local build.
+  -->
+  <PropertyGroup>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>high</NuGetAuditLevel>
+    <WarningsAsErrors>$(WarningsAsErrors);NU1903;NU1904</WarningsAsErrors>
+  </PropertyGroup>
+
   <!-- CI (GitHub Actions sets CI=true): all warnings fail the build and builds are deterministic. -->
   <PropertyGroup Condition="'$(CI)' == 'true'">
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>

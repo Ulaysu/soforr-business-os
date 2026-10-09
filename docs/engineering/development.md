@@ -36,6 +36,18 @@ Routine implementation that follows the documented architecture is autonomous.
 
 `src/Soforr.Web` (Vue 3, TypeScript, Vite, Tailwind, Vitest) has its own commands, run from that folder: `npm ci`, `npm run dev` (proxies to the API), `npm run lint`, `npm run format:check`, `npm run build`, `npm test`. CI runs them in the `web` job. Verify that the generated types are current with `npm run api:types:check` (CI regenerates them and fails on any difference). Details, the typed API client and how to regenerate the OpenAPI snapshot: [src/Soforr.Web/README.md](../../src/Soforr.Web/README.md). The client's types are generated from a committed snapshot of the API's OpenAPI document and a .NET test fails when the snapshot is stale, so an API change must be committed together with the regenerated snapshot and types.
 
+## Secret scanning and vulnerable packages
+
+CI scans the git history for secrets (gitleaks) and fails the build on known high or critical vulnerabilities in NuGet and npm packages. To check the same things before pushing:
+
+```bash
+dotnet restore Soforr.BusinessOS.slnx            # NuGet audit: NU1903 / NU1904 fail the restore
+(cd src/Soforr.Web && npm audit --audit-level=high)
+docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.24.3 detect --source /repo --config /repo/.gitleaks.toml --redact --no-banner
+```
+
+An optional pre-commit hook that scans only what is about to be committed (needs the gitleaks binary installed): create `.git/hooks/pre-commit` containing `gitleaks protect --staged --config .gitleaks.toml --redact` and make it executable. It is a convenience, not a requirement; CI is the check that counts. A false positive is handled by a narrow, explained entry in `.gitleaks.toml`, reviewed like any security change; never by weakening the rules.
+
 ## Repository Conventions
 
 - Branches from `main`; small focused commits with conventional prefixes (`feat:`, `fix:`, `test:`, `docs:`, `chore:`, `refactor:`).
