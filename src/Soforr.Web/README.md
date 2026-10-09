@@ -41,11 +41,21 @@ npm run api:types:check
 
 It generates into a temporary folder and compares, so it never changes your working tree. CI runs `npm run api:types` followed by `git diff --exit-code -- src/api/schema.d.ts`, then restores the file.
 
+## Screens so far
+
+Sign in, the product list (search, show inactive, paging, deactivate) and the product form (create and edit). Owner and Manager can change products; Staff can only look. That choice only decides which controls are shown; the server refuses everyone else with 403 whatever the screen does, and validates everything again. Registration is not a screen yet: the sign-in endpoints exist only in Development, so create your first local user through the API (the OpenAPI document describes `POST /api/v1/auth/register`, which needs an antiforgery token from `GET /api/v1/auth/antiforgery`).
+
+## How the app is put together
+
+`bootstrap.ts` builds the application: the API client, the session, the router and the root component. `main.ts` mounts it; the tests mount the very same application against a fake server (`src/test/fakeServer.ts`), so the screens are tested through the router and the session as a person meets them. The session (`src/stores/session.ts`) only remembers the answer of `GET /api/v1/auth/me`; nothing about it is stored in the browser. A 401 on any call (the session ended) sends the person to sign in again. Errors the API returns (a message and a code, per-field messages for validation) are read by `src/api/problem.ts` and shown as written.
+
 ## Layout
 
 ```text
-src/api/       typed client (client.ts), generated types (schema.d.ts)
-src/router/    routes
-src/views/     one component per route
+src/api/       typed client (client.ts), generated types (schema.d.ts), problem parsing, injection
+src/stores/    the session
+src/router/    routes and the sign-in guard
+src/views/     one component per screen, with its test
+src/test/      the fake server and the helper that mounts the application
 src/styles/    Tailwind entry
 ```

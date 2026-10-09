@@ -13,6 +13,11 @@ export interface ApiClientOptions {
   baseUrl?: string
   /** The fetch to use; defaults to the global one. Tests pass their own. */
   fetch?: typeof fetch
+  /**
+   * Called when the API answers 401 to a call other than signing in: the session ended (it expired or was revoked), so the
+   * application sends the user to sign in again.
+   */
+  onUnauthorized?: () => void
 }
 
 /**
@@ -53,6 +58,9 @@ export function createApiClient(options: ApiClientOptions = {}) {
       const path = new URL(request.url, 'http://localhost').pathname
       if (identityChanging.includes(path)) {
         token = null
+      }
+      if (response.status === 401 && path !== '/api/v1/auth/login') {
+        options.onUnauthorized?.()
       }
       return response
     },

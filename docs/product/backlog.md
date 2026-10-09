@@ -268,7 +268,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 - **Testing:** handler tests, API integration tests, authorization and tenant-isolation tests.
 
 ### CATALOG-004 — Product UI
-- **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Frontend
+- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Frontend
 - **Description:** Sign-in shell, product list/search, create/edit form. Client validation is UX only.
 - **Acceptance criteria:** An owner can create, edit, search, deactivate products against the real API.
 - **Dependencies:** CATALOG-003, FOUNDATION-007, IDENTITY-001
