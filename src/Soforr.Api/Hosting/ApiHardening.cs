@@ -189,7 +189,11 @@ public static class ApiHardeningExtensions
                 headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
 
                 // The API serves data, not pages: nothing may be framed, scripted or embedded, and nothing private may be cached.
-                headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'";
+                // The one exception is the API reference page (Scalar, mapped in Development only): a script-driven page that
+                // needs its own scripts and styles and calls only this origin. Nothing from another origin is allowed.
+                headers["Content-Security-Policy"] = context.Request.Path.StartsWithSegments("/scalar", StringComparison.OrdinalIgnoreCase)
+                    ? "default-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"
+                    : "default-src 'none'; frame-ancestors 'none'";
                 if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
                 {
                     headers["Cache-Control"] = "no-store";
