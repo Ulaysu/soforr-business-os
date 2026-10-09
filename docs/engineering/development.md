@@ -199,6 +199,8 @@ dotnet run --project src/Soforr.Api --launch-profile http
 
 **The whole system in containers (DEPLOY-001)**
 
+Plain `docker compose up -d` needs only `POSTGRES_PASSWORD`. `DEV_CERT_PASSWORD` and the certificate matter only for the `app` profile below.
+
 To run PostgreSQL, the migrations and the API as containers (no .NET SDK needed to run, only to create the certificate):
 
 ```bash

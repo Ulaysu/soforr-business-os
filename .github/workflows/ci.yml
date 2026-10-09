@@ -114,6 +114,11 @@ jobs:
           dotnet dev-certs https -ep .local/certs/aspnetapp.pfx -p "$DEV_CERT_PASSWORD"
           chmod 644 .local/certs/aspnetapp.pfx
 
+      # Plain `docker compose up` must keep working for someone who only has POSTGRES_PASSWORD: the app-only variables are optional there.
+      - name: Plain compose needs only the database password
+        run: |
+          test "$(env -u DEV_CERT_PASSWORD POSTGRES_PASSWORD=x docker compose --env-file /dev/null config --services)" = "postgres"
+
       - name: Build and start
         run: docker compose --profile app up --build -d
 
