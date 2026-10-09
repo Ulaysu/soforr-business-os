@@ -196,3 +196,23 @@ dotnet run --project src/Soforr.Api --launch-profile http
 ```
 
 `GET /health/ready` reports database status (200 healthy, 503 unhealthy; no details are exposed). Data lives in the `postgres-data` Docker volume; `docker compose down -v` deletes it. The compose file is for local development only.
+
+**The whole system in containers (DEPLOY-001)**
+
+To run PostgreSQL, the migrations and the API as containers (no .NET SDK needed to run, only to create the certificate):
+
+```bash
+cp .env.example .env            # set POSTGRES_PASSWORD and DEV_CERT_PASSWORD (git-ignored)
+mkdir -p .local/certs
+dotnet dev-certs https -ep .local/certs/aspnetapp.pfx -p "<your DEV_CERT_PASSWORD>"   # git-ignored; on Linux also: chmod 644 .local/certs/aspnetapp.pfx
+docker compose --profile app up --build
+```
+
+Then `https://localhost:7443/health/ready` answers 200 (the browser warns about the development certificate unless you trust it with `dotnet dev-certs https --trust`), and `https://localhost:7443/openapi/v1.json` is the API contract. What it does and why:
+
+- `postgres` is the same service as above. `migrate` runs once from the same image build (an EF Core migration bundle of the committed migrations) and exits: the application still never migrates itself. `api` starts only after the migrations finished.
+- The API runs in **Development** mode, because the authentication endpoints and the OpenAPI document exist only there until e-mail verification (IDENTITY-004) is done. **This is not a deployable configuration** and is bound to loopback only; production deployment is DEPLOY-002.
+- HTTPS is required because the session and antiforgery cookies are `Secure`; the certificate is mounted read-only from `.local/certs` and never baked into an image. The connection string and passwords come from `.env`, never from the image.
+- The API container runs as the image's non-root user. Data protection keys are not persisted, so a sign-in does not survive `docker compose restart api`; sign in again.
+- `docker compose --profile app down -v` stops everything and deletes the database volume. CI builds and starts exactly this setup and checks it (the `containers` job).
+- To use the web dev server with it: `SOFORR_API_URL=https://localhost:7443 npm run dev` in `src/Soforr.Web`.

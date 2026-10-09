@@ -90,3 +90,63 @@ jobs:
       - name: Scan for secrets
         run: |
           docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.24.3 detect --source /repo --config /repo/.gitleaks.toml --redact --no-banner --verbose
+
+  # Builds the images and starts the local container system (DEPLOY-001): PostgreSQL, the migrations, and the API, then checks it.
+  containers:
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Prepare local configuration
+        run: |
+          {
+            echo "POSTGRES_PASSWORD=$(openssl rand -hex 16)"
+            echo "DEV_CERT_PASSWORD=$(openssl rand -hex 16)"
+          } > .env
+          set -a; . ./.env; set +a
+          mkdir -p .local/certs
+          dotnet dev-certs https -ep .local/certs/aspnetapp.pfx -p "$DEV_CERT_PASSWORD"
+          chmod 644 .local/certs/aspnetapp.pfx
+
+      - name: Build and start
+        run: docker compose --profile app up --build -d
+
+      - name: Wait until the API is ready
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl -ksf https://localhost:7443/health/ready > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          echo "The API did not become ready." >&2
+          docker compose --profile app ps
+          docker compose --profile app logs
+          exit 1
+
+      - name: Check the running system
+        run: |
+          set -e
+          test "$(curl -ks -o /dev/null -w '%{http_code}' https://localhost:7443/health/live)" = 200
+          test "$(curl -ks -o /dev/null -w '%{http_code}' https://localhost:7443/health/ready)" = 200
+          test "$(curl -ks -o /dev/null -w '%{http_code}' https://localhost:7443/openapi/v1.json)" = 200
+          # Default deny: an unauthenticated call is refused, not served.
+          test "$(curl -ks -o /dev/null -w '%{http_code}' https://localhost:7443/api/v1/products)" = 401
+          # The antiforgery token works over HTTPS (the cookies are Secure).
+          test "$(curl -ks -o /dev/null -w '%{http_code}' https://localhost:7443/api/v1/auth/antiforgery)" = 200
+          # The migrations were applied to the container database.
+          set -a; . ./.env; set +a
+          tables=$(docker compose exec -T postgres psql -U soforr -d soforr -tAc "select count(*) from information_schema.tables where table_schema = 'public' and table_name in ('Sales', 'OfflineGrants', 'Organizations')")
+          test "$tables" = 3
+
+      - name: Logs on failure
+        if: failure()
+        run: docker compose --profile app logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose --profile app down -v

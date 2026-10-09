@@ -1,5 +1,8 @@
 # Local development services only. Not for production use.
 # Copy .env.example to .env (git-ignored) and set POSTGRES_PASSWORD before `docker compose up -d`.
+#
+#   docker compose up -d                       PostgreSQL only (use it with `dotnet run` and `dotnet ef`)
+#   docker compose --profile app up --build    PostgreSQL + the migrations + the API in containers (see docs/engineering/development.md)
 services:
   postgres:
     image: postgres:17
@@ -16,6 +19,42 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # The "app" profile. Applies the committed EF Core migrations once, then exits (the application never migrates itself).
+  migrate:
+    profiles: ["app"]
+    build:
+      context: .
+      target: migrate
+    command:
+      - "--connection"
+      - "Host=postgres;Port=5432;Database=soforr;Username=soforr;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # The API in Development mode (the authentication endpoints and the OpenAPI document exist only there). HTTPS needs a local
+  # development certificate; see docs/engineering/development.md.
+  api:
+    profiles: ["app"]
+    build:
+      context: .
+      target: api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTPS_PORT: ${API_HTTPS_PORT:-7443}
+      ConnectionStrings__Database: "Host=postgres;Port=5432;Database=soforr;Username=soforr;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}"
+      Kestrel__Certificates__Default__Path: /certs/aspnetapp.pfx
+      Kestrel__Certificates__Default__Password: ${DEV_CERT_PASSWORD:?Set DEV_CERT_PASSWORD in .env (see .env.example)}
+    ports:
+      - "127.0.0.1:${API_HTTPS_PORT:-7443}:8443"
+      - "127.0.0.1:${API_HTTP_PORT:-5080}:8080"
+    volumes:
+      - ./.local/certs:/certs:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   postgres-data:
