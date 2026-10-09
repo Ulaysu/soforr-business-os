@@ -1,0 +1,31 @@
+# Dependabot (SECURITY-001): version and security updates for every ecosystem the repository uses.
+# Updates arrive as pull requests that go through the same CI and review as any other change.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      microsoft:
+        patterns: ["Microsoft.*", "System.*"]
+      test-tooling:
+        patterns: ["xunit*", "Testcontainers*", "coverlet*"]
+
+  - package-ecosystem: npm
+    directory: /src/Soforr.Web
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      vue:
+        patterns: ["vue", "vue-router", "@vitejs/plugin-vue", "vue-tsc"]
+      tooling:
+        patterns: ["eslint*", "@eslint/*", "typescript-eslint", "prettier", "vitest", "jsdom", "@vue/test-utils"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

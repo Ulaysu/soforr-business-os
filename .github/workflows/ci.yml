@@ -54,6 +54,10 @@ jobs:
 
       # The client's types must be exactly what the committed OpenAPI snapshot generates. Regenerate them and fail on any
       # difference; the .NET job separately proves the snapshot matches the API itself (OpenApiSnapshotTests).
+      # Known-vulnerable packages: fails on high and critical findings (including indirect dependencies).
+      - name: Audit npm packages
+        run: npm audit --audit-level=high
+
       - name: Regenerate API types and verify no changes
         run: |
           npm run api:types
@@ -74,3 +78,15 @@ jobs:
 
       - name: Test
         run: npm test
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Scans the whole history for committed secrets with gitleaks (default rules plus .gitleaks.toml). Pinned image tag.
+      - name: Scan for secrets
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.24.3 detect --source /repo --config /repo/.gitleaks.toml --redact --no-banner --verbose
