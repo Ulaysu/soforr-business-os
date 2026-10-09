@@ -108,4 +108,27 @@ describe('the API client', () => {
     expect(calls[0]?.path).toBe('/api/v1/products')
     expect(calls[0]?.url).toBe('https://api.example.test/api/v1/products')
   })
+
+  it('tells the application when the session has ended, but not for a failed sign-in', async () => {
+    let ended = 0
+    const fetchFake = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(new Request(input, init).url).pathname
+      if (path === '/api/v1/auth/antiforgery')
+        return Response.json({ headerName: 'X-CSRF-TOKEN', token: 't' })
+      return new Response(null, { status: 401 })
+    }) as typeof fetch
+    const { client } = createApiClient({
+      baseUrl: 'http://localhost',
+      fetch: fetchFake,
+      onUnauthorized: () => (ended += 1),
+    })
+
+    await client.POST('/api/v1/auth/login', {
+      body: { email: 'a@example.test', password: 'wrong' },
+    })
+    expect(ended).toBe(0)
+
+    await client.GET('/api/v1/products')
+    expect(ended).toBe(1)
+  })
 })
