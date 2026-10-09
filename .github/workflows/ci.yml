@@ -134,6 +134,7 @@ jobs:
           test "$(curl -ks -o /dev/null -w '%{http_code}' https://localhost:7443/health/live)" = 200
           test "$(curl -ks -o /dev/null -w '%{http_code}' https://localhost:7443/health/ready)" = 200
           test "$(curl -ks -o /dev/null -w '%{http_code}' https://localhost:7443/openapi/v1.json)" = 200
+          test "$(curl -ks -o /dev/null -w '%{http_code}' https://localhost:7443/scalar/v1)" = 200
           # Default deny: an unauthenticated call is refused, not served.
           test "$(curl -ks -o /dev/null -w '%{http_code}' https://localhost:7443/api/v1/products)" = 401
           # The antiforgery token works over HTTPS (the cookies are Secure).

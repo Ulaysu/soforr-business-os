@@ -195,6 +195,10 @@ dotnet ef database update --project src/Soforr.Infrastructure --startup-project 
 dotnet run --project src/Soforr.Api --launch-profile http
 ```
 
+**The API reference page (Scalar).** In Development the API serves its OpenAPI document at `/openapi/v1.json` and a browsable reference with a try-it-out client at **`/scalar/v1`** (there is no `/swagger`). `dotnet run --project src/Soforr.Api --launch-profile https` opens it for you: the URLs come from `src/Soforr.Api/Properties/launchSettings.json` (`https` profile: `https://localhost:7168` and `http://localhost:5045`; `http` profile: `http://localhost:5045`) and its `launchUrl`. Use the **https** profile for anything that signs in, because the session and antiforgery cookies are `Secure`. Neither the page nor the document exists outside Development.
+
+To try a request that changes data (POST, PUT, DELETE) from the reference page: call `GET /api/v1/auth/antiforgery` first, then add the header it names (`X-CSRF-TOKEN`) with the token it returned to the request you send; the antiforgery cookie is set by the browser. Sign in with `POST /api/v1/auth/login` (create a first user with `POST /api/v1/auth/register`), and fetch a fresh token after signing in or out, because the token belongs to the identity.
+
 `GET /health/ready` reports database status (200 healthy, 503 unhealthy; no details are exposed). Data lives in the `postgres-data` Docker volume; `docker compose down -v` deletes it. The compose file is for local development only.
 
 **The whole system in containers (DEPLOY-001)**

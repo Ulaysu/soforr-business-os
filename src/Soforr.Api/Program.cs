@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Scalar.AspNetCore;
 using Soforr.Api.Audit;
 using Soforr.Api.Catalog;
 using Soforr.Api.Customers;
@@ -41,6 +42,13 @@ app.UseAuthorization();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi().AllowAnonymous();
+
+    // The API reference page (Scalar) at /scalar: a browsable, try-it-out view of the OpenAPI document. Development only, like the
+    // document itself. It loads nothing from the internet (the fonts are not fetched from a CDN).
+    app.MapScalarApiReference(options => options
+            .WithTitle("Soforr Business OS API")
+            .DisableDefaultFonts())
+        .AllowAnonymous();
     app.MapAuthEndpoints();
 }
 
