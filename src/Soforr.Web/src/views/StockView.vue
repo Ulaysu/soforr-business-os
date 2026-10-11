@@ -48,7 +48,6 @@ async function load() {
         params: { query: { page: page.value, pageSize } },
       })
       if (current !== loadGeneration) return
-      if (current !== loadGeneration) return
       if (response.ok && data) {
         rows.value = data.items.map((item) => ({
           productId: item.productId,
@@ -71,6 +70,7 @@ async function load() {
       } = await api.GET('/api/v1/inventory/stock', {
         params: { query: { q: search.value.trim() || undefined, page: page.value, pageSize } },
       })
+      if (current !== loadGeneration) return
       if (response.ok && data) {
         rows.value = data.items.map((item) => ({
           productId: item.productId,
