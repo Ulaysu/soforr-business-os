@@ -23,10 +23,12 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const confirming = ref<string | null>(null)
 const deactivating = ref<string | null>(null)
+let loadGeneration = 0
 
 const pageCount = computed(() => Math.max(1, Math.ceil(totalCount.value / pageSize)))
 
 async function load() {
+  const current = ++loadGeneration
   loading.value = true
   error.value = null
   try {
@@ -44,6 +46,7 @@ async function load() {
         },
       },
     })
+    if (current !== loadGeneration) return
     if (response.ok && data) {
       items.value = data.items
       totalCount.value = Number(data.totalCount)
@@ -51,9 +54,9 @@ async function load() {
       error.value = toProblem(failure, response.status).message
     }
   } catch {
-    error.value = networkProblem().message
+    if (current === loadGeneration) error.value = networkProblem().message
   } finally {
-    loading.value = false
+    if (current === loadGeneration) loading.value = false
   }
 }
 
