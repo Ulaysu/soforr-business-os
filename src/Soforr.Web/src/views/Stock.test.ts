@@ -90,6 +90,45 @@ describe('the stock list', () => {
     expect(app.allByTestId('stock-row')).toHaveLength(1)
   })
 
+  it('does not let an older search replace the latest stock results', async () => {
+    const server = createFakeServer({
+      users: [owner, manager, staff],
+      products: [rice, oil, salt],
+    })
+    server.startSession(owner.email)
+    const original = server.fetch
+    let release: (() => void) | undefined
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    const slow = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init)
+      const url = new URL(request.url)
+      const response = await original(input, init)
+      if (url.pathname === '/api/v1/inventory/stock' && url.searchParams.get('q') === 'rice') {
+        await gate
+      }
+      return response
+    }) as typeof fetch
+    open = await openApp({ ...server, fetch: slow }, '/stock')
+
+    vi.useFakeTimers()
+    await open.type('search', 'rice')
+    await vi.advanceTimersByTimeAsync(350)
+    await flushPromises()
+    await open.type('search', 'oil')
+    await vi.advanceTimersByTimeAsync(350)
+    await flushPromises()
+
+    expect(open.allByTestId('stock-row')).toHaveLength(1)
+    expect(open.text()).toContain('Cooking oil 5l')
+    expect(open.text()).not.toContain('Rice 25kg')
+
+    release?.()
+    await flushPromises()
+    expect(open.allByTestId('stock-row')).toHaveLength(1)
+    expect(open.text()).toContain('Cooking oil 5l')
+    expect(open.text()).not.toContain('Rice 25kg')
+  })
+
   it("can show only what is low, using the server's own list", async () => {
     const { server, app } = await openAs(owner, '/stock')
 

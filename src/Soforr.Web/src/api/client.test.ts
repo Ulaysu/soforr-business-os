@@ -96,6 +96,45 @@ describe('the API client', () => {
     expect(calls.filter((call) => call.path === '/api/v1/auth/antiforgery')).toHaveLength(2)
   })
 
+  it('fetches a fresh token after the server rejects a stale antiforgery token', async () => {
+    const calls: Array<{ path: string; method: string; token: string | null }> = []
+    let tokenNumber = 0
+    let postNumber = 0
+    const fetchFake = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init)
+      const path = new URL(request.url).pathname
+      calls.push({
+        path,
+        method: request.method,
+        token: request.headers.get('X-CSRF-TOKEN'),
+      })
+      if (path === '/api/v1/auth/antiforgery') {
+        tokenNumber += 1
+        return Response.json({ headerName: 'X-CSRF-TOKEN', token: `token-${tokenNumber}` })
+      }
+      if (request.method === 'POST' && ++postNumber === 1) {
+        return Response.json(
+          { status: 400, code: 'antiforgery.invalid', detail: 'Request a new token.' },
+          { status: 400 },
+        )
+      }
+      return Response.json({ id: 'ok' }, { status: 201 })
+    }) as typeof fetch
+    const { client } = createApiClient({
+      baseUrl: 'http://localhost',
+      fetch: fetchFake,
+    })
+
+    await client.POST('/api/v1/customers', { body: { name: 'Awa Jallow' } })
+    await client.POST('/api/v1/customers', { body: { name: 'Awa Jallow' } })
+
+    expect(calls.filter((call) => call.path === '/api/v1/auth/antiforgery')).toHaveLength(2)
+    expect(calls.filter((call) => call.method === 'POST').map((call) => call.token)).toEqual([
+      'token-1',
+      'token-2',
+    ])
+  })
+
   it('uses the base url when one is given', async () => {
     const { calls, fetchFake } = fakeServer()
     const { client } = createApiClient({

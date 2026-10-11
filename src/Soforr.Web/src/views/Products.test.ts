@@ -101,6 +101,42 @@ describe('the product list', () => {
     expect(app.allByTestId('product-row')).toHaveLength(1)
   })
 
+  it('does not let an older search replace the latest results', async () => {
+    const server = createFakeServer({ users: [owner], products: twoProducts() })
+    server.startSession(owner.email)
+    const original = server.fetch
+    let release: (() => void) | undefined
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    const slow = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init)
+      const url = new URL(request.url)
+      const response = await original(input, init)
+      if (url.pathname === '/api/v1/products' && url.searchParams.get('q') === 'rice') {
+        await gate
+      }
+      return response
+    }) as typeof fetch
+    open = await openApp({ ...server, fetch: slow }, '/products')
+
+    vi.useFakeTimers()
+    await open.type('search', 'rice')
+    await vi.advanceTimersByTimeAsync(350)
+    await flushPromises()
+    await open.type('search', 'oil')
+    await vi.advanceTimersByTimeAsync(350)
+    await flushPromises()
+
+    expect(open.allByTestId('product-row')).toHaveLength(1)
+    expect(open.text()).toContain('Cooking oil 5l')
+    expect(open.text()).not.toContain('Rice 25kg')
+
+    release?.()
+    await flushPromises()
+    expect(open.allByTestId('product-row')).toHaveLength(1)
+    expect(open.text()).toContain('Cooking oil 5l')
+    expect(open.text()).not.toContain('Rice 25kg')
+  })
+
   it('shows inactive products only when asked', async () => {
     const { server, app } = await openProducts(owner, [
       ...twoProducts(),
@@ -219,6 +255,30 @@ describe('deactivating a product', () => {
     expect(app.text()).not.toContain('Deactivate Rice 25kg?')
     expect(server.requests.some((request) => request.path.endsWith('/deactivate'))).toBe(false)
     expect(server.products.every((product) => product.isActive)).toBe(true)
+  })
+
+  it('keeps the error visible when deactivation fails', async () => {
+    const server = createFakeServer({ users: [owner], products: twoProducts() })
+    server.startSession(owner.email)
+    const original = server.fetch
+    const refusing = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(new Request(input, init).url)
+      if (url.pathname.endsWith('/deactivate')) {
+        return Response.json(
+          { status: 403, code: 'identity.forbidden', detail: 'You are not allowed to do this.' },
+          { status: 403 },
+        )
+      }
+      return original(input, init)
+    }) as typeof fetch
+    open = await openApp({ ...server, fetch: refusing }, '/products')
+
+    await open.click('Deactivate Rice 25kg')
+    await open.click('Yes, deactivate')
+
+    expect(open.byTestId('products-error')?.textContent).toContain('not allowed')
+    expect(open.text()).toContain('RICE-25')
+    expect(server.products.find((product) => product.sku === 'RICE-25')?.isActive).toBe(true)
   })
 
   it('deactivates after confirmation and removes the product from the list', async () => {

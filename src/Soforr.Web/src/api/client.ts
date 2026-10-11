@@ -59,6 +59,16 @@ export function createApiClient(options: ApiClientOptions = {}) {
       if (identityChanging.includes(path)) {
         token = null
       }
+      // The server explicitly asks for a fresh token when its identity-bound token is stale.
+      // Clear the cache so the next user attempt fetches a new token instead of repeating the same 400.
+      if (response.status === 400) {
+        try {
+          const problem = (await response.clone().json()) as { code?: unknown }
+          if (problem.code === 'antiforgery.invalid') token = null
+        } catch {
+          // A non-JSON 400 is unrelated; keep the cached token.
+        }
+      }
       if (response.status === 401 && path !== '/api/v1/auth/login') {
         options.onUnauthorized?.()
       }
