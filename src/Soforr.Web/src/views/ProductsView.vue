@@ -84,12 +84,15 @@ function goTo(next: number) {
 async function deactivate(product: Product) {
   deactivating.value = product.id
   error.value = null
+  let succeeded = false
   try {
     const { error: failure, response } = await api.POST('/api/v1/products/{id}/deactivate', {
       params: { path: { id: product.id } },
     })
     if (!response.ok) {
       error.value = toProblem(failure, response.status).message
+    } else {
+      succeeded = true
     }
   } catch {
     error.value = networkProblem().message
@@ -97,7 +100,8 @@ async function deactivate(product: Product) {
     deactivating.value = null
     confirming.value = null
   }
-  await load()
+  // Do not reload on failure: load() clears the error and would hide why the action failed.
+  if (succeeded) await load()
 }
 </script>
 
