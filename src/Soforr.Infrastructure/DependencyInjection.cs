@@ -44,7 +44,8 @@ public static class DependencyInjection
         services.AddIdentityAuthentication(configuration);
 
         services.AddHealthChecks()
-            .AddDbContextCheck<AppDbContext>("database", tags: [HealthCheckTags.Ready]);
+            .AddDbContextCheck<AppDbContext>("database", tags: [HealthCheckTags.Ready])
+            .AddCheck<PendingMigrationsHealthCheck>("migrations", tags: [HealthCheckTags.Ready]);
 
         return services;
     }
