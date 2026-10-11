@@ -25,6 +25,7 @@ const rows = ref<Row[]>([])
 const totalCount = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
+let loadGeneration = 0
 
 const pageCount = computed(() => Math.max(1, Math.ceil(totalCount.value / pageSize)))
 
@@ -33,6 +34,7 @@ function asNumber(value: number | string | null | undefined): number | null {
 }
 
 async function load() {
+  const current = ++loadGeneration
   loading.value = true
   error.value = null
   try {
@@ -45,6 +47,8 @@ async function load() {
       } = await api.GET('/api/v1/inventory/low-stock', {
         params: { query: { page: page.value, pageSize } },
       })
+      if (current !== loadGeneration) return
+      if (current !== loadGeneration) return
       if (response.ok && data) {
         rows.value = data.items.map((item) => ({
           productId: item.productId,
@@ -83,9 +87,9 @@ async function load() {
       }
     }
   } catch {
-    error.value = networkProblem().message
+    if (current === loadGeneration) error.value = networkProblem().message
   } finally {
-    loading.value = false
+    if (current === loadGeneration) loading.value = false
   }
 }
 
