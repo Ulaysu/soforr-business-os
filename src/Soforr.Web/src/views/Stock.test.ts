@@ -91,7 +91,10 @@ describe('the stock list', () => {
   })
 
   it('does not let an older search replace the latest stock results', async () => {
-    const server = createFakeServer({ users: [owner, manager, staff], products: [rice, oil, salt] })
+    const server = createFakeServer({
+      users: [owner, manager, staff],
+      products: [rice, oil, salt],
+    })
     server.startSession(owner.email)
     const original = server.fetch
     let release: (() => void) | undefined
@@ -100,10 +103,7 @@ describe('the stock list', () => {
       const request = new Request(input, init)
       const url = new URL(request.url)
       const response = await original(input, init)
-      if (
-        url.pathname === '/api/v1/inventory/stock' &&
-        url.searchParams.get('q') === 'rice'
-      ) {
+      if (url.pathname === '/api/v1/inventory/stock' && url.searchParams.get('q') === 'rice') {
         await gate
       }
       return response
