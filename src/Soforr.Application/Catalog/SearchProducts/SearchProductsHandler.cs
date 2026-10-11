@@ -75,7 +75,7 @@ public sealed class SearchProductsHandler(IAppDbContext db, ICurrentUser user) :
     [SuppressMessage("Globalization", "CA1304:Specify CultureInfo", Justification = "The query must translate to the database's lower(), the function behind the SKU key (ADR 0006); there is no culture on the database side.")]
     [SuppressMessage("Globalization", "CA1311:Specify a culture or use an invariant version", Justification = "See CA1304.")]
     [SuppressMessage("Globalization", "CA1862:Use the StringComparison method overloads", Justification = "An OrdinalIgnoreCase comparison does not translate to SQL.")]
-    private static IQueryable<Product> MatchingText(IQueryable<Product> products, string text)
+    internal static IQueryable<Product> MatchingText(IQueryable<Product> products, string text)
     {
         var lowered = ProductSkuKey.Of(text);
 

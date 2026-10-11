@@ -5,6 +5,7 @@ using Soforr.Application.Inventory.AdjustInventory;
 using Soforr.Application.Inventory.GetMovementHistory;
 using Soforr.Application.Inventory.GetStockLevel;
 using Soforr.Application.Inventory.ListLowStock;
+using Soforr.Application.Inventory.ListStockLevels;
 
 namespace Soforr.Api.Inventory;
 
@@ -41,6 +42,20 @@ public static class InventoryEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapGet(
+                "/stock",
+                async (string? q, int? page, int? pageSize, IQueryHandler<ListStockLevelsQuery, PagedResult<StockLevelDto>> handler, CancellationToken cancellationToken) =>
+                {
+                    var result = await handler.HandleAsync(new ListStockLevelsQuery(q, page ?? 1, pageSize ?? ListStockLevelsQuery.DefaultPageSize), cancellationToken);
+                    return result.ToHttpResult(Results.Ok);
+                })
+            .WithName("ListStockLevels")
+            .WithSummary("Lists the stock of the active products, by name, optionally those matching part of the SKU or name (page size 1 to 100, default 25). A product that has never had stock shows 0. Same figures and the same definition of low as GetStockLevel.")
+            .Produces<PagedResult<StockLevelDto>>()
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
 
         group.MapGet(
                 "/stock/{productId:guid}",

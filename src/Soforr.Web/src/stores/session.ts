@@ -119,3 +119,11 @@ export function useSession(): Session {
 export function canManageProducts(role: Role | null | undefined): boolean {
   return role === 'Owner' || role === 'Manager'
 }
+
+/**
+ * Whether to show the stock adjustment form and the movement history. As with products, this only decides what is shown (the server
+ * answers 403 to everyone else): Owner and Manager adjust stock and read the history, Staff only look at the levels.
+ */
+export function canManageStock(role: Role | null | undefined): boolean {
+  return role === 'Owner' || role === 'Manager'
+}

@@ -43,7 +43,7 @@ It generates into a temporary folder and compares, so it never changes your work
 
 ## Screens so far
 
-Sign in, the product list (search, show inactive, paging, deactivate) and the product form (create and edit). Owner and Manager can change products; Staff can only look. That choice only decides which controls are shown; the server refuses everyone else with 403 whatever the screen does, and validates everything again. Registration is not a screen yet: the sign-in endpoints exist only in Development, so create your first local user through the API (the OpenAPI document describes `POST /api/v1/auth/register`, which needs an antiforgery token from `GET /api/v1/auth/antiforgery`).
+Sign in, the product list (search, show inactive, paging, deactivate) and the product form (create and edit). Owner and Manager can change products; Staff can only look. That choice only decides which controls are shown; the server refuses everyone else with 403 whatever the screen does, and validates everything again. The stock screens list every active product with what is on hand (search, a low-stock filter, paging) and show one product's level, its movement history and the adjustment form (a change and a required note; the adjustment carries a client-chosen id, so trying again after a lost answer cannot adjust twice). Owner and Manager adjust and read the history; Staff only look at the levels. Registration is not a screen yet: the sign-in endpoints exist only in Development, so create your first local user through the API (the OpenAPI document describes `POST /api/v1/auth/register`, which needs an antiforgery token from `GET /api/v1/auth/antiforgery`).
 
 ## How the app is put together
 

@@ -3,6 +3,8 @@ import type { Session } from '../stores/session'
 import NotFoundView from '../views/NotFoundView.vue'
 import ProductFormView from '../views/ProductFormView.vue'
 import ProductsView from '../views/ProductsView.vue'
+import StockProductView from '../views/StockProductView.vue'
+import StockView from '../views/StockView.vue'
 import SignInView from '../views/SignInView.vue'
 
 // Routes are added with their screens. None of the business rules lives here or in any screen: the server decides what is
@@ -13,6 +15,8 @@ export const routes = [
   { path: '/products', name: 'products', component: ProductsView },
   { path: '/products/new', name: 'product-new', component: ProductFormView },
   { path: '/products/:id/edit', name: 'product-edit', component: ProductFormView, props: true },
+  { path: '/stock', name: 'stock', component: StockView },
+  { path: '/stock/:id', name: 'stock-product', component: StockProductView, props: true },
   { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView, meta: { public: true } },
 ]
 
