@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useApi } from '../api/context'
 import { networkProblem, toProblem } from '../api/problem'
@@ -32,33 +32,60 @@ function text(value: number | string | null | undefined): string {
   return value === null || value === undefined ? '' : String(value)
 }
 
-onMounted(async () => {
-  if (props.id === undefined) {
-    return
-  }
-  loading.value = true
-  try {
-    const { data, error, response } = await api.GET('/api/v1/products/{id}', {
-      params: { path: { id: props.id } },
-    })
-    if (response.ok && data) {
-      currency.value = data.currency
-      form.sku = data.sku
-      form.name = data.name
-      form.unitOfMeasure = data.unitOfMeasure
-      form.sellingPrice = text(data.sellingPrice)
-      form.costPrice = text(data.costPrice)
-      form.reorderPoint = text(data.reorderPoint)
-      form.reorderLeadTimeDays = text(data.reorderLeadTimeDays)
-    } else {
-      message.value = toProblem(error, response.status).message
+// A route parameter can change while Vue Router reuses this view. Ignore any response from an older product.
+let generation = 0
+
+function resetForm() {
+  form.sku = ''
+  form.name = ''
+  form.unitOfMeasure = ''
+  form.sellingPrice = ''
+  form.costPrice = ''
+  form.reorderPoint = ''
+  form.reorderLeadTimeDays = ''
+  currency.value = ''
+  message.value = null
+  fieldErrors.value = {}
+}
+
+watch(
+  () => props.id,
+  async (productId) => {
+    const current = ++generation
+    resetForm()
+    if (productId === undefined) {
+      loading.value = false
+      return
     }
-  } catch {
-    message.value = networkProblem().message
-  } finally {
-    loading.value = false
-  }
-})
+
+    loading.value = true
+    try {
+      const { data, error, response } = await api.GET('/api/v1/products/{id}', {
+        params: { path: { id: productId } },
+      })
+      if (current !== generation) return
+      if (response.ok && data) {
+        currency.value = data.currency
+        form.sku = data.sku
+        form.name = data.name
+        form.unitOfMeasure = data.unitOfMeasure
+        form.sellingPrice = text(data.sellingPrice)
+        form.costPrice = text(data.costPrice)
+        form.reorderPoint = text(data.reorderPoint)
+        form.reorderLeadTimeDays = text(data.reorderLeadTimeDays)
+      } else {
+        message.value = toProblem(error, response.status).message
+      }
+    } catch {
+      if (current === generation) {
+        message.value = networkProblem().message
+      }
+    } finally {
+      if (current === generation) loading.value = false
+    }
+  },
+  { immediate: true },
+)
 
 function fieldError(name: string): string | null {
   return fieldErrors.value[name]?.[0] ?? null
@@ -116,12 +143,15 @@ async function submit() {
   }
 
   saving.value = true
+  const current = generation
+  const productId = props.id
   try {
     const result =
-      props.id === undefined
+      productId === undefined
         ? await api.POST('/api/v1/products', { body })
-        : await api.PUT('/api/v1/products/{id}', { params: { path: { id: props.id } }, body })
+        : await api.PUT('/api/v1/products/{id}', { params: { path: { id: productId } }, body })
 
+    if (current !== generation) return
     if (result.response.ok) {
       await router.push({ name: 'products' })
       return
@@ -137,9 +167,9 @@ async function submit() {
         ? 'Some of the details need attention.'
         : problem.message
   } catch {
-    message.value = networkProblem().message
+    if (current === generation) message.value = networkProblem().message
   } finally {
-    saving.value = false
+    if (current === generation) saving.value = false
   }
 }
 
