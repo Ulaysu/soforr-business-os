@@ -192,7 +192,6 @@ describe('editing a product', () => {
       ),
     ).toBe(true)
   })
-
 })
 
 describe('the first journey: sign in, create a product', () => {
