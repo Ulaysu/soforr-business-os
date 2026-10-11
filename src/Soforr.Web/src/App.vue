@@ -22,6 +22,7 @@ async function signOut() {
           <RouterLink class="underline-offset-4 hover:underline" to="/products"
             >Products</RouterLink
           >
+          <RouterLink class="underline-offset-4 hover:underline" to="/stock">Stock</RouterLink>
         </nav>
       </div>
       <div v-if="session.isSignedIn.value" class="flex items-center gap-4 text-sm">
