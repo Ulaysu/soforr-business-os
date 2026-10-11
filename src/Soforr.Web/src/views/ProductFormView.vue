@@ -36,6 +36,7 @@ function text(value: number | string | null | undefined): string {
 let generation = 0
 
 function resetForm() {
+  saving.value = false
   form.sku = ''
   form.name = ''
   form.unitOfMeasure = ''
