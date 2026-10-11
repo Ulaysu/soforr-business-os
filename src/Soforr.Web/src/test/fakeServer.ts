@@ -321,6 +321,7 @@ export function createFakeServer(
     /** What the server holds: quantity per product, and the adjustments it accepted (by id). */
     stock,
     adjustments,
+    movements,
     /** Ends the server-side session without the browser knowing, as an expiry does. */
     expireSession() {
       sessionEmail = null

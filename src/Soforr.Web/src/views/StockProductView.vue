@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useApi } from '../api/context'
 import { networkProblem, toProblem } from '../api/problem'
@@ -32,11 +32,18 @@ const done = ref<string | null>(null)
 // click) cannot adjust the stock twice; a new one is chosen only after an adjustment was recorded.
 let adjustmentId = crypto.randomUUID()
 
-async function loadLevel() {
+// Bumped every time the route's product changes. A response is applied only if no newer product was opened meanwhile, so a late
+// answer for product A can never overwrite product B (the same component is reused when the route parameter changes).
+let generation = 0
+
+async function loadLevel(productId: string, current: number) {
   try {
     const { data, error, response } = await api.GET('/api/v1/inventory/stock/{productId}', {
-      params: { path: { productId: props.id } },
+      params: { path: { productId } },
     })
+    if (current !== generation) {
+      return
+    }
     if (response.ok && data) {
       level.value = data
       loadError.value = null
@@ -44,19 +51,21 @@ async function loadLevel() {
       loadError.value = toProblem(error, response.status).message
     }
   } catch {
-    loadError.value = networkProblem().message
+    if (current === generation) {
+      loadError.value = networkProblem().message
+    }
   }
 }
 
-async function loadMovements() {
+async function loadMovements(productId: string, current: number) {
   if (!canManage.value) {
     return
   }
   try {
     const { data, response } = await api.GET('/api/v1/inventory/stock/{productId}/movements', {
-      params: { path: { productId: props.id }, query: { page: 1, pageSize: 25 } },
+      params: { path: { productId }, query: { page: 1, pageSize: 25 } },
     })
-    if (response.ok && data) {
+    if (current === generation && response.ok && data) {
       movements.value = data.items
       movementTotal.value = Number(data.totalCount)
     }
@@ -65,10 +74,27 @@ async function loadMovements() {
   }
 }
 
-onMounted(async () => {
-  await loadLevel()
-  await loadMovements()
-})
+watch(
+  () => props.id,
+  async (productId) => {
+    generation += 1
+    const current = generation
+    // Nothing of the previous product stays visible, and the form starts again with a new adjustment id.
+    level.value = null
+    movements.value = []
+    movementTotal.value = 0
+    loadError.value = null
+    quantityChange.value = ''
+    note.value = ''
+    formError.value = null
+    fieldErrors.value = {}
+    done.value = null
+    adjustmentId = crypto.randomUUID()
+    await loadLevel(productId, current)
+    await loadMovements(productId, current)
+  },
+  { immediate: true },
+)
 
 /** "SaleCompleted" is shown as "Sale completed". */
 function reasonText(reason: string): string {
@@ -103,23 +129,31 @@ async function submit() {
   }
 
   saving.value = true
+  const productId = props.id
+  const current = generation
   try {
     const { error, response } = await api.POST('/api/v1/inventory/adjustments', {
-      body: { productId: props.id, quantityChange: change, note: note.value.trim(), adjustmentId },
+      body: { productId, quantityChange: change, note: note.value.trim(), adjustmentId },
     })
+    if (current !== generation) {
+      return // another product was opened while this was sent; its screen is not this one's
+    }
     if (response.ok) {
       done.value = 'The stock was adjusted.'
       quantityChange.value = ''
       note.value = ''
       adjustmentId = crypto.randomUUID()
-      await loadLevel()
-      await loadMovements()
+      await loadLevel(productId, current)
+      await loadMovements(productId, current)
       return
     }
     const problem = toProblem(error, response.status)
     fieldErrors.value = problem.fieldErrors
     formError.value = problem.message
   } catch {
+    if (current !== generation) {
+      return
+    }
     // Nothing is known about whether it was recorded: the same adjustment id is kept, so trying again is safe.
     formError.value = `${networkProblem().message} It is safe to try again: the same adjustment will not be applied twice.`
   } finally {

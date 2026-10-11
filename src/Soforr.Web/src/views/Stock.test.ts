@@ -233,3 +233,95 @@ describe('who may adjust stock', () => {
     expect(app.byTestId('stock-error')?.textContent).toContain('was not found')
   })
 })
+
+describe('moving between products', () => {
+  function seedMovement(
+    server: ReturnType<typeof createFakeServer>,
+    productId: string,
+    note: string,
+  ) {
+    server.movements.set(productId, [
+      {
+        id: crypto.randomUUID(),
+        quantityChange: 3,
+        reason: 'ManualAdjustment',
+        sourceType: 'Adjustment',
+        sourceId: null,
+        actorId: '00000000-0000-0000-0000-000000000001',
+        note,
+        occurredAtUtc: '2026-06-01T10:00:00Z',
+      },
+    ])
+  }
+
+  it('shows the other product, not the first one, when the route parameter changes', async () => {
+    const { server, app } = await openAs(owner, `/stock/${rice.id}`)
+    seedMovement(server, rice.id, 'Rice note')
+    seedMovement(server, oil.id, 'Oil note')
+    await app.router.push(`/stock/${rice.id}`)
+    await app.router.push(`/stock/${oil.id}`)
+    await vi.waitFor(() => expect(app.byTestId('on-hand')?.textContent).toBe('20'))
+
+    expect(app.text()).toContain('Cooking oil 5l')
+    expect(app.text()).not.toContain('Rice 25kg')
+    expect(app.text()).toContain('Oil note')
+    expect(app.text()).not.toContain('Rice note')
+    expect(app.allByTestId('movement-row')).toHaveLength(1)
+    // Reorder information is the other product's (5), not rice's (10).
+    expect(app.root.querySelector('dl')?.textContent).toMatch(/Reorder at5Supplier/)
+  })
+
+  it('does not let a late answer for the first product overwrite the second', async () => {
+    const server = createFakeServer({ users: [owner], products: [rice, oil] })
+    server.stock.set(rice.id, 4)
+    server.stock.set(oil.id, 20)
+    server.startSession(owner.email)
+    const original = server.fetch
+    let release: (() => void) | undefined
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    const slow = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(input instanceof Request ? input.url : String(input))
+      const response = await original(input, init)
+      if (url.pathname === `/api/v1/inventory/stock/${rice.id}`) {
+        await gate // the answer for rice arrives only after the person moved on to oil
+      }
+      return response
+    }) as typeof fetch
+    open = await openApp({ ...server, fetch: slow }, '/')
+    const pending = open.router.push(`/stock/${rice.id}`)
+    await pending
+    await open.router.push(`/stock/${oil.id}`)
+    await vi.waitFor(() => expect(open?.byTestId('on-hand')?.textContent).toBe('20'))
+
+    release?.()
+    await flushPromises()
+
+    expect(open.byTestId('on-hand')?.textContent).toBe('20')
+    expect(open.text()).toContain('Cooking oil 5l')
+    expect(open.text()).not.toContain('Rice 25kg')
+  })
+
+  it('clears the previous product while the next one is loading', async () => {
+    const server = createFakeServer({ users: [owner], products: [rice, oil] })
+    server.stock.set(rice.id, 4)
+    server.startSession(owner.email)
+    const original = server.fetch
+    let release: (() => void) | undefined
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    const slow = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(input instanceof Request ? input.url : String(input))
+      if (url.pathname === `/api/v1/inventory/stock/${oil.id}`) await gate
+      return original(input, init)
+    }) as typeof fetch
+    open = await openApp({ ...server, fetch: slow }, `/stock/${rice.id}`)
+    expect(open.byTestId('on-hand')?.textContent).toBe('4')
+
+    await open.router.push(`/stock/${oil.id}`)
+    await flushPromises()
+    expect(open.byTestId('on-hand')).toBeNull()
+    expect(open.text()).not.toContain('Rice 25kg')
+
+    release?.()
+    await vi.waitFor(() => expect(open?.text()).toContain('Cooking oil 5l'))
+  })
+})
