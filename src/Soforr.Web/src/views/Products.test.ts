@@ -102,6 +102,42 @@ describe('the product list', () => {
   })
 
   it('shows inactive products only when asked', async () => {
+  it('does not let an older search replace the latest results', async () => {
+    const server = createFakeServer({ users: [owner], products: twoProducts() })
+    server.startSession(owner.email)
+    const original = server.fetch
+    let release: (() => void) | undefined
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    const slow = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init)
+      const url = new URL(request.url)
+      const response = await original(input, init)
+      if (url.pathname === '/api/v1/products' && url.searchParams.get('q') === 'rice') {
+        await gate
+      }
+      return response
+    }) as typeof fetch
+    open = await openApp({ ...server, fetch: slow }, '/products')
+
+    vi.useFakeTimers()
+    await open.type('search', 'rice')
+    await vi.advanceTimersByTimeAsync(350)
+    await flushPromises()
+    await open.type('search', 'oil')
+    await vi.advanceTimersByTimeAsync(350)
+    await flushPromises()
+
+    expect(open.allByTestId('product-row')).toHaveLength(1)
+    expect(open.text()).toContain('Cooking oil 5l')
+    expect(open.text()).not.toContain('Rice 25kg')
+
+    release?.()
+    await flushPromises()
+    expect(open.allByTestId('product-row')).toHaveLength(1)
+    expect(open.text()).toContain('Cooking oil 5l')
+    expect(open.text()).not.toContain('Rice 25kg')
+  })
+
     const { server, app } = await openProducts(owner, [
       ...twoProducts(),
       aProduct({
