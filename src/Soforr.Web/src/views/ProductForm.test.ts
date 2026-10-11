@@ -1,3 +1,4 @@
+import { flushPromises } from '@vue/test-utils'
 import { afterEach, describe, expect, it } from 'vitest'
 import { aProduct, createFakeServer, type FakeUser } from '../test/fakeServer'
 import { openApp, signInAs } from '../test/openApp'
@@ -165,6 +166,33 @@ describe('editing a product', () => {
 
     expect(app.text()).toContain('was not found')
   })
+
+  it('loads the newly selected product when navigating between edit routes', async () => {
+    const secondId = '00000000-0000-0000-0000-000000000002'
+    const first = aProduct({ id })
+    const second = aProduct({
+      id: secondId,
+      sku: 'OIL-5',
+      name: 'Cooking oil 5l',
+      sellingPrice: 480,
+      costPrice: 400,
+    })
+    const { server, app } = await openForm(`/products/${id}/edit`, [first, second])
+    server.requests.length = 0
+
+    await app.router.push(`/products/${secondId}/edit`)
+    await flushPromises()
+
+    expect(app.field('sku').value).toBe('OIL-5')
+    expect(app.field('name').value).toBe('Cooking oil 5l')
+    expect(app.field('price').value).toBe('480')
+    expect(
+      server.requests.some(
+        (request) => request.method === 'GET' && request.path === `/api/v1/products/${secondId}`,
+      ),
+    ).toBe(true)
+  })
+
 })
 
 describe('the first journey: sign in, create a product', () => {
