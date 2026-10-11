@@ -257,6 +257,30 @@ describe('deactivating a product', () => {
     expect(server.products.every((product) => product.isActive)).toBe(true)
   })
 
+  it('keeps the error visible when deactivation fails', async () => {
+    const server = createFakeServer({ users: [owner], products: twoProducts() })
+    server.startSession(owner.email)
+    const original = server.fetch
+    const refusing = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(new Request(input, init).url)
+      if (url.pathname.endsWith('/deactivate')) {
+        return Response.json(
+          { status: 403, code: 'identity.forbidden', detail: 'You are not allowed to do this.' },
+          { status: 403 },
+        )
+      }
+      return original(input, init)
+    }) as typeof fetch
+    open = await openApp({ ...server, fetch: refusing }, '/products')
+
+    await open.click('Deactivate Rice 25kg')
+    await open.click('Yes, deactivate')
+
+    expect(open.byTestId('products-error')?.textContent).toContain('not allowed')
+    expect(open.text()).toContain('RICE-25')
+    expect(server.products.find((product) => product.sku === 'RICE-25')?.isActive).toBe(true)
+  })
+
   it('deactivates after confirmation and removes the product from the list', async () => {
     const { server, app } = await openProducts(owner)
 
