@@ -101,7 +101,6 @@ describe('the product list', () => {
     expect(app.allByTestId('product-row')).toHaveLength(1)
   })
 
-  it('shows inactive products only when asked', async () => {
   it('does not let an older search replace the latest results', async () => {
     const server = createFakeServer({ users: [owner], products: twoProducts() })
     server.startSession(owner.email)
@@ -138,6 +137,7 @@ describe('the product list', () => {
     expect(open.text()).not.toContain('Rice 25kg')
   })
 
+  it('shows inactive products only when asked', async () => {
     const { server, app } = await openProducts(owner, [
       ...twoProducts(),
       aProduct({
