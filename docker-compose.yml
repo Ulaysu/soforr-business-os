@@ -50,7 +50,9 @@ services:
       ASPNETCORE_HTTPS_PORT: ${API_HTTPS_PORT:-7443}
       ConnectionStrings__Database: "Host=postgres;Port=5432;Database=soforr;Username=soforr;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}"
       Kestrel__Certificates__Default__Path: /certs/aspnetapp.pfx
-      Kestrel__Certificates__Default__Password: ${DEV_CERT_PASSWORD:?Set DEV_CERT_PASSWORD in .env (see .env.example)}
+      # Not required for plain `docker compose up` (Compose reads every service's variables even when its profile is off). The api
+      # container needs it with the certificate; without them it stops with a clear certificate error.
+      Kestrel__Certificates__Default__Password: ${DEV_CERT_PASSWORD:-}
     ports:
       - "127.0.0.1:${API_HTTPS_PORT:-7443}:8443"
       - "127.0.0.1:${API_HTTP_PORT:-5080}:8080"
