@@ -48,13 +48,14 @@ The endpoint paths below are **module-relative route templates** taken from endp
 | Sales | Create/list/get/void sale; record payment; reverse payment | None found | Add Sales list/detail and action flows |
 | Purchasing | Suppliers; draft orders; place/cancel; receive goods | None found | Add Suppliers and Purchase Orders flows |
 | Customers | Create/list/get/update/deactivate and computed balance | None found | Add Customers and customer balance screens |
-| Intelligence / Sales summary | Revenue and quantity over N complete local days vs preceding N days; top sellers, slow movers, declining products; voided sales excluded | None found | Add Overview and sales insight detail |
-| Intelligence / Margins | Gross margin based on recorded cost at sale; product margin movement, loss-making products and missing costs | None found | Add margin insight; permission and data-quality states required |
-| Intelligence / Purchase costs | Latest cost vs supplier's prior purchase, supplier gap, volume/spend; insufficient history called out | None found | Add purchasing insight |
-| Intelligence / Receivables | Outstanding, not-yet-due, overdue aging buckets and most overdue customers/sales | None found | Add receivables view |
+| Intelligence / Sales summary | Revenue and quantity over N complete local days vs preceding N days; top sellers, slow movers, declining products; voided sales excluded | No UI consumer found | Add Overview and sales insight detail |
+| Intelligence / Margins | Gross margin based on recorded cost at sale; product margin movement, loss-making products and missing costs | No UI consumer found | Add margin insight; permission and data-quality states required |
+| Intelligence / Purchase costs | Latest cost vs supplier's prior purchase, supplier gap, volume/spend; insufficient history called out | No UI consumer found | Add purchasing insight |
+| Intelligence / Receivables | Outstanding, not-yet-due, overdue aging buckets and most overdue customers/sales | No UI consumer found | Add receivables view |
 | Audit | Owner-only paginated/filterable audit events | None found | Add owner-only audit page or explicitly defer |
 | Organizations | Read organization; update name/timezone/overdue materiality threshold; currency immutable | None found | Add settings page or explicitly defer |
-| Offline | Issue offline grant and record device contact; sale endpoint validates event time/grant | None found | Requires explicit offline-capable client and sync UX; API presence alone is insufficient |
+| Intelligence / Combined insights | Application-level `GetInsights` handler combines registered deterministic insight sources in fixed severity order, omitting cost sources for callers without cost permission | No HTTP route or Vue consumer found | Add a protected API endpoint before building the V1 “Things that need your attention” screen; add endpoint tests and regenerate OpenAPI types |
+| Offline | Issue offline grant and record device contact; sale endpoint validates event time/grant | No offline UI workflow found | Requires explicit offline-capable client and sync UX; API presence alone is insufficient |
 | Identity/session | Sign-in/session and sign-out experience exists; auth endpoint mapping is environment-specific per Program.cs comments | Sign-in and app shell | Verify session expiry, permission-denied behavior, production signup/verification and route redirects |
 | Health/readiness/OpenAPI | Hosting health checks; OpenAPI/Scalar mapped in Development | Operational tooling, not primary business UI | Document deployment/operations checks separately |
 
@@ -200,3 +201,15 @@ When an API contract, business calculation, permission, or screen changes, updat
 6. Make every metric actionable with a drill-down into the sales, products, purchase orders or customer balances behind it.
 7. Keep currency and period labels visible, and distinguish no activity from failed loading or denied access.
 
+
+
+## 10. Sellable V1 scope reconciliation
+
+The canonical product definition `docs/product/sellable-v1.md` is the authority for V1 scope. This audit reconciles implementation findings against it:
+
+- **No expense ledger:** expenses and receipts are explicitly PRODUCT-P1, not V1. Expense totals or net profit must not appear on Overview.
+- **No cash ledger:** recorded sale payments include a free-text method label (for example “Cash” or “Mobile money”), but that is not an opening balance, cashbook, bank reconciliation or available-cash ledger. Do not show a cash balance.
+- **No inventory valuation:** V1 margin uses the sale-line cost snapshot as a management metric. It does not implement FIFO, weighted-average cost or inventory valuation. Do not show “total inventory value.”
+- **Inventory risk rules exist in the Application layer:** the product definition and `InventoryRiskRule` cover reorder-point risk, estimated stock coverage, risk of running out before lead time, and suggested reorder quantity with its facts. However, the combined `GetInsights` handler is not mapped as an HTTP endpoint in `Program.cs`/the current `IntelligenceEndpoints.cs`, and no Vue screen consumes it. These rules are therefore not yet available to the browser as a unified attention list.
+- **Existing Products and Stock views:** source shows loading, empty and error states, plus pagination/search. Their tests include forbidden/unauthorized and network failure cases. Keep these patterns in the Overview. Product cost rendering must continue to respect the API's permission-sensitive cost field.
+- **V1 workflow is larger than the current UI:** Sellable V1 explicitly includes purchase/receipt, sales, customer balances, deterministic intelligence, and connectivity-resilient sales/payment workflows. Those remain route/screen gaps; do not mistake the present Products/Stock frontend for the complete V1 experience.
