@@ -82,10 +82,10 @@ These are the minimum contracts to settle before implementing Overview component
 ## 5. Gaps and recommended order
 
 ### P0 — establish reliable contracts
-1. Inspect intelligence application handlers and tests to record exact DTO fields, date boundaries, time-zone behavior, permission requirements, and calculation edge cases.
-2. Confirm route-group prefixes and API version prefix from endpoint mapping and OpenAPI output.
-3. Trace current Vue API clients, shared types, error handling and tests for Products and Stock.
-4. Confirm what expense, cash-ledger and inventory-valuation code exists elsewhere in the repository before classifying those capabilities as missing.
+1. **Completed in §9:** intelligence handlers, gathering/calculation rules, DTOs, and integration-test source files have been inspected. The tests were not run in this audit.
+2. **Completed in §9:** the four intelligence route prefixes and query parameters were confirmed from endpoint mappings and generated OpenAPI types.
+3. **Partially completed in §9:** the typed Vue API client and generated schemas were inspected; no active Vue consumer for the four intelligence reports was found. Product/Stock UI state handling still needs component/test review.
+4. Still confirm what expense, cash-ledger and inventory-valuation code exists elsewhere in the repository before classifying those capabilities as missing.
 
 ### P1 — close the most valuable existing API/UI gap
 1. Add an Overview route and screen backed only by existing intelligence and low-stock endpoints.
@@ -108,9 +108,9 @@ Do not mark a row complete until evidence is recorded.
 
 | Check | Evidence to record | Status |
 |---|---|---|
-| Each intelligence calculation matches its documented contract | Handler path + relevant test names/assertions | Pending |
-| Endpoint route prefix and version are confirmed | Endpoint group mapping / generated OpenAPI path | Pending |
-| Frontend clients map to exact request/response DTOs | Client module + type definitions | Pending |
+| Intelligence calculation contracts traced | Handlers, gatherers, calculators and integration-test source inspected; test execution not performed | Source traced; execution pending |
+| Endpoint route prefix and version are confirmed | Endpoint group mapping and generated OpenAPI schema | Confirmed in source |
+| Frontend intelligence client usage | Typed client and generated schema inspected; no Vue consumers found for intelligence operations | No consumer found; Overview/UI implementation pending |
 | Every visible screen handles loading, empty, error and forbidden states | Component tests / browser workflow | Pending |
 | Role and organization isolation are enforced server-side | Authorization tests + cross-organization integration tests | Pending |
 | Overview values link to supporting records | Browser test per card/alert | Pending |
