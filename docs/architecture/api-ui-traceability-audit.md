@@ -134,3 +134,69 @@ Do not mark a row complete until evidence is recorded.
 ## 8. Change policy
 
 When an API contract, business calculation, permission, or screen changes, update this document in the same PR. Add a test or explicitly explain why a test is not applicable. Never mark a capability “working” solely because an endpoint or component file exists.
+
+## 9. Verified intelligence contracts (source and test inspection)
+
+**Evidence level:** application handlers, calculation/gathering code, endpoint mappings, generated OpenAPI types, and integration-test source were inspected on `main`. The tests were **not executed as part of this audit**, so this section records implemented rules and existing test coverage, not a fresh passing test run.
+
+### 9.1 Sales summary — `GET /api/v1/intelligence/sales-summary?days=&top=`
+
+- Defaults to 30 complete local calendar days and compares with the immediately preceding equal-length period; `days` must be 1–92 and `top` 1–50.
+- Uses the organization's timezone and returns both periods' local dates and UTC boundaries, currency, totals, sale counts, top sellers, slow movers and declining products.
+- Only completed, non-voided sales count. Revenue sums the Domain-computed sale-line totals, so it should reconcile with recorded sales rather than a separate approximate formula.
+- Revenue growth is `(current − previous) / previous × 100`, rounded to one decimal place. If previous revenue is zero, growth is null and `growthStatus` is `no_comparable_previous_sales`; it is not represented as zero growth.
+- Top sellers rank by quantity, then revenue, name and ID; quantities remain per product because units such as bags and kilograms are not comparable.
+- Declining products must have sales in both periods and a quantity decrease of at least 20%. Slow movers are active products created before the current window, ranked by quantity; with fewer than five qualifying products the whole list is shown.
+- Requires `InsightsView`; Owner/Manager policy is enforced in the application permission model.
+
+**Test sources found:** `SalesSummaryTests.cs` covers calculation/period behavior and reconciliation against raw SQL; `SalesSummaryApiTests.cs` covers the HTTP/OpenAPI contract. Source inspection only; not run in this audit.
+
+### 9.2 Gross margin — `GET /api/v1/intelligence/margins?days=&top=`
+
+- Uses the same 30-day default, 92-day maximum, local-calendar comparison windows and completed-sale exclusions as sales summary.
+- Margin is a management measure: revenue actually charged minus the cost price captured on each sale line at sale time. It does **not** implement FIFO, weighted-average costing or inventory valuation.
+- A recorded cost of zero means cost is untracked. Those lines are excluded from the margin calculation and reported as revenue/quantity without recorded cost. DTO statuses distinguish `no_sales`, `cost_not_recorded`, `partly_costed` and `ok`; a missing margin is not guessed.
+- Margin percentage is rounded to one decimal place; margin change is a difference in percentage points and is only available when both periods have a margin percentage. Average unit price/cost use costed lines.
+- The report includes top products, negative-margin products, declining-margin products and products with missing/partial cost. Declining margin uses a five-percentage-point threshold; negative margin takes precedence in the attention insight.
+- Requires both `InsightsView` and `ProductViewCost`. Do not show this endpoint's data to someone who cannot view costs.
+
+**Test sources found:** `MarginTests.cs` includes raw-SQL reconciliation and calculation cases; `MarginApiTests.cs` covers the HTTP/OpenAPI contract. Source inspection only; not run in this audit.
+
+### 9.3 Purchase costs — `GET /api/v1/intelligence/purchase-costs?days=&top=`
+
+- Defaults to a 30-complete-local-day volume window, with `days` 1–92 and `top` 1–50. Cost comparison history is bounded to the preceding 365 days.
+- Counts lines from placed, partially received or received purchase orders. Draft and cancelled orders are excluded. The comparison date is when the order was placed, not when stock was received.
+- Compares each product's latest costed purchase against the previous costed purchase from the same supplier. A zero unit cost is treated as unrecorded and excluded from comparisons. One costed purchase returns `insufficient_history`, not “no change.”
+- A change or supplier gap is notable at an exact 10% threshold; the displayed percentage is rounded separately. Recent volume includes order count, quantity and spend. The DTO includes the threshold, lookback, currency and timezone.
+- Requires both `InsightsView` and `ProductViewCost`.
+
+**Test sources found:** `PurchaseCostsTests.cs` includes real-PostgreSQL and raw-SQL volume reconciliation cases; `PurchaseCostsApiTests.cs` covers the HTTP/OpenAPI contract. Source inspection only; not run in this audit.
+
+### 9.4 Receivables — `GET /api/v1/intelligence/receivables?top=`
+
+- Evaluates balances as of the current clock time; returns totals for all customers even though the customer list is capped. The default list size is 25, maximum 100.
+- Only completed sales made on account with a positive outstanding balance count. Walk-in and voided sales do not count.
+- Payments reduce only the sale they were recorded against; reversing a payment restores the balance of that same sale. No automatic reallocation across a customer's other sales occurs.
+- A due instant strictly earlier than now is overdue. Aging uses whole local calendar days in the organization's timezone and buckets overdue balances into 0–30, 31–60, 61–90 and 91+ days.
+- The response includes currency/timezone, as-of time, configured materiality threshold, outstanding/not-yet-due/overdue totals, aging buckets, counts of customers with balances/overdue balances, and customers with their open-sale counts and overdue-sale details.
+- Requires `InsightsView`; viewing receivables does not require cost visibility.
+
+**Test sources found:** `ReceivablesTests.cs` includes real-PostgreSQL balance reconciliation and aging cases; `ReceivablesApiTests.cs` covers the HTTP/OpenAPI contract. Source inspection only; not run in this audit.
+
+### 9.5 What the Vue layer currently has — and does not have
+
+- The shared `src/api/client.ts` is a typed `openapi-fetch` client generated from the committed OpenAPI snapshot. It carries the session cookie, adds antiforgery headers to unsafe methods, and calls the configured unauthorized handler on 401 responses.
+- `src/api/schema.d.ts` includes generated request/response types for all four intelligence operations. That proves the contract is represented in generated types, **not** that a screen calls the endpoint.
+- Search of frontend source found no active component/store call for these four intelligence operations. The router currently exposes sign-in, products and stock; `App.vue` navigation exposes Products and Stock. There is no Overview, Sales, Purchasing, Customers or Intelligence route yet.
+- Therefore, the current gap is not “invent the business formulas first.” It is to build the right screen over these verified contracts, then add browser/component coverage for loading, empty, forbidden, error and drill-down behavior.
+
+### 9.6 Overview design implications
+
+1. **Lead with plain-language outcomes**, e.g. “Sales were GMD X over 30 complete days, up/down Y% versus the previous 30 days,” rather than requiring owners to interpret a chart.
+2. If previous revenue is zero, show “No comparable previous sales” instead of a growth percentage.
+3. Display gross margin only when the caller has cost permission; make partial/unrecorded cost visible and never label margin as net profit.
+4. Present overdue balances separately from sales revenue and cash. Make aging and due dates visible.
+5. Treat insufficient supplier history as a real state. Don't call a price stable based on one purchase.
+6. Make every metric actionable with a drill-down into the sales, products, purchase orders or customer balances behind it.
+7. Keep currency and period labels visible, and distinguish no activity from failed loading or denied access.
+
