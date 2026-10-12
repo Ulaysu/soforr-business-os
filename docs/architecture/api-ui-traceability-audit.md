@@ -112,10 +112,10 @@ Do not mark a row complete until evidence is recorded.
 | Intelligence calculation contracts traced | Handlers, gatherers, calculators and integration-test source inspected; test execution not performed | Source traced; execution pending |
 | Endpoint route prefix and version are confirmed | Endpoint group mapping and generated OpenAPI schema | Confirmed in source |
 | Frontend intelligence client usage | Typed client and generated schema inspected; no Vue consumers found for intelligence operations | No consumer found; Overview/UI implementation pending |
-| Every visible screen handles loading, empty, error and forbidden states | Component tests / browser workflow | Pending |
+| Existing Products/Stock loading, empty, error and forbidden patterns | ProductsView.vue, StockView.vue and Products/Stock test sources inspected; no browser test execution in this audit | Source inspected; test execution pending |
 | Role and organization isolation are enforced server-side | Authorization tests + cross-organization integration tests | Pending |
 | Overview values link to supporting records | Browser test per card/alert | Pending |
-| Expense/cash/inventory valuation scope is resolved | Repository search + product decision | Pending |
+| Expense/cash/inventory valuation scope is resolved | Canonical Sellable V1 and scope docs plus repository search: expenses are Product P1; no cash ledger or inventory valuation is established; no Overview metrics for these are permitted | Resolved for V1 scope |
 | Full priority workflows pass end-to-end | CI evidence and reproducible test scenario | Pending |
 
 ## 7. Repository pointers inspected
