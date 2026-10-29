@@ -148,7 +148,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 - **Testing:** the harness's own migration-apply test. Test-only package: `Testcontainers.PostgreSql`.
 
 ### FOUNDATION-007 — Web project scaffold
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Frontend
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Frontend
 - **Description:** Create `src/Soforr.Web` with Vue 3, TypeScript (strict), Vite, Tailwind, ESLint/Prettier, Vitest, router, and a typed API client approach aligned with the OpenAPI document. A placeholder shell page only; no business screens.
 - **Acceptance criteria:** `npm ci && npm run build && npm test` pass; dev server proxies to the API; CI builds the frontend; no business rules in the client.
 - **Dependencies:** none
@@ -156,7 +156,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 - **Testing:** Vitest smoke test; build in CI.
 
 ### SECURITY-001 — Repository security baseline
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Security
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Security
 - **Description:** Dependabot config, NuGet vulnerability check in CI, secret scanning guidance (and a pre-commit/CI secret scan if free tooling suffices), `SECURITY.md` describing private vulnerability reporting.
 - **Acceptance criteria:** Vulnerable-package check fails CI on high severity; Dependabot enabled for NuGet, npm, GitHub Actions; `SECURITY.md` present.
 - **Dependencies:** none
@@ -564,12 +564,12 @@ Critical workflows (sales, credit sales, payments) continue offline and synchron
 - **Testing:** integration tests for 429 and headers.
 
 ### DEPLOY-001 — Local container development
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Backend
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Backend
 - **Description:** Dockerfile for the API and compose profile running API + PostgreSQL locally. No production deployment.
-- **Acceptance criteria:** `docker compose up` starts a working local system.
+- **Acceptance criteria:** `docker compose --profile app up --build` starts PostgreSQL, applies migrations, and starts a healthy API. Plain `docker compose up` remains database-only by design.
 - **Dependencies:** FOUNDATION-003
 - **Affected area:** repo root
-- **Testing:** start and hit health endpoint.
+- **Testing:** The `containers` CI job builds and starts the app profile, then checks readiness/liveness, OpenAPI, default-deny authorization, antiforgery over HTTPS, and migration-created tables. The documented local command uses the same app profile.
 
 ### DEPLOY-002 — Production deployment and configuration
 - **Status:** Backlog · **Priority:** SELLABLE-P0 · **Agent:** Backend / Security
@@ -659,7 +659,8 @@ Not started before Sellable V1 is achieved and real customers have been observed
 This section reports real item statuses; the status lines in the epics above are authoritative.
 
 - **No item currently has status `Ready`.** An item becomes `Ready` only when it is refined and its dependencies are `Done`; promoting one is a lead-agent or owner step.
-- **`In Review` (completion not confirmed):** FOUNDATION-007, SECURITY-001, CATALOG-004, INVENTORY-004 and DEPLOY-001. Their pull requests were merged to `main` and CI was green on each merge commit, but each item's acceptance criteria (for example the end-to-end journeys named under Testing) have not been verified against the repository in a documentation review, so their status is unchanged. Confirming them, or recording what is missing, is the first step before selecting new work.
+- **Verified `Done`:** FOUNDATION-007 ([PR #38](https://github.com/Ulaysu/soforr-business-os/pull/38)), SECURITY-001 ([PR #39](https://github.com/Ulaysu/soforr-business-os/pull/39)) and DEPLOY-001 ([PR #48](https://github.com/Ulaysu/soforr-business-os/pull/48)). Their stated acceptance criteria are supported by the merged changes and successful CI checks. DEPLOY-001's acceptance command is clarified above: the full local stack uses the `app` profile; the default command intentionally starts PostgreSQL only.
+- **`In Review` (specific acceptance gap remains):** CATALOG-004 ([PR #51](https://github.com/Ulaysu/soforr-business-os/pull/51)) and INVENTORY-004 ([PR #55](https://github.com/Ulaysu/soforr-business-os/pull/55)). CI and component/API tests pass, but the documented browser end-to-end journeys have not been completed. CATALOG-004 still needs a real-API browser journey covering sign-in and product create/edit/search/deactivate; the recorded manual real-API check covered sign-in, reload, create and duplicate SKU, not the full flow. INVENTORY-004 still needs a real-API browser journey covering stock view and adjustment with a reason. Do not mark these `Done` until the gaps are tested or the acceptance criteria are explicitly revised.
 - **`Backlog`:** the remaining SELLABLE-P0 items (for example CATALOG-005, IDENTITY-004, IDENTITY-005, PURCHASING-003, SALES-003, CUSTOMER-003, INTEL-007, OFFLINE-002..007, DEPLOY-002, OBS-001, OPS-001, E2E-001, COMMERCIAL-001, COMMERCIAL-002) need refinement and dependency checks before they are `Ready`.
 
 AUDIT-001, PURCHASING-001, SALES-001 and SECURITY-002 are `Done`.
