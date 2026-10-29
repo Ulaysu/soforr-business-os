@@ -1,12 +1,16 @@
 # Product Scope
 
-The product is sequenced toward a **globally sellable V1** ([sellable-v1.md](sellable-v1.md) is the canonical definition: what is in, what is deferred and the exit criteria). This document lists the modules and where each stands. Module boundaries are in [modules.md](../architecture/modules.md); work items and their priority classes are in [backlog.md](backlog.md).
+The product is sequenced toward a **sellable V1** that customers in any country can use and that is independently valuable without a marketplace ([vision.md](vision.md) is the canonical source for positioning and direction; [sellable-v1.md](sellable-v1.md) is the canonical definition of V1: what is in, what is deferred and the exit criteria). This document lists the modules and where each stands. Module boundaries are in [modules.md](../architecture/modules.md); work items and their priority classes are in [backlog.md](backlog.md).
 
 ## Global Product Boundary
+
+In V1, "global" means the Business OS can be sold to customers in different countries and is regionally configurable. It does not mean a marketplace or trade network (see [what "global" means](vision.md#what-global-means)).
 
 Soforr is designed for customers worldwide. V1 intentionally targets a focused operating model—connected web, single location or single stock pool, retail and light wholesale—while keeping the core domain independent of any one country or region.
 
 Global requirements that should influence the architecture include organization currency, time zone, locale-aware presentation, international addresses and phone numbers, configurable tax concepts, and provider-based payment/integration boundaries. These should be implemented when required by the relevant product slice rather than hard-coded as regional behavior.
+
+Country, currency, time zone and locale are distinct concepts and must not be conflated; the architecture principles are in [architecture.md](../architecture/architecture.md#future-architecture-boundaries-marketplace-and-country-markets).
 
 The product experience should compete on clarity, speed and deterministic operational intelligence. It is not positioned as an Africa-only POS, a regional payment product, or a full ERP.
 
@@ -36,11 +40,12 @@ The product experience should compete on clarity, speed and deterministic operat
 | Expenses | Recording non-inventory business costs (and expense insights) | PRODUCT-P1 |
 | Reporting beyond the V1 metrics | Further verified summaries | PRODUCT-P1 |
 | Notifications | Telling the owner what needs attention outside the app | PRODUCT-P1 |
-| Files / Receipts | Attachments such as receipts and invoices | PRODUCT-P1 |
+| Files / Receipts | Attachments such as receipts and invoices (general attachments only; invoice capture is an unresolved owner decision, see [Open decisions](sellable-v1.md#open-decisions-affecting-scope)) | PRODUCT-P1 |
 | Stored, approvable reorder recommendations | Recommendations as records the owner approves, creating a purchase order | PRODUCT-P1 |
 | Statistical intelligence | Forecasting, demand prediction, statistical anomaly detection | FUTURE |
 | AI assistant | Natural-language access, generated explanations (over the deterministic services) | FUTURE |
 | Automation | Safe, approved routine operations | FUTURE |
+| Marketplace and commercial network | Opt-in public listings, business discovery, country markets, cross-border trade ([vision.md](vision.md#direction-from-business-os-to-a-commercial-network)); not designed, no date | FUTURE |
 
 ## The Core Slice
 
@@ -82,6 +87,11 @@ Deterministic intelligence (explicit rules and calculations, no model) is in V1.
 - Statistical forecasting and anomaly detection
 - Automation of any business action
 - Expenses, receipts and file attachments
+- Invoice capture, OCR and automatic inventory capture (unresolved owner decision, [issue #69](https://github.com/Ulaysu/soforr-business-os/issues/69); not in V1 unless the owner approves)
+- Public marketplace listings and public business discovery
+- Cross-border marketplace ordering and trade workflows
+- A global commercial network as a launch dependency
+- International settlement or marketplace payment infrastructure
 - Native mobile applications and fully offline operation of the whole application (V1 is connectivity-resilient for its critical workflows; see sellable-v1.md)
 - Advanced accounting, payroll, tax compliance and country-specific regulatory integrations
 - Persistent wholesale price lists, volume tiers, minimum-order quantities, customer-specific catalogs and self-service B2B ordering
