@@ -8,7 +8,7 @@ The roadmap is sequenced by one constraint: **sellability**. The first goal is [
 
 "Global" in this roadmap means the Business OS can be sold to customers in different countries and configured regionally. It does **not** promise a marketplace, a trade network or any cross-border capability at V1 launch (see [what "global" means](vision.md#what-global-means)).
 
-V1 is globally positioned while deliberately narrow in operational scope. The first customer-ready release targets growing retail and light-wholesale businesses anywhere in the world, using a connected web workflow and a single location or stock pool. The domain should not assume Africa, a particular payment rail, a particular tax regime or a particular currency.
+V1 is globally positioned while deliberately narrow in operational scope. The first customer-ready release prioritizes small and medium-sized wholesalers and distributors anywhere in the world, using a connected web workflow and a single location or stock pool; basic retail and light-wholesale sales remain supported. The domain should not assume Africa, a particular payment rail, a particular tax regime or a particular currency.
 
 Regional capabilities are added through configuration and integrations as customer demand requires them. Global readiness does **not** mean implementing every country, payment provider, tax system, language or enterprise workflow in V1; it means avoiding architecture and product language that make those future markets expensive or unnatural to support.
 
@@ -72,7 +72,7 @@ Before any layer 2 work begins the owner must decide the open questions in [visi
 
 ## Market boundary
 
-V1 is aimed at **growing retail and light-wholesale businesses in any country**, with a deliberately focused first operating model: connectivity-resilient web (critical workflows keep working through outages and synchronize automatically), single location/single stock pool, and no full B2B commerce. Barcode lookup, controlled price overrides and customer credit make the first release useful across both retail checkout and basic wholesale selling. Full B2B pricing catalogs, volume tiers, MOQs, sales orders/quotes, returns/refunds, multi-location inventory and a fully offline application are deliberately later.
+V1 prioritizes **small and medium-sized wholesalers and distributors in any country**, with a deliberately focused first operating model: connectivity-resilient web (critical workflows keep working through outages and synchronize automatically), single location/single stock pool, and no full B2B commerce. Basic retail and light-wholesale sales remain supported. Barcode lookup, controlled price overrides and customer credit support those workflows without making retail the launch priority. Full B2B pricing catalogs, volume tiers, MOQs, sales orders/quotes, returns/refunds, multi-location inventory and a fully offline application are deliberately later.
 
 ## Note on Customers
 
