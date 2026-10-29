@@ -6,7 +6,7 @@ The product is sequenced toward a **sellable V1** that customers in any country 
 
 In V1, "global" means the Business OS can be sold to customers in different countries and is regionally configurable. It does not mean a marketplace or trade network (see [what "global" means](vision.md#what-global-means)).
 
-Soforr is designed for customers worldwide. V1 intentionally targets a focused operating model—connected web, single location or single stock pool, retail and light wholesale—while keeping the core domain independent of any one country or region.
+Soforr is designed for customers worldwide. V1 prioritizes small and medium-sized wholesalers and distributors, using a focused operating model—connected web, single location or single stock pool—while retaining basic retail and light-wholesale sales support. The core domain remains independent of any one country or region.
 
 Global requirements that should influence the architecture include organization currency, time zone, locale-aware presentation, international addresses and phone numbers, configurable tax concepts, and provider-based payment/integration boundaries. These should be implemented when required by the relevant product slice rather than hard-coded as regional behavior.
 
@@ -87,7 +87,6 @@ Deterministic intelligence (explicit rules and calculations, no model) is in V1.
 - Statistical forecasting and anomaly detection
 - Automation of any business action
 - Expenses, receipts and file attachments
-- Invoice capture, OCR and automatic inventory capture (unresolved owner decision, [issue #69](https://github.com/Ulaysu/soforr-business-os/issues/69); not in V1 unless the owner approves)
 - Public marketplace listings and public business discovery
 - Cross-border marketplace ordering and trade workflows
 - A global commercial network as a launch dependency
@@ -102,6 +101,10 @@ Deterministic intelligence (explicit rules and calculations, no model) is in V1.
 - Third-party integrations and country-specific payment/tax integrations
 - Industry-specific modules
 - SaaS billing
+
+## Unresolved V1 scope decision: invoice capture
+
+Whether invoice capture, OCR and automatic inventory capture belong in V1 remains undecided under [issue #69](https://github.com/Ulaysu/soforr-business-os/issues/69). It is neither included nor excluded from V1 until the owner decides. Do not implement it or treat it as approved scope before that decision. General file attachments remain PRODUCT-P1 and do not settle the invoice-capture question.
 
 ## Scope Rules
 
