@@ -1,6 +1,6 @@
 # Soforr Business OS
 
-Soforr is a Business Operating System (Business OS) first, for product-based businesses: retailers, wholesalers, distributors, importers and manufacturers. It is designed to reduce the manual work required to run the business. It starts with small and growing retail and light-wholesale businesses and must be valuable and sellable on its own, with no marketplace. Its long-term direction is to grow into a global commercial network; that direction is described, with its limits, in [docs/product/vision.md](docs/product/vision.md), the canonical source for positioning.
+Soforr is a Business Operating System (Business OS) first, for product-based businesses: retailers, wholesalers, distributors, importers and manufacturers. It is designed to reduce the manual work required to run the business. Sellable V1 prioritizes small and medium-sized wholesalers and distributors, while retaining basic retail and light-wholesale sales support. It must be valuable and sellable on its own, with no marketplace. Its long-term direction is to grow into a global commercial network; that direction is described, with its limits, in [docs/product/vision.md](docs/product/vision.md), the canonical source for positioning.
 
 Over time the system combines the areas below. **Sellable V1** includes sales, inventory, purchasing, customers and deterministic business intelligence; expenses, notifications, stored recommendations and automation are later ([sellable-v1.md](docs/product/sellable-v1.md)).
 
