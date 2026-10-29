@@ -8,14 +8,6 @@ The model is deliberately minimal; entities are named for orientation and refine
 
 ---
 
-## Identity
-- **Responsibility:** Authenticate users; roles and permissions.
-- **Concepts:** User, Role, Permission, Membership (user ↔ organization with a role).
-- **Commands:** RegisterUser, SignIn, AssignRole, DeactivateUser.
-- **Queries:** GetCurrentUser, ListMembers, GetEffectivePermissions.
-- **Invariants:** Email unique; passwords never stored in plain text; one role per membership; an organization always keeps at least one Owner.
-- **Depends on:** Organizations.
-
 ## Audit
 - **Class:** SELLABLE-P0.
 - **Responsibility:** An append-only record of business-sensitive actions: who did what, to which record, when, in which request.
@@ -28,7 +20,7 @@ The model is deliberately minimal; entities are named for orientation and refine
 
 ## Organizations
 - **Responsibility:** Tenants and their settings.
-- **Concepts:** Organization (name, currency, timezone).
+- **Concepts:** Organization (name, currency, timezone). There is no country attribute; country, currency, time zone and locale are distinct concepts (see [architecture boundaries](architecture.md#future-architecture-boundaries-marketplace-and-country-markets)). Whether and when an organisation country is introduced is an open owner decision.
 - **Commands:** UpdateOrganizationSettings (name, time zone and the optional overdue materiality threshold, a non-negative amount in the organization's currency, absent meaning none; the currency cannot change).
 - **Queries:** GetOrganization.
 - **API:** `GET /api/v1/organizations/{id}` (permission `OrganizationView`: every role) and `PUT /api/v1/organizations/{id}/settings` (`OrganizationManageSettings`: Owner only), documented in OpenAPI. A signed-in user is required; the id must be the caller's own organization, otherwise the answer is 404. There is no create endpoint: an organization is created by registering (Identity).
@@ -44,6 +36,7 @@ The model is deliberately minimal; entities are named for orientation and refine
 - **Ports (Application):** `ICurrentUser` (user id, organization id, role; null when not authenticated), `IUserAccounts` (stage a validated, hashed user without saving), `ISessionService` (start and end the cookie session).
 - **Authorization (IDENTITY-002):** `Permission` and `RolePermissions` (fixed role matrix in code, see [security.md](../security/security.md)); handlers call `ICurrentUser.Require(permission)` first.
 - **API (IDENTITY-001):** `GET /api/v1/auth/antiforgery`, `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/me`. Mapped **only in Development** until e-mail verification (IDENTITY-004) and rate limiting (SECURITY-002) exist.
+- **Planned (see [backlog.md](../product/backlog.md), not all implemented):** commands AssignRole and DeactivateUser, queries ListMembers and GetEffectivePermissions, and the invariants email unique, passwords never stored in plain text, and one role per membership.
 - **Invariants:** one membership per user (unique index); a membership has a known role; the registering user is the Owner. "An organization always keeps at least one Owner" is enforced when member management exists (IDENTITY-002). Permissions per role arrive with IDENTITY-002.
 - **Depends on:** Organizations.
 
@@ -121,7 +114,7 @@ The model is deliberately minimal; entities are named for orientation and refine
 - **Contract:** [offline-sync-contract.md](../engineering/offline-sync-contract.md).
 
 ## Customers
-- **Class:** SELLABLE-P0 as proposed (customer balances feed customer intelligence); the owner may move it to PRODUCT-P1.
+- **Class:** SELLABLE-P0 (accepted V1 product decision, see [sellable-v1.md](../product/sellable-v1.md#accepted-v1-product-decisions); customer balances feed customer intelligence).
 - **Responsibility:** Who the business sells to, and what they owe.
 - **Concepts:** Customer (name, contact details, optional credit terms), Payment (recorded against a sale; recording only, never processed). `Customer` exists with its persistence and API (CUSTOMER-001); payments, credit sales and balances are CUSTOMER-002.
 - **Customer (CUSTOMER-001):** name (required, at most 200 characters), contact details (one optional free-text field, at most 500 characters: personal data is minimized), optional credit terms in days (0 to 365; 0 means due immediately; absent means the organization's default, which belongs to the balance rules of CUSTOMER-002 and INTEL-005), active flag, UTC timestamps. Two customers may share a name. A customer is **never deleted**: it is deactivated, so past sales keep a valid customer; deactivating an inactive customer changes nothing, and a deactivated customer can still be updated. The database keys it by id with an (id, organization) key so sales can reference it together with the organization.
@@ -188,7 +181,7 @@ The model is deliberately minimal; entities are named for orientation and refine
 
 ## Files
 - **Class:** PRODUCT-P1.
-- **Responsibility:** Storing and serving attachments (receipts, invoices).
+- **Responsibility:** Storing and serving attachments (receipts, invoices). General attachments only. Invoice capture, OCR and automatic inventory capture are an unresolved owner decision ([issue #69](https://github.com/Ulaysu/soforr-business-os/issues/69)) and are not part of this module's definition.
 - **Concepts:** StoredFile (metadata, owner reference, content type, size, storage key).
 - **Commands:** UploadFile, DeleteFile (soft).
 - **Queries:** GetFileMetadata, DownloadFile.
