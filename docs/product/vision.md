@@ -16,7 +16,7 @@ It is not another dashboard. It understands what is happening in a business and 
 
 Soforr serves **product-based businesses**: those that buy, hold, make or sell physical goods. That includes retailers, wholesalers, distributors, importers and manufacturers.
 
-The **initial customer segment is narrower than the long-term audience.** Sellable V1 starts with small and growing retail and light-wholesale businesses ([sellable-v1.md](sellable-v1.md#target-customer-and-market-position)). That is a deliberate first-product choice and not a statement about who Soforr is for.
+The **initial customer segment is narrower than the long-term audience.** Sellable V1 prioritizes small and medium-sized wholesalers and distributors ([sellable-v1.md](sellable-v1.md#target-customer-and-market-position)). Retailers and other product-based businesses remain part of Soforr's broader audience; the V1 core can support basic retail and light-wholesale sales, but they are not the launch priority.
 
 - The core model (products, stock, purchases, sales) stays industry-neutral. Industry-specific behaviour is out of scope until real customers demand it.
 - Listing a business type here does not mean every workflow of that type is supported. In particular, which production workflows manufacturers will eventually receive is **undecided**; V1 has none.
