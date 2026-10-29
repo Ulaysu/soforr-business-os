@@ -11,7 +11,7 @@ Business owners enter purchases by hand: supplier, products, quantities and unit
 1. **Is invoice capture a V1 sellability requirement, or a post-V1 differentiator?**
 2. **Which extraction technologies, if any, are acceptable** given that V1 intelligence is deterministic and V1 excludes AI-assisted features ([sellable-v1.md](sellable-v1.md#intelligence-layers)).
 
-Today the repository defers all receipts and invoices as general attachments (Files, PRODUCT-P1, EPIC 13) and says nothing about extraction.
+The repository already records invoice capture and OCR as unresolved in `sellable-v1.md`; what is missing is a detailed, bounded workflow and the evidence needed to decide scope. General file attachments and receipts remain PRODUCT-P1 (Files, EPIC 13).
 
 ## 2. Three things that must not be conflated
 
@@ -29,12 +29,13 @@ All of this is a proposal for the owner to accept, change or reject.
 
 1. **Provide an invoice.** An authorised user supplies one invoice file for one supplier. Proposed supported types: PDF, JPEG, PNG, within a size limit the owner sets. One file per capture; no email ingestion, no batches.
 2. **Extract a draft.** The system proposes a *draft*, never a record. Proposed fields: supplier name, invoice number, invoice date, currency, and per line: description, quantity, unit cost, line total; plus invoice total. Each field is marked *found* with a confidence indication, or *not found*.
-3. **Review.** The user sees the file beside the draft, edits any field, and maps each line to an existing product. Suggestions (by SKU, barcode or name) are offered but never applied without the user's action. A line the user cannot map is left for the user to resolve, using the existing `CreateProduct`. Nothing is guessed.
-4. **Duplicate detection.** Before confirmation the system checks the same file content (hash) and the same supplier with the same invoice number and total. A suspected duplicate is shown and requires an explicit override.
-5. **Confirm.** Only an explicit user confirmation creates anything, and it does so by calling the **existing** purchasing commands (`CreatePurchaseOrder`, `PlacePurchaseOrder`) with their normal server-side validation, permissions, audit and tenant scoping.
-6. **Receive stock separately.** Stock changes **only** when the user confirms a receipt through the existing `ReceivePurchase` command. Proposed: capture can pre-fill that receipt, but receiving is a second explicit confirmation, so a mistaken extraction can never alter inventory on its own. The receipt uses the existing idempotent receipt id.
+3. **Review and match the supplier.** The user sees the file beside the draft and resolves the extracted supplier name to an existing supplier record. The user can correct the match; no supplier is silently created. The user edits any field and maps each line to an existing product. Suggestions (by SKU, barcode or name) are offered but never applied without the user's action. A line the user cannot map is left for the user to resolve using the existing `CreateProduct`. Nothing is guessed.
+4. **Match an existing purchase before creating one.** The user must choose whether the invoice belongs to an existing purchase order or represents a new purchase. If it matches an existing order, the capture is attached to that order's review/receiving flow and must not create a second order. If the goods have already been received, the workflow must not receive them again. Existing purchasing and receiving validation remains authoritative.
+5. **Duplicate detection and conflicts.** Before confirmation, check exact file content (hash), and supplier plus invoice number **regardless of whether the extracted total matches**. A supplier/invoice-number match with a different total is a conflict to review, not a clean invoice. Also compare supplier, invoice date and total as a secondary heuristic when invoice numbers are missing. Show the suspected matching record and require an explicit, audited override to proceed; an override never bypasses purchase/receipt validation or idempotency.
+6. **Confirm the purchase.** Only explicit user confirmation for a genuinely new purchase creates a purchase order, using the **existing** purchasing commands (`CreatePurchaseOrder`, `PlacePurchaseOrder`) with normal server-side validation, permissions, audit and tenant scoping. Matching an existing purchase does not create another one.
+7. **Receive stock separately.** Stock changes **only** when the user confirms a receipt through the existing `ReceivePurchase` command. Capture may pre-fill a receipt for review, but receiving is a second explicit confirmation. The receipt uses the existing idempotent receipt identifier, and a prior receipt must be detected rather than replayed.
 
-**The exact moment authoritative data changes** (proposed): purchase order creation and placing at step 5; inventory movements at step 6. Extraction, review and storage of the draft change no business record.
+**The exact moment authoritative data changes** (proposed): for a genuinely new purchase, purchase-order creation and placing happen at step 6; inventory movements happen only at step 7. Matching, extraction and review do not create a duplicate purchase, and inventory changes only for a separately confirmed, valid, not-already-recorded receipt.
 
 ## 4. Invariants (proposed, derived from #69 and existing rules)
 
@@ -43,7 +44,7 @@ All of this is a proposal for the owner to accept, change or reject.
 - **Missing is not zero.** A unit cost of 0 currently means "no cost recorded" ([modules.md](../architecture/modules.md#purchasing), margin rules). An uncertain or missing cost must stay visibly missing and block confirmation; it must never default to 0.
 - **Currency.** Purchase orders are in the organisation's currency and multi-currency purchasing is out of scope. An invoice in another currency is flagged, not converted or silently accepted.
 - **Tenant isolation and permissions.** The file, the draft and the capture history are tenant-scoped like any other record. Which permission governs capture (reusing purchasing permissions or adding one) is open.
-- **Audit.** Confirmation is an auditable event through `IAuditLog`.
+- **Audit.** Confirmation and any duplicate/conflict override are auditable events through `IAuditLog`.
 - **Deterministic and explainable.** Totals shown are checked by application code against the user-confirmed lines; a model never supplies a figure that is stored.
 
 ## 5. Security requirements
