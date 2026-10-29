@@ -19,9 +19,11 @@ async function signOut() {
 
 <template>
   <div class="min-h-screen bg-surface text-ink">
-    <header class="flex items-center justify-between border-b border-line bg-raised px-6 py-3">
-      <div class="flex items-center gap-6">
-        <span class="text-lg font-semibold">Soforr Business OS</span>
+    <header
+      class="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-line bg-raised px-4 py-3 sm:px-6"
+    >
+      <div class="flex flex-wrap items-center gap-x-6 gap-y-1">
+        <span class="text-lg font-semibold whitespace-nowrap">Soforr Business OS</span>
         <nav v-if="session.isSignedIn.value" aria-label="Main" class="flex gap-4 text-sm">
           <RouterLink
             v-for="link in links"
@@ -32,14 +34,16 @@ async function signOut() {
           >
         </nav>
       </div>
-      <div v-if="session.isSignedIn.value" class="flex items-center gap-4 text-sm">
+      <div v-if="session.isSignedIn.value" class="ml-auto flex items-center gap-4 text-sm">
         <span data-testid="role" class="text-muted">{{
           session.state.account?.role ?? 'No role'
         }}</span>
-        <BaseButton variant="secondary" @click="signOut">Sign out</BaseButton>
+        <BaseButton variant="secondary" class="whitespace-nowrap" @click="signOut"
+          >Sign out</BaseButton
+        >
       </div>
     </header>
-    <main class="mx-auto max-w-7xl px-6 py-8">
+    <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <RouterView />
     </main>
   </div>
