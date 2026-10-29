@@ -170,6 +170,32 @@ The authentication endpoints exist only in Development (see [ADR 0002](../decisi
 
 Vue 3 `<script setup>` + TypeScript strict, Vite, Tailwind. API access through a typed client generated from or aligned with the OpenAPI document. Components display and collect; they do not decide business outcomes.
 
+### Vue and Tailwind conventions
+
+The `frontend-ui-engineering` and `frontend-design` skills are written for React; their principles apply, their code does not. In Soforr.Web:
+
+| Skill guidance (React) | Soforr.Web |
+|---|---|
+| `Comp/Comp.tsx` folders | `src/components/<Name>.vue` with `<Name>.test.ts` beside it; one component per screen in `src/views/` |
+| `useState`, `useEffect` | `ref`, `computed`, `watch`, `onMounted` in `<script setup lang="ts">` |
+| Container and presentational components | The view loads data through `useApi()`; shared components take props and emit events |
+| Custom hooks | Composables in `src/composables/`, only once a second screen needs them |
+| Context | `provide` / `inject` (see `src/api/context.ts`) |
+| React Query, Zustand, Redux, Storybook | Not used. Local refs and the load-generation guard; no new dependency without owner approval |
+| URL state | `useRoute().query` for filters and paging that should be shareable |
+| Dialog with focus trap | Native `<dialog>` and `showModal()` |
+| Optimistic updates | Never for stock, money or anything the server decides |
+
+**Design system.** Colors, light and dark, are semantic tokens defined once in `src/styles/main.css`. Views use `bg-surface`, `bg-raised`, `text-ink`, `text-muted`, `border-line`, `border-control`, `bg-accent`, `text-danger` and the like, not raw `slate-*`, `blue-*` or `red-*` classes and not paired `dark:` variants. A new color is added as a token with its dark value and a checked contrast ratio.
+
+- Look: calm, dense, numbers first. One radius (`rounded-md`), no shadows, tables before card grids, system font stack, `tabular-nums` for amounts and quantities (right-aligned).
+- Spacing uses the Tailwind scale; no arbitrary pixel values.
+- Status is always text, optionally with a color (`StatusBadge`); color is never the only signal.
+- Shared patterns live in `src/components/` (`PageHeader`, `BaseButton`, `FormField`, `DataTable`, `StatusBadge`, `StateMessage`, `ListPager`, `FactList`). Reuse them before writing a new class list.
+- Every data section handles loading, empty, error, forbidden and (when offline support arrives) stale states; see section 4 of [the Overview specification](../product/overview-screen-spec.md).
+- Accessibility baseline: [accessibility.md](accessibility.md).
+- When both skills apply, `frontend-design` sets the direction and `frontend-ui-engineering` governs the implementation and its verification. Neither overrides the rules in this document, CLAUDE.md or an Accepted ADR.
+
 ## Local Development
 
 Prerequisites: .NET 10 SDK, Docker (local PostgreSQL via `docker compose`), Node LTS (from FOUNDATION-007).

@@ -163,6 +163,14 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 - **Affected area:** .github/, repo root
 - **Testing:** verify the CI step runs and can fail (demonstrated once).
 
+### WEB-UI-001 — Web design foundation
+- **Status:** In Progress · **Priority:** SELLABLE-P0 · **Agent:** Frontend
+- **Description:** Semantic light/dark design tokens, a small set of shared components (page header, button, form field, data table, status badge, state message, pager, fact list), the Vue/Tailwind and accessibility conventions, and the Stock and Product screens moved onto them. Presentation only: no API, permission or business-rule change, no new dependency.
+- **Acceptance criteria:** Existing screens keep their behavior and tests; no raw palette classes or paired `dark:` variants in views; text/background pairs meet WCAG AA; conventions documented in `docs/engineering/development.md` and `accessibility.md`.
+- **Dependencies:** FOUNDATION-007, CATALOG-004, INVENTORY-004
+- **Affected area:** Web, docs
+- **Testing:** component tests for the shared components; existing screen tests stay green; manual keyboard and light/dark check.
+
 ---
 
 # EPIC 02 — Identity & Organizations

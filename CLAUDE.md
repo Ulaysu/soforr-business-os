@@ -197,6 +197,8 @@ Responsible for:
 
 Business-critical rules must not exist only in the frontend.
 
+Vue, Tailwind, design-token and accessibility conventions for the frontend are in `docs/engineering/development.md` (Frontend) and `docs/engineering/accessibility.md`.
+
 ---
 
 # 5. Dependency Direction
