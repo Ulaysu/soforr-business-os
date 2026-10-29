@@ -14,11 +14,11 @@ Sellable V1 is **Business Operations + Deterministic Operational Intelligence**.
 
 ## Target customer and market position
 
-V1 is designed for **small and growing retail and light-wholesale businesses in any country** (the initial customer segment of a product-based Business OS; see [who Soforr is for](vision.md#who-it-is-for)) that need one operational source of truth for products, purchasing, stock, sales and customer balances. The first implementation intentionally starts with a **single location or single stock pool**, but that is a scope boundary for V1—not a geographic or long-term product limitation.
+V1 prioritizes **small and medium-sized wholesalers and distributors in any country** (see [who Soforr is for](vision.md#who-it-is-for)) that need one operational source of truth for products, purchasing, stock, sales and customer balances. Basic retail and light-wholesale sales remain supported by the core workflows, but retailers are not the initial launch priority. The first implementation intentionally starts with a **single location or single stock pool**, but that is a scope boundary for V1—not a geographic or long-term product limitation.
 
 Soforr is sold globally and regionally configurable (see [what "global" means](vision.md#what-global-means)); it is not an Africa-specific POS. A business in Banjul, London, New York, Toronto, Lagos, Dubai or elsewhere should recognize the same core product: a simple operating system for running a growing product-based business. Regional currencies, payment methods, tax rules, address conventions and other local requirements belong in configuration or integrations rather than assumptions embedded in the core domain.
 
-The product is intentionally **retail-and-light-wholesale**, not a full enterprise POS/ERP or B2B commerce portal. Retail software commonly combines inventory, sales, customer data and analytics; wholesale systems add account-specific pricing, quantity rules and payment terms. Soforr competes through a simpler experience and a stronger operational-intelligence layer rather than by copying every feature of mature enterprise suites.
+The product is intentionally **wholesale-and-distribution-first**, with basic retail and light-wholesale sales support—not a full enterprise ERP or B2B commerce portal. Wholesale and distribution operations need trustworthy purchasing, receiving, stock, sales, customer balances and operational insights. Soforr competes through a simpler experience and a stronger operational-intelligence layer rather than by copying every feature of mature enterprise suites.
 
 For the first release, Soforr is **connectivity-resilient** and web-based: critical operational workflows (sales, credit sales and recorded payments) continue during temporary network outages, with durable local persistence and automatic synchronization when connectivity returns. The server stays the source of truth; the browser keeps an operational copy and a queue of pending operations ([ADR 0007](../decisions/0007-offline-resilience.md)). Multi-location inventory, native mobile POS, payment-terminal integrations and advanced wholesale pricing are deliberately deferred because they materially increase complexity. They are product boundaries for V1, not permanent limitations or regional omissions.
 
@@ -134,7 +134,7 @@ V1 includes the minimum controls needed to sell credibly to both sides of the ma
 - **Retail reality without a full POS stack:** the web sale screen is designed for rapid product lookup and barcode-scanner input, and it keeps working through a connectivity outage (see Connectivity resilience below). V1 does not promise payment-terminal integration, receipt-printer integration or a native mobile app.
 - **Returns:** ordinary corrections use void. A proper merchandise-return/refund workflow is Product P1 because it requires explicit refund, stock disposition and fraud-control rules rather than pretending a void is a return.
 
-This makes the commercial claim honest: **Soforr V1 is a global, connectivity-resilient operations system for growing retail and light-wholesale businesses: critical operations continue offline and synchronize automatically when connectivity returns. It is not a fully offline application, a multi-location platform or a full B2B commerce suite.**
+This makes the commercial claim honest: **Soforr V1 is a global, connectivity-resilient operations system prioritizing small and medium-sized wholesalers and distributors, while supporting basic retail and light-wholesale sales. Critical operations continue offline and synchronize automatically when connectivity returns. It is not a fully offline application, a multi-location platform or a full B2B commerce suite.**
 
 ## Production readiness (Gate C)
 
@@ -153,7 +153,6 @@ A customer can understand what Soforr does, who it is for, what they get and how
 | Stored, approvable reorder recommendations and one-click purchase order creation from a recommendation | V1 shows the recommendation and its facts; the owner raises the purchase order | Product P1 |
 | In-app notifications | The insight list is the V1 surface | Product P1 |
 | Product reactivation, concurrent-edit protection on products, richer audit viewing | Open lifecycle decisions, no first-customer need | Product P1 |
-| Invoice capture, OCR and automatic inventory capture from supplier invoices | **Unresolved owner decision**, not classified as in or out of V1. See [Open decisions affecting scope](#open-decisions-affecting-scope) | Undecided ([issue #69](https://github.com/Ulaysu/soforr-business-os/issues/69)) |
 | Public marketplace listings and public business discovery | Marketplace is a later growth layer, not a V1 dependency | Future |
 | Cross-border marketplace ordering and trade workflows | Requires validated country markets first | Future |
 | A global commercial network as a launch dependency | V1 must be sellable without it | Future |
@@ -162,6 +161,10 @@ A customer can understand what Soforr does, who it is for, what they get and how
 | LLM assistant, natural-language questions, generated explanations | Layer 3; needs approval (paid service) | Future |
 | Automation and autonomous workflows | Layer 4 | Future |
 | Persistent wholesale price lists, volume pricing, minimum-order quantities, customer catalogs, sales orders/quotes, returns/refunds, multi-location inventory, native mobile apps, payment-terminal integrations and third-party integrations | Valuable market capabilities, but each adds meaningful workflow/state complexity; build from observed customer demand | Product P1 / Future |
+
+### Unresolved V1 scope decision: invoice capture
+
+Whether invoice capture, OCR and automatic inventory capture from supplier invoices belong in V1 remains undecided under [issue #69](https://github.com/Ulaysu/soforr-business-os/issues/69). It is neither included nor excluded from V1 until the owner decides. The generic Files / Receipts capability remains PRODUCT-P1; that does not decide the invoice-capture question. Any eventual workflow must retain the validation, user-confirmation and approval constraints documented in [Open decisions affecting scope](#open-decisions-affecting-scope).
 
 No marketplace entity, listing, country-market or cross-border model is built for V1; [architecture boundaries](../architecture/architecture.md#future-architecture-boundaries-marketplace-and-country-markets) are principles, not permission to implement.
 
