@@ -56,6 +56,11 @@ src/api/       typed client (client.ts), generated types (schema.d.ts), problem 
 src/stores/    the session
 src/router/    routes and the sign-in guard
 src/views/     one component per screen, with its test
+src/components/ shared presentational components (button, form field, table, status badge, state message, pager, fact list), with their tests
 src/test/      the fake server and the helper that mounts the application
-src/styles/    Tailwind entry
+src/styles/    Tailwind entry and the light/dark design tokens (main.css)
 ```
+
+## Look and conventions
+
+Colors come from semantic tokens in `src/styles/main.css` (`bg-surface`, `text-muted`, `border-line`, `bg-accent`, ...); light and dark are decided there, so screens do not use raw palette classes or `dark:` pairs. Shared pieces live in `src/components/`. The Vue and Tailwind conventions are in [development.md](../../docs/engineering/development.md#vue-and-tailwind-conventions) and the accessibility baseline in [accessibility.md](../../docs/engineering/accessibility.md).

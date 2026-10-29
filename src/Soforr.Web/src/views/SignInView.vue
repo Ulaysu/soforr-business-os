@@ -2,6 +2,11 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSession } from '../stores/session'
+import BaseButton from '../components/BaseButton.vue'
+import FormField from '../components/FormField.vue'
+import PageHeader from '../components/PageHeader.vue'
+import StateMessage from '../components/StateMessage.vue'
+import { inputClass } from '../components/styles'
 
 const session = useSession()
 const route = useRoute()
@@ -41,43 +46,38 @@ async function submit() {
 
 <template>
   <section class="mx-auto max-w-sm">
-    <h1 class="text-2xl font-semibold">Sign in</h1>
+    <PageHeader>Sign in</PageHeader>
     <form class="mt-6 space-y-4" novalidate @submit.prevent="submit">
-      <div>
-        <label class="block text-sm font-medium" for="email">E-mail address</label>
-        <input
-          id="email"
-          v-model="email"
-          type="email"
-          autocomplete="username"
-          class="mt-1 w-full rounded border border-slate-300 bg-transparent px-3 py-2 dark:border-slate-700"
-        />
-      </div>
-      <div>
-        <label class="block text-sm font-medium" for="password">Password</label>
-        <input
-          id="password"
-          v-model="password"
-          type="password"
-          autocomplete="current-password"
-          class="mt-1 w-full rounded border border-slate-300 bg-transparent px-3 py-2 dark:border-slate-700"
-        />
-      </div>
-      <p
-        v-if="message"
-        role="alert"
-        data-testid="sign-in-error"
-        class="text-sm text-red-600 dark:text-red-400"
-      >
+      <FormField id="email" label="E-mail address">
+        <template #default="{ aria }">
+          <input
+            id="email"
+            v-model="email"
+            type="email"
+            autocomplete="username"
+            :class="inputClass"
+            v-bind="aria"
+          />
+        </template>
+      </FormField>
+      <FormField id="password" label="Password">
+        <template #default="{ aria }">
+          <input
+            id="password"
+            v-model="password"
+            type="password"
+            autocomplete="current-password"
+            :class="inputClass"
+            v-bind="aria"
+          />
+        </template>
+      </FormField>
+      <StateMessage v-if="message" kind="error" data-testid="sign-in-error">
         {{ message }}
-      </p>
-      <button
-        type="submit"
-        :disabled="busy"
-        class="w-full rounded bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-      >
+      </StateMessage>
+      <BaseButton type="submit" class="w-full" :disabled="busy">
         {{ busy ? 'Signing in…' : 'Sign in' }}
-      </button>
+      </BaseButton>
     </form>
   </section>
 </template>
