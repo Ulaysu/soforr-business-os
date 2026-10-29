@@ -16,7 +16,7 @@ When requirements are unclear, stop and ask for clarification rather than invent
 
 # 2. Product Vision
 
-Soforr is a Business Operating System (Business OS) first, for product-based businesses (retailers, wholesalers, distributors, importers and manufacturers), starting with small and growing retail and light-wholesale businesses. Its long-term direction includes growing into a global commercial network, but the Business OS must be independently valuable and sellable without any marketplace.
+Soforr is a Business Operating System (Business OS) first, for product-based businesses (retailers, wholesalers, distributors, importers and manufacturers), prioritizing small and medium-sized wholesalers and distributors for Sellable V1 while retaining basic retail and light-wholesale sales support. Its long-term direction includes growing into a global commercial network, but the Business OS must be independently valuable and sellable without any marketplace.
 
 The canonical source for product identity, positioning and long-term direction is `docs/product/vision.md`. This section is a summary and must not be extended into a second copy of it.
 
