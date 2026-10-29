@@ -388,7 +388,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 
 ---
 
-# EPIC 07 — Customers and Balances (Sellable V1, proposed scope)
+# EPIC 07 — Customers and Balances (Sellable V1)
 
 Needed for customer balance and aging intelligence. Customers, credit sales and recorded payments are an accepted V1 product decision; see [sellable-v1.md](sellable-v1.md#accepted-v1-product-decisions).
 
@@ -635,7 +635,7 @@ Decompose into items when their dependencies approach Done and V1 is not at risk
 | INTEL-009 — Owner approval executes a purchase order | INTEL-008, PURCHASING-002 | The old INTEL-003: `ApproveReorder` / `DismissRecommendation`, audited, executed by the application |
 | NOTIF-001 — In-app notifications | INTEL-007 | Unread notifications for insights |
 | EPIC 08 — Expenses (and expense intelligence) | IDENTITY-003 | Simple expense recording, totals, period comparison, threshold alerts |
-| EPIC 13 — Files and receipts | IDENTITY-003, SECURITY-002 | Upload security per [security.md](../security/security.md#file-uploads) |
+| EPIC 13 — Files and receipts | IDENTITY-003, SECURITY-002 | General attachments only; invoice capture is an unresolved owner decision ([#69](https://github.com/Ulaysu/soforr-business-os/issues/69)). Upload security per [security.md](../security/security.md#file-uploads) |
 | EPIC 14 — Reporting beyond the V1 metrics | SALES-002, PURCHASING-002 | Read-only, deterministic |
 | Product reactivation; product concurrency; audit viewing | CATALOG-003, AUDIT-001 | Open lifecycle decisions noted in [modules.md](../architecture/modules.md#catalog) |
 
@@ -651,8 +651,24 @@ Not started before Sellable V1 is achieved and real customers have been observed
 | EPIC 15 — SaaS billing | **Needs approval** (paid services) |
 | EPIC 16 — Security and compliance beyond V1 hardening | Review before wider external use |
 | EPIC 17 — Observability beyond OBS-001 | Metrics and tracing platforms |
-| Industry-specific modules, multi-warehouse, mobile, integrations, advanced accounting, payroll | Only when real customers demand them |
+| Marketplace and commercial network: opt-in public listings, business discovery, country markets, quotation requests, connected cross-border trade | Strategic direction ([vision.md](vision.md#direction-from-business-os-to-a-commercial-network)); **post-V1, not designed, no dates**; needs owner decisions and an approved tenant-isolation design first |
+| Industry-specific modules (including any manufacturer production workflows), multi-warehouse, mobile, integrations, advanced accounting, payroll | Only when real customers demand them |
 
 # Next Executable Items
 
-Dependencies satisfied (status `Ready`): **AUDIT-001** (gates INVENTORY-003, PURCHASING-002, SALES-002 and IDENTITY-005), PURCHASING-001, SALES-001, SECURITY-002, SECURITY-001, FOUNDATION-007, DEPLOY-001.
+This section reports real item statuses; the status lines in the epics above are authoritative.
+
+- **No item currently has status `Ready`.** An item becomes `Ready` only when it is refined and its dependencies are `Done`; promoting one is a lead-agent or owner step.
+- **`In Review` (completion not confirmed):** FOUNDATION-007, SECURITY-001, CATALOG-004, INVENTORY-004 and DEPLOY-001. Their pull requests were merged to `main` and CI was green on each merge commit, but each item's acceptance criteria (for example the end-to-end journeys named under Testing) have not been verified against the repository in a documentation review, so their status is unchanged. Confirming them, or recording what is missing, is the first step before selecting new work.
+- **`Backlog`:** the remaining SELLABLE-P0 items (for example CATALOG-005, IDENTITY-004, IDENTITY-005, PURCHASING-003, SALES-003, CUSTOMER-003, INTEL-007, OFFLINE-002..007, DEPLOY-002, OBS-001, OPS-001, E2E-001, COMMERCIAL-001, COMMERCIAL-002) need refinement and dependency checks before they are `Ready`.
+
+AUDIT-001, PURCHASING-001, SALES-001 and SECURITY-002 are `Done`.
+
+# Open Owner Decisions (not backlog items)
+
+These are unresolved questions, not work items. No item below is `Ready`, and none may be implemented or assumed until the owner decides. The longer list of strategic open decisions is in [vision.md](vision.md#open-decisions).
+
+| Decision | Tracked in | Effect on the backlog |
+|---|---|---|
+| Whether invoice capture, OCR and automatic inventory capture belong in V1, and which extraction technologies (if any) are acceptable | [Issue #69](https://github.com/Ulaysu/soforr-business-os/issues/69) | No backlog item exists. If the owner includes it, a minimal workflow item is defined separately from general Files/Receipts (EPIC 13); any paid provider needs approval. |
+| First marketplace country, organisation country, marketplace participation and cross-organisation published reads | [vision.md](vision.md#open-decisions) | None for V1. See [architecture boundaries](../architecture/architecture.md#future-architecture-boundaries-marketplace-and-country-markets). |

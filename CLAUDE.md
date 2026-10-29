@@ -16,7 +16,9 @@ When requirements are unclear, stop and ask for clarification rather than invent
 
 # 2. Product Vision
 
-Soforr Business OS is an intelligent business operating system for small and medium-sized businesses.
+Soforr is a Business Operating System (Business OS) first, for product-based businesses (retailers, wholesalers, distributors, importers and manufacturers), prioritizing small and medium-sized wholesalers and distributors for Sellable V1 while retaining basic retail and light-wholesale sales support. Its long-term direction includes growing into a global commercial network, but the Business OS must be independently valuable and sellable without any marketplace.
+
+The canonical source for product identity, positioning and long-term direction is `docs/product/vision.md`. This section is a summary and must not be extended into a second copy of it.
 
 The goal is not to build another dashboard.
 
@@ -36,7 +38,9 @@ The product should reduce the amount of manual operational work required from bu
 
 # 3. Initial Product Scope
 
-The initial system will support:
+The modules below are the **long-term product scope** and the vocabulary for the system. They are **not V1 commitments.** What Sellable V1 includes and excludes is defined only in `docs/product/sellable-v1.md`; implementation status is tracked in `docs/product/backlog.md`.
+
+The system is expected to support, over time:
 
 - Organizations
 - Users and access control
@@ -48,10 +52,10 @@ The initial system will support:
 - Expenses
 - Reporting
 - Notifications
-- Automation
-- Business intelligence
-- AI-assisted recommendations
-- File and receipt management
+- Automation (later; not V1)
+- Business intelligence (deterministic in V1)
+- AI-assisted recommendations (later; not V1)
+- File and receipt management (later; not V1; invoice capture is an unresolved owner decision, issue #69)
 
 The first major workflow is:
 
@@ -72,6 +76,10 @@ Build complete vertical slices and keep the system usable at every meaningful st
 ## Sellable V1 Strategy
 
 Development is sequenced toward a **sellable, production-quality V1** (canonical definition: `docs/product/sellable-v1.md`).
+
+**Source-of-truth map** (details in `AGENTS.md`): Accepted ADRs govern the architecture decisions they record; `docs/product/vision.md` governs product positioning and long-term direction; `docs/product/sellable-v1.md` governs V1 scope and exclusions; `docs/product/backlog.md` tracks implementation status and executable work. Owner decisions that are unresolved stay unresolved until the owner explicitly approves them; do not settle them by implementation.
+
+The marketplace and commercial network are a later growth layer, not part of V1 and not a V1 dependency. Do not build marketplace, country-market, public-listing or cross-border concepts without explicit owner approval.
 
 - **Sellability is the primary sequencing constraint.** Backlog classes: SELLABLE-P0 (required for the first customer-ready product), PRODUCT-P1 (valuable, not required for the first sale), FUTURE (long-term). Work SELLABLE-P0 first, along the first vertical slice.
 - **Cut scope, not quality.** Never trade away tests, authorization, tenant isolation, data integrity, transaction boundaries, concurrency protection, validation, security, observability, migrations or error handling to go faster. If something must leave V1, remove a feature, not a quality requirement.
@@ -259,7 +267,7 @@ Logging:
 
 - Serilog
 
-AI:
+AI (later layers only; not V1, and a paid provider needs owner approval):
 
 - OpenAI API initially
 

@@ -141,11 +141,27 @@ Vue UI → client application service → local repository (IndexedDB) + outbox 
 - A service worker caches only the application shell. IndexedDB holds business data; the outbox holds pending mutations; the sync engine owns retries, ordering, state and failure classification.
 - Security: ADR 0002 is unchanged (cookie session, no stored credentials). Offline use is bounded to a window after the last online validation; local data is scoped to a user and organization as a logical guard (not encryption; the server derives identity itself); the server re-checks tenant, permission and rules on every replay.
 
-Status: accepted. The server contract is implemented (OFFLINE-001, [offline-sync-contract.md](../engineering/offline-sync-contract.md)); the web application does not exist yet, so the browser part follows FOUNDATION-007 and the online screens.
+Status: accepted. The server contract is implemented (OFFLINE-001, [offline-sync-contract.md](../engineering/offline-sync-contract.md)); the web application (`src/Soforr.Web`) now exists, and the offline browser part (OFFLINE-002 onward) is still to be built on top of it.
 
 ## Web application
 
 `src/Soforr.Web` is the Vue 3 single-page application (TypeScript strict, Vite, Tailwind CSS, Vue Router). It is a presentation layer: it holds no business rule, talks to the API only through a typed client generated from the API's OpenAPI document, authenticates with the HttpOnly session cookie (no credential in browser storage, ADR 0002) and is served same-site with the API (a dev proxy locally, the deployment in DEPLOY-002). The offline capabilities of ADR 0007 will live in this project (OFFLINE-002 onward) as a local store, an outbox and a sync engine behind application services; Vue components do not touch them directly.
+
+## Future architecture boundaries (marketplace and country markets)
+
+These are **boundary principles for future work**, taken from the product direction in [vision.md](../product/vision.md#direction-from-business-os-to-a-commercial-network). They constrain how later work may be designed. They are not requirements for V1, they are not permission to build marketplace features, and they change no accepted ADR. No marketplace, country-market, listing or cross-border concept exists in the code, and none may be added without owner approval.
+
+- **Country, currency, time zone and locale are distinct.** An organisation today has a currency and an IANA time zone and no country or locale attribute. None of the four may be derived from another (a country does not imply a currency, a time zone or a presentation locale).
+- **Home country does not decide marketplace participation.** Participation in a marketplace is explicit and opt-in. It is never inferred from an organisation's country or from its being a tenant.
+- **Internal products are not public listings.** The `Product` is an internal operational record. Anything shown to other businesses must be an explicitly approved public representation of product and business information, not the internal record exposed.
+- **Confidential data is private by default.** Cost price, margins, private inventory quantities, customer balances and other operational data are never publicly accessible by default. `ProductViewCost` and the tenant filters remain the model for internal visibility.
+- **No shortcut around tenant isolation.** Every business-owned row carries `OrganizationId` and is filtered server-side ([ADR 0002](../decisions/0002-authentication.md)); sign-in lookups are the only bypass and an architecture test enforces that. Any future read of another organisation's published data needs a deliberately designed path, an ADR and owner approval. Tenant filters are never weakened or bypassed to make it work; ADR 0002 already says a public organisation read "needs its own decision".
+- **Cross-border terms never rewrite history.** Offers and trades between markets may need their own currency, commercial terms and exchange-rate context. They must not reinterpret historical sales, purchases or movements, or change an organisation's ledger currency. Today an organisation's currency is fixed at creation and purchasing is single-currency; whether those invariants are permanent or V1-specific is an open owner decision.
+- **Markets share one platform.** Country-specific markets are logical markets on the same platform and reuse domain capabilities. They are not separate applications or deployments unless an approved architectural decision says otherwise. The modular monolith stays ([ADR 0001](../decisions/0001-dependency-model.md)).
+
+**Unevaluated candidate concepts.** Names such as `CountryCode`, `MarketplaceMarket`, `OrganizationMarketParticipation`, `BusinessProfile`, `ProductListing` and cross-border quotation or order models may be evaluated later. They are proposals only: not designed, not requirements, not implemented and not decided.
+
+**Open decisions** (owner approval required): see [vision.md](../product/vision.md#open-decisions). They include the organisation-country attribute and when it is introduced, the model for marketplace participation, the architecture for cross-organisation published reads, multi-organisation memberships (ADR 0002 keeps one organisation per user for the MVP), and the cross-border currency and terms model.
 
 ## Modules and Data
 

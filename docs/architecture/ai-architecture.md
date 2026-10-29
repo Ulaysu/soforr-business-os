@@ -40,7 +40,7 @@ The projection and quantity come from deterministic Intelligence logic; the AI p
 
 ## Tools
 
-Initial read-only tools (Application services with typed input/output):
+Target read-only tools for the later AI-assisted layer (Layer 3, not built or in V1; Application services with typed input/output). Some depend on capabilities that are themselves later scope: `GetInventoryForecast` needs statistical intelligence (Layer 2) and `GetExpenseSummary` needs expenses (PRODUCT-P1). V1 builds the deterministic services these tools would wrap, not the tools:
 
 - GetSalesSummary
 - GetLowStockProducts

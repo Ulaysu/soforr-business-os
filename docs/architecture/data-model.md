@@ -31,9 +31,10 @@ Organization ─┬─ Membership ── User
               ├─ InventoryMovement ── Product        (append-only)
               ├─ StockLevel ── Product               (one per product; = sum of movements)
               ├─ Sale ── SaleLine ── Product
-              ├─ ReorderRecommendation ── Product
               └─ AuditEvent
 ```
+
+`ReorderRecommendation` (stored, approvable recommendations) is PRODUCT-P1 (INTEL-008), not part of the first slice: V1 insights are computed on request and never stored.
 
 ## Offline tables (OFFLINE-001)
 

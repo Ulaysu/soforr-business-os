@@ -134,7 +134,7 @@ AI must remain subordinate to application business rules.
 
 AI must never become the authoritative source for financial or transactional data.
 
-Intelligence is layered: deterministic (Sellable V1), statistical, AI-assisted, approved automation. Only the deterministic layer is built before the first sale; do not build an AI platform ahead of a concrete requirement. Every insight must show the facts it was computed from, and nothing derived overrides a transaction.
+Intelligence is layered: deterministic (Sellable V1), statistical, AI-assisted, approved automation (see `docs/product/sellable-v1.md`). Only the deterministic layer is built before the first sale; do not build an AI platform ahead of a concrete requirement. Every insight must show the facts it was computed from, and nothing derived overrides a transaction.
 
 ---
 
@@ -165,13 +165,16 @@ Agents must treat the following as authoritative, in order:
 1. Explicit current human decisions
 2. Accepted human-approved Architecture Decision Records
 3. CLAUDE.md
-4. Product specifications (including `docs/product/sellable-v1.md`, the canonical definition of Sellable V1)
+4. Product specifications, each authoritative for its own subject: `docs/product/vision.md` for product identity, positioning and long-term direction, and `docs/product/sellable-v1.md` for V1 scope and exclusions
 5. Architecture documentation
-6. GitHub backlog
+6. The backlog (`docs/product/backlog.md`), which tracks implementation status and executable work, and the GitHub backlog
 7. Existing implementation
 
 Rules:
 
+- Subject authority: Accepted ADRs govern decisions already formally accepted about architecture; `vision.md` governs positioning and long-term direction; `sellable-v1.md` governs V1 scope and exclusions; the backlog governs implementation status. A document does not override another on a subject the other governs.
+- Unresolved owner decisions (for example the first marketplace country, whether invoice capture belongs in V1 per issue #69, the organisation-country attribute, and cross-organisation reads of published data) remain unresolved until the owner explicitly approves them. Agents must not settle them by implementation, by documentation wording, or by citing an issue thread that does not decide them.
+- Long-term direction in `vision.md` (marketplace, country markets, cross-border trade) is not V1 scope and is not a licence to build marketplace features; building any of it needs owner approval.
 - An ADR with status `Accepted`, approved by the human owner, supersedes older conflicting wording in CLAUDE.md and in lower-ranked documentation. Wording that conflicts with an Accepted ADR should be corrected, not obeyed.
 - Only the human owner accepts an ADR. Agents may draft ADRs as `Proposed` and must never mark one `Accepted`, and a `Proposed` ADR has no authority.
 - An ADR never overrides an explicit, newer human decision given in the current conversation. A later human decision supersedes an ADR until the ADR is formally updated or superseded.
