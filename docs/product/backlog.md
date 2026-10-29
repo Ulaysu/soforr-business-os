@@ -268,7 +268,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 - **Testing:** handler tests, API integration tests, authorization and tenant-isolation tests.
 
 ### CATALOG-004 — Product UI
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Frontend
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Frontend
 - **Description:** Sign-in shell, product list/search, create/edit form. Client validation is UX only.
 - **Acceptance criteria:** An owner can create, edit, search, deactivate products against the real API.
 - **Dependencies:** CATALOG-003, FOUNDATION-007, IDENTITY-001
@@ -313,7 +313,7 @@ Complete one strong vertical slice before widening. Tracks may run in parallel w
 - **Testing:** handler, API, authorization, tenant-isolation tests.
 
 ### INVENTORY-004 — Inventory UI
-- **Status:** In Review · **Priority:** SELLABLE-P0 · **Agent:** Frontend
+- **Status:** Done · **Priority:** SELLABLE-P0 · **Agent:** Frontend
 - **Description:** Stock levels view, movement history per product, manual adjustment form. Adds `GET /api/v1/inventory/stock` (paged list of active products with their on-hand quantity and the same low-stock flag as the single-product read; `inventory.view`).
 - **Acceptance criteria:** Owner can view stock and adjust with a reason.
 - **Dependencies:** INVENTORY-003, CATALOG-004
