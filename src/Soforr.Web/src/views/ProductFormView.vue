@@ -3,6 +3,11 @@ import { computed, reactive, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useApi } from '../api/context'
 import { networkProblem, toProblem } from '../api/problem'
+import BaseButton from '../components/BaseButton.vue'
+import FormField from '../components/FormField.vue'
+import PageHeader from '../components/PageHeader.vue'
+import StateMessage from '../components/StateMessage.vue'
+import { buttonClass, inputClass } from '../components/styles'
 import { canManageProducts, useSession } from '../stores/session'
 
 const props = defineProps<{ id?: string }>()
@@ -173,155 +178,131 @@ async function submit() {
     if (current === generation) saving.value = false
   }
 }
-
-const inputClass =
-  'mt-1 w-full rounded border border-slate-300 bg-transparent px-3 py-2 dark:border-slate-700'
 </script>
 
 <template>
   <section class="max-w-xl">
-    <h1 class="text-2xl font-semibold">{{ isEdit ? 'Edit product' : 'New product' }}</h1>
+    <PageHeader>{{ isEdit ? 'Edit product' : 'New product' }}</PageHeader>
 
     <p v-if="!canManage" data-testid="not-allowed" class="mt-4 text-sm">
       You can look at products but not change them.
-      <RouterLink class="underline" to="/products">Back to the products</RouterLink>
+      <RouterLink :class="buttonClass('link')" to="/products">Back to the products</RouterLink>
     </p>
 
-    <p v-else-if="loading" class="mt-4 text-sm text-slate-500">Loading…</p>
+    <StateMessage v-else-if="loading" kind="loading" class="mt-4">Loading…</StateMessage>
 
     <form v-else class="mt-6 space-y-4" novalidate @submit.prevent="submit">
-      <div>
-        <label class="block text-sm font-medium" for="sku">SKU</label>
-        <input id="sku" v-model="form.sku" :class="inputClass" autocomplete="off" />
-        <p
-          v-if="fieldError('sku')"
-          data-testid="error-sku"
-          class="mt-1 text-sm text-red-600 dark:text-red-400"
+      <FormField id="sku" label="SKU" :error="fieldError('sku')" error-test-id="error-sku">
+        <template #default="{ aria }">
+          <input id="sku" v-model="form.sku" :class="inputClass" autocomplete="off" v-bind="aria" />
+        </template>
+      </FormField>
+      <FormField id="name" label="Name" :error="fieldError('name')" error-test-id="error-name">
+        <template #default="{ aria }">
+          <input
+            id="name"
+            v-model="form.name"
+            :class="inputClass"
+            autocomplete="off"
+            v-bind="aria"
+          />
+        </template>
+      </FormField>
+      <FormField
+        id="unit"
+        label="Unit of measure"
+        :error="fieldError('unitOfMeasure')"
+        error-test-id="error-unitOfMeasure"
+      >
+        <template #default="{ aria }">
+          <input
+            id="unit"
+            v-model="form.unitOfMeasure"
+            placeholder="for example bag, kg, box"
+            :class="inputClass"
+            autocomplete="off"
+            v-bind="aria"
+          />
+        </template>
+      </FormField>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <FormField
+          id="price"
+          :label="`Selling price${currency ? ` (${currency})` : ''}`"
+          :error="fieldError('sellingPrice')"
+          error-test-id="error-sellingPrice"
         >
-          {{ fieldError('sku') }}
-        </p>
-      </div>
-      <div>
-        <label class="block text-sm font-medium" for="name">Name</label>
-        <input id="name" v-model="form.name" :class="inputClass" autocomplete="off" />
-        <p
-          v-if="fieldError('name')"
-          data-testid="error-name"
-          class="mt-1 text-sm text-red-600 dark:text-red-400"
+          <template #default="{ aria }">
+            <input
+              id="price"
+              v-model="form.sellingPrice"
+              inputmode="decimal"
+              :class="inputClass"
+              autocomplete="off"
+              v-bind="aria"
+            />
+          </template>
+        </FormField>
+        <FormField
+          id="cost"
+          :label="`Cost price${currency ? ` (${currency})` : ''}`"
+          :error="fieldError('costPrice')"
+          error-test-id="error-costPrice"
         >
-          {{ fieldError('name') }}
-        </p>
-      </div>
-      <div>
-        <label class="block text-sm font-medium" for="unit">Unit of measure</label>
-        <input
-          id="unit"
-          v-model="form.unitOfMeasure"
-          placeholder="for example bag, kg, box"
-          :class="inputClass"
-          autocomplete="off"
-        />
-        <p
-          v-if="fieldError('unitOfMeasure')"
-          data-testid="error-unitOfMeasure"
-          class="mt-1 text-sm text-red-600 dark:text-red-400"
+          <template #default="{ aria }">
+            <input
+              id="cost"
+              v-model="form.costPrice"
+              inputmode="decimal"
+              :class="inputClass"
+              autocomplete="off"
+              v-bind="aria"
+            />
+          </template>
+        </FormField>
+        <FormField
+          id="reorder"
+          label="Reorder at"
+          :error="fieldError('reorderPoint')"
+          error-test-id="error-reorderPoint"
         >
-          {{ fieldError('unitOfMeasure') }}
-        </p>
-      </div>
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium" for="price"
-            >Selling price{{ currency ? ` (${currency})` : '' }}</label
-          >
-          <input
-            id="price"
-            v-model="form.sellingPrice"
-            inputmode="decimal"
-            :class="inputClass"
-            autocomplete="off"
-          />
-          <p
-            v-if="fieldError('sellingPrice')"
-            data-testid="error-sellingPrice"
-            class="mt-1 text-sm text-red-600 dark:text-red-400"
-          >
-            {{ fieldError('sellingPrice') }}
-          </p>
-        </div>
-        <div>
-          <label class="block text-sm font-medium" for="cost"
-            >Cost price{{ currency ? ` (${currency})` : '' }}</label
-          >
-          <input
-            id="cost"
-            v-model="form.costPrice"
-            inputmode="decimal"
-            :class="inputClass"
-            autocomplete="off"
-          />
-          <p
-            v-if="fieldError('costPrice')"
-            data-testid="error-costPrice"
-            class="mt-1 text-sm text-red-600 dark:text-red-400"
-          >
-            {{ fieldError('costPrice') }}
-          </p>
-        </div>
-        <div>
-          <label class="block text-sm font-medium" for="reorder">Reorder at</label>
-          <input
-            id="reorder"
-            v-model="form.reorderPoint"
-            inputmode="decimal"
-            :class="inputClass"
-            autocomplete="off"
-          />
-          <p
-            v-if="fieldError('reorderPoint')"
-            data-testid="error-reorderPoint"
-            class="mt-1 text-sm text-red-600 dark:text-red-400"
-          >
-            {{ fieldError('reorderPoint') }}
-          </p>
-        </div>
-        <div>
-          <label class="block text-sm font-medium" for="lead">Supplier lead time (days)</label>
-          <input
-            id="lead"
-            v-model="form.reorderLeadTimeDays"
-            inputmode="numeric"
-            :class="inputClass"
-            autocomplete="off"
-          />
-          <p
-            v-if="fieldError('reorderLeadTimeDays')"
-            data-testid="error-reorderLeadTimeDays"
-            class="mt-1 text-sm text-red-600 dark:text-red-400"
-          >
-            {{ fieldError('reorderLeadTimeDays') }}
-          </p>
-        </div>
+          <template #default="{ aria }">
+            <input
+              id="reorder"
+              v-model="form.reorderPoint"
+              inputmode="decimal"
+              :class="inputClass"
+              autocomplete="off"
+              v-bind="aria"
+            />
+          </template>
+        </FormField>
+        <FormField
+          id="lead"
+          label="Supplier lead time (days)"
+          :error="fieldError('reorderLeadTimeDays')"
+          error-test-id="error-reorderLeadTimeDays"
+        >
+          <template #default="{ aria }">
+            <input
+              id="lead"
+              v-model="form.reorderLeadTimeDays"
+              inputmode="numeric"
+              :class="inputClass"
+              autocomplete="off"
+              v-bind="aria"
+            />
+          </template>
+        </FormField>
       </div>
 
-      <p
-        v-if="message"
-        role="alert"
-        data-testid="form-error"
-        class="text-sm text-red-600 dark:text-red-400"
-      >
-        {{ message }}
-      </p>
+      <StateMessage v-if="message" kind="error" data-testid="form-error">{{
+        message
+      }}</StateMessage>
 
       <div class="flex items-center gap-4">
-        <button
-          type="submit"
-          :disabled="saving"
-          class="rounded bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-        >
-          {{ saving ? 'Saving…' : 'Save' }}
-        </button>
-        <RouterLink class="underline" to="/products">Cancel</RouterLink>
+        <BaseButton type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save' }}</BaseButton>
+        <RouterLink :class="buttonClass('link')" to="/products">Cancel</RouterLink>
       </div>
     </form>
   </section>

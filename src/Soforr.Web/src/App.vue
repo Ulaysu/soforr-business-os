@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { RouterLink, RouterView, useRouter } from 'vue-router'
+import BaseButton from './components/BaseButton.vue'
 import { useSession } from './stores/session'
 
 const session = useSession()
 const router = useRouter()
+
+const links = [
+  { to: '/products', label: 'Products' },
+  { to: '/stock', label: 'Stock' },
+]
 
 async function signOut() {
   await session.signOut()
@@ -12,33 +18,28 @@ async function signOut() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-    <header
-      class="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800"
-    >
+  <div class="min-h-screen bg-surface text-ink">
+    <header class="flex items-center justify-between border-b border-line bg-raised px-6 py-3">
       <div class="flex items-center gap-6">
         <span class="text-lg font-semibold">Soforr Business OS</span>
         <nav v-if="session.isSignedIn.value" aria-label="Main" class="flex gap-4 text-sm">
-          <RouterLink class="underline-offset-4 hover:underline" to="/products"
-            >Products</RouterLink
+          <RouterLink
+            v-for="link in links"
+            :key="link.to"
+            :to="link.to"
+            class="underline-offset-4 hover:underline aria-[current=page]:font-semibold aria-[current=page]:text-accent"
+            >{{ link.label }}</RouterLink
           >
-          <RouterLink class="underline-offset-4 hover:underline" to="/stock">Stock</RouterLink>
         </nav>
       </div>
       <div v-if="session.isSignedIn.value" class="flex items-center gap-4 text-sm">
-        <span data-testid="role" class="text-slate-600 dark:text-slate-400">{{
+        <span data-testid="role" class="text-muted">{{
           session.state.account?.role ?? 'No role'
         }}</span>
-        <button
-          type="button"
-          class="rounded border border-slate-300 px-3 py-1 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
-          @click="signOut"
-        >
-          Sign out
-        </button>
+        <BaseButton variant="secondary" @click="signOut">Sign out</BaseButton>
       </div>
     </header>
-    <main class="mx-auto max-w-5xl px-6 py-8">
+    <main class="mx-auto max-w-7xl px-6 py-8">
       <RouterView />
     </main>
   </div>

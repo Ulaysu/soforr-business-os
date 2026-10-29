@@ -3,6 +3,12 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useApi } from '../api/context'
 import { networkProblem, toProblem } from '../api/problem'
+import DataTable from '../components/DataTable.vue'
+import PageHeader from '../components/PageHeader.vue'
+import ListPager from '../components/ListPager.vue'
+import StateMessage from '../components/StateMessage.vue'
+import StatusBadge from '../components/StatusBadge.vue'
+import { buttonClass, inputClass } from '../components/styles'
 import { formatNumber } from '../format'
 
 interface Row {
@@ -116,7 +122,7 @@ function goTo(next: number) {
 
 <template>
   <section>
-    <h1 class="text-2xl font-semibold">Stock</h1>
+    <PageHeader>Stock</PageHeader>
 
     <div class="mt-4 flex flex-wrap items-center gap-4">
       <label class="sr-only" for="search">Search products</label>
@@ -126,28 +132,26 @@ function goTo(next: number) {
         type="search"
         placeholder="Search by SKU or name"
         :disabled="lowOnly"
-        class="w-full max-w-xs rounded border border-slate-300 bg-transparent px-3 py-2 disabled:opacity-50 dark:border-slate-700"
+        :class="[inputClass, 'mt-0 max-w-xs']"
       />
       <label class="flex items-center gap-2 text-sm">
-        <input id="lowOnly" v-model="lowOnly" type="checkbox" />
+        <input id="lowOnly" v-model="lowOnly" type="checkbox" class="accent-accent" />
         Show only low stock
       </label>
     </div>
 
-    <p
-      v-if="error"
-      role="alert"
-      data-testid="stock-error"
-      class="mt-4 text-sm text-red-600 dark:text-red-400"
-    >
+    <StateMessage v-if="error" kind="error" data-testid="stock-error" class="mt-4">
       {{ error }}
-    </p>
+    </StateMessage>
 
-    <p v-if="loading && rows.length === 0" class="mt-6 text-sm text-slate-500">Loading…</p>
-    <p
+    <StateMessage v-if="loading && rows.length === 0" kind="loading" class="mt-6">
+      Loading…
+    </StateMessage>
+    <StateMessage
       v-else-if="!loading && !error && rows.length === 0"
+      kind="empty"
       data-testid="stock-empty"
-      class="mt-6 text-sm text-slate-500"
+      class="mt-6"
     >
       {{
         lowOnly
@@ -156,74 +160,44 @@ function goTo(next: number) {
             ? 'No products match your search.'
             : 'There are no products yet.'
       }}
-    </p>
+    </StateMessage>
 
-    <div v-if="rows.length > 0" class="mt-6 overflow-x-auto">
-      <table class="w-full text-left text-sm">
-        <thead class="border-b border-slate-200 text-slate-500 dark:border-slate-800">
+    <div v-if="rows.length > 0" class="mt-6">
+      <DataTable caption="Stock levels">
+        <template #head>
           <tr>
-            <th class="py-2 pr-4 font-medium">SKU</th>
-            <th class="py-2 pr-4 font-medium">Name</th>
-            <th class="py-2 pr-4 text-right font-medium">On hand</th>
-            <th class="py-2 pr-4 font-medium">Unit</th>
-            <th class="py-2 pr-4 text-right font-medium">Reorder at</th>
-            <th class="py-2 pr-4 font-medium">Status</th>
-            <th class="py-2 font-medium"><span class="sr-only">Details</span></th>
+            <th scope="col">SKU</th>
+            <th scope="col">Name</th>
+            <th scope="col" class="text-right">On hand</th>
+            <th scope="col">Unit</th>
+            <th scope="col" class="text-right">Reorder at</th>
+            <th scope="col">Status</th>
+            <th scope="col"><span class="sr-only">Details</span></th>
           </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="row in rows"
-            :key="row.productId"
-            data-testid="stock-row"
-            class="border-b border-slate-100 dark:border-slate-900"
-          >
-            <td class="py-2 pr-4 font-mono">{{ row.sku }}</td>
-            <td class="py-2 pr-4">{{ row.name }}</td>
-            <td class="py-2 pr-4 text-right" data-testid="quantity">
-              {{ formatNumber(row.quantity) }}
-            </td>
-            <td class="py-2 pr-4">{{ row.unitOfMeasure }}</td>
-            <td class="py-2 pr-4 text-right">{{ formatNumber(row.reorderPoint) }}</td>
-            <td class="py-2 pr-4">
-              <span
-                v-if="row.isLow"
-                class="rounded bg-amber-100 px-2 py-0.5 text-amber-900 dark:bg-amber-900 dark:text-amber-100"
-                >Low</span
-              >
-              <span v-else class="text-slate-500">OK</span>
-            </td>
-            <td class="py-2 text-right">
-              <RouterLink
-                :to="`/stock/${row.productId}`"
-                class="text-blue-600 underline dark:text-blue-400"
-                :aria-label="`Details of ${row.name}`"
-                >Details</RouterLink
-              >
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        </template>
+        <tr v-for="row in rows" :key="row.productId" data-testid="stock-row">
+          <td class="font-mono">{{ row.sku }}</td>
+          <td>{{ row.name }}</td>
+          <td class="text-right" data-testid="quantity">{{ formatNumber(row.quantity) }}</td>
+          <td>{{ row.unitOfMeasure }}</td>
+          <td class="text-right">{{ formatNumber(row.reorderPoint) }}</td>
+          <td>
+            <StatusBadge :tone="row.isLow ? 'warn' : 'ok'">{{
+              row.isLow ? 'Low' : 'OK'
+            }}</StatusBadge>
+          </td>
+          <td class="text-right">
+            <RouterLink
+              :to="`/stock/${row.productId}`"
+              :class="buttonClass('link')"
+              :aria-label="`Details of ${row.name}`"
+              >Details</RouterLink
+            >
+          </td>
+        </tr>
+      </DataTable>
 
-      <nav v-if="pageCount > 1" aria-label="Pages" class="mt-4 flex items-center gap-4 text-sm">
-        <button
-          type="button"
-          class="underline disabled:no-underline disabled:opacity-50"
-          :disabled="page <= 1"
-          @click="goTo(page - 1)"
-        >
-          Previous
-        </button>
-        <span data-testid="page-info">Page {{ page }} of {{ pageCount }}</span>
-        <button
-          type="button"
-          class="underline disabled:no-underline disabled:opacity-50"
-          :disabled="page >= pageCount"
-          @click="goTo(page + 1)"
-        >
-          Next
-        </button>
-      </nav>
+      <ListPager :page="page" :page-count="pageCount" @go="goTo" />
     </div>
   </section>
 </template>

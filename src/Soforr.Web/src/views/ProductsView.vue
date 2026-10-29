@@ -4,6 +4,13 @@ import { RouterLink } from 'vue-router'
 import { useApi } from '../api/context'
 import { networkProblem, toProblem } from '../api/problem'
 import type { components } from '../api/schema'
+import BaseButton from '../components/BaseButton.vue'
+import DataTable from '../components/DataTable.vue'
+import PageHeader from '../components/PageHeader.vue'
+import ListPager from '../components/ListPager.vue'
+import StateMessage from '../components/StateMessage.vue'
+import StatusBadge from '../components/StatusBadge.vue'
+import { buttonClass, inputClass } from '../components/styles'
 import { formatMoney, formatNumber } from '../format'
 import { canManageProducts, useSession } from '../stores/session'
 
@@ -107,16 +114,14 @@ async function deactivate(product: Product) {
 
 <template>
   <section>
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-2xl font-semibold">Products</h1>
-      <RouterLink
-        v-if="canManage"
-        to="/products/new"
-        class="rounded bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700"
-      >
-        New product
-      </RouterLink>
-    </div>
+    <PageHeader>
+      Products
+      <template #actions>
+        <RouterLink v-if="canManage" to="/products/new" :class="buttonClass('primary')">
+          New product
+        </RouterLink>
+      </template>
+    </PageHeader>
 
     <div class="mt-4 flex flex-wrap items-center gap-4">
       <label class="sr-only" for="search">Search products</label>
@@ -125,119 +130,96 @@ async function deactivate(product: Product) {
         v-model="search"
         type="search"
         placeholder="Search by SKU or name"
-        class="w-full max-w-xs rounded border border-slate-300 bg-transparent px-3 py-2 dark:border-slate-700"
+        :class="[inputClass, 'mt-0 max-w-xs']"
       />
       <label class="flex items-center gap-2 text-sm">
-        <input id="includeInactive" v-model="includeInactive" type="checkbox" />
+        <input
+          id="includeInactive"
+          v-model="includeInactive"
+          type="checkbox"
+          class="accent-accent"
+        />
         Show inactive
       </label>
     </div>
 
-    <p
-      v-if="error"
-      role="alert"
-      data-testid="products-error"
-      class="mt-4 text-sm text-red-600 dark:text-red-400"
-    >
+    <StateMessage v-if="error" kind="error" data-testid="products-error" class="mt-4">
       {{ error }}
-    </p>
+    </StateMessage>
 
-    <p v-if="loading && items.length === 0" class="mt-6 text-sm text-slate-500">Loading…</p>
-    <p
+    <StateMessage v-if="loading && items.length === 0" kind="loading" class="mt-6">
+      Loading…
+    </StateMessage>
+    <StateMessage
       v-else-if="!loading && !error && items.length === 0"
+      kind="empty"
       data-testid="products-empty"
-      class="mt-6 text-sm text-slate-500"
+      class="mt-6"
     >
       {{ search.trim() ? 'No products match your search.' : 'There are no products yet.' }}
-    </p>
+    </StateMessage>
 
-    <div v-if="items.length > 0" class="mt-6 overflow-x-auto">
-      <table class="w-full text-left text-sm">
-        <thead class="border-b border-slate-200 text-slate-500 dark:border-slate-800">
+    <div v-if="items.length > 0" class="mt-6">
+      <DataTable caption="Products">
+        <template #head>
           <tr>
-            <th class="py-2 pr-4 font-medium">SKU</th>
-            <th class="py-2 pr-4 font-medium">Name</th>
-            <th class="py-2 pr-4 font-medium">Unit</th>
-            <th class="py-2 pr-4 text-right font-medium">Price</th>
-            <th class="py-2 pr-4 text-right font-medium">Cost</th>
-            <th class="py-2 pr-4 text-right font-medium">Reorder at</th>
-            <th class="py-2 pr-4 font-medium">Status</th>
-            <th v-if="canManage" class="py-2 font-medium"><span class="sr-only">Actions</span></th>
+            <th scope="col">SKU</th>
+            <th scope="col">Name</th>
+            <th scope="col">Unit</th>
+            <th scope="col" class="text-right">Price</th>
+            <th scope="col" class="text-right">Cost</th>
+            <th scope="col" class="text-right">Reorder at</th>
+            <th scope="col">Status</th>
+            <th v-if="canManage" scope="col"><span class="sr-only">Actions</span></th>
           </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="product in items"
-            :key="product.id"
-            data-testid="product-row"
-            class="border-b border-slate-100 dark:border-slate-900"
-          >
-            <td class="py-2 pr-4 font-mono">{{ product.sku }}</td>
-            <td class="py-2 pr-4">{{ product.name }}</td>
-            <td class="py-2 pr-4">{{ product.unitOfMeasure }}</td>
-            <td class="py-2 pr-4 text-right">
-              {{ formatMoney(product.sellingPrice, product.currency) }}
-            </td>
-            <td class="py-2 pr-4 text-right">
-              {{ formatMoney(product.costPrice, product.currency) }}
-            </td>
-            <td class="py-2 pr-4 text-right">{{ formatNumber(product.reorderPoint) }}</td>
-            <td class="py-2 pr-4">{{ product.isActive ? 'Active' : 'Inactive' }}</td>
-            <td v-if="canManage" class="py-2 text-right whitespace-nowrap">
-              <template v-if="confirming === product.id">
-                <span class="mr-2">Deactivate {{ product.name }}?</span>
-                <button
-                  type="button"
-                  class="mr-2 text-red-600 underline dark:text-red-400"
-                  :disabled="deactivating === product.id"
-                  @click="deactivate(product)"
-                >
-                  Yes, deactivate
-                </button>
-                <button type="button" class="underline" @click="confirming = null">Cancel</button>
-              </template>
-              <template v-else>
-                <RouterLink
-                  v-if="product.isActive"
-                  :to="`/products/${product.id}/edit`"
-                  class="mr-3 text-blue-600 underline dark:text-blue-400"
-                >
-                  Edit
-                </RouterLink>
-                <button
-                  v-if="product.isActive"
-                  type="button"
-                  class="underline"
-                  :aria-label="`Deactivate ${product.name}`"
-                  @click="confirming = product.id"
-                >
-                  Deactivate
-                </button>
-              </template>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        </template>
+        <tr v-for="product in items" :key="product.id" data-testid="product-row">
+          <td class="font-mono">{{ product.sku }}</td>
+          <td>{{ product.name }}</td>
+          <td>{{ product.unitOfMeasure }}</td>
+          <td class="text-right">{{ formatMoney(product.sellingPrice, product.currency) }}</td>
+          <td class="text-right">{{ formatMoney(product.costPrice, product.currency) }}</td>
+          <td class="text-right">{{ formatNumber(product.reorderPoint) }}</td>
+          <td>
+            <StatusBadge :tone="product.isActive ? 'ok' : 'neutral'">{{
+              product.isActive ? 'Active' : 'Inactive'
+            }}</StatusBadge>
+          </td>
+          <td v-if="canManage" class="text-right whitespace-nowrap">
+            <template v-if="confirming === product.id">
+              <span class="mr-2">Deactivate {{ product.name }}?</span>
+              <BaseButton
+                variant="linkDanger"
+                class="mr-2"
+                :disabled="deactivating === product.id"
+                @click="deactivate(product)"
+              >
+                Yes, deactivate
+              </BaseButton>
+              <BaseButton variant="link" @click="confirming = null">Cancel</BaseButton>
+            </template>
+            <template v-else>
+              <RouterLink
+                v-if="product.isActive"
+                :to="`/products/${product.id}/edit`"
+                :class="[buttonClass('link'), 'mr-3']"
+              >
+                Edit
+              </RouterLink>
+              <BaseButton
+                v-if="product.isActive"
+                variant="link"
+                :aria-label="`Deactivate ${product.name}`"
+                @click="confirming = product.id"
+              >
+                Deactivate
+              </BaseButton>
+            </template>
+          </td>
+        </tr>
+      </DataTable>
 
-      <nav v-if="pageCount > 1" aria-label="Pages" class="mt-4 flex items-center gap-4 text-sm">
-        <button
-          type="button"
-          class="underline disabled:no-underline disabled:opacity-50"
-          :disabled="page <= 1"
-          @click="goTo(page - 1)"
-        >
-          Previous
-        </button>
-        <span data-testid="page-info">Page {{ page }} of {{ pageCount }}</span>
-        <button
-          type="button"
-          class="underline disabled:no-underline disabled:opacity-50"
-          :disabled="page >= pageCount"
-          @click="goTo(page + 1)"
-        >
-          Next
-        </button>
-      </nav>
+      <ListPager :page="page" :page-count="pageCount" @go="goTo" />
     </div>
   </section>
 </template>

@@ -4,6 +4,12 @@ import { RouterLink } from 'vue-router'
 import { useApi } from '../api/context'
 import { networkProblem, toProblem } from '../api/problem'
 import type { components } from '../api/schema'
+import BaseButton from '../components/BaseButton.vue'
+import DataTable from '../components/DataTable.vue'
+import FactList, { type Fact } from '../components/FactList.vue'
+import FormField from '../components/FormField.vue'
+import StateMessage from '../components/StateMessage.vue'
+import { buttonClass, inputClass } from '../components/styles'
 import { formatNumber } from '../format'
 import { canManageStock, useSession } from '../stores/session'
 
@@ -161,130 +167,114 @@ async function submit() {
   }
 }
 
-const inputClass =
-  'mt-1 w-full rounded border border-slate-300 bg-transparent px-3 py-2 dark:border-slate-700'
+const facts = computed<Fact[]>(() =>
+  level.value
+    ? [
+        {
+          label: 'On hand',
+          value: formatNumber(level.value.quantity),
+          testId: 'on-hand',
+          emphasis: true,
+        },
+        { label: 'Reorder at', value: formatNumber(level.value.reorderPoint) },
+        {
+          label: 'Supplier lead time',
+          value:
+            level.value.reorderLeadTimeDays === null
+              ? '—'
+              : `${level.value.reorderLeadTimeDays} days`,
+        },
+        { label: 'Status', value: level.value.isLow ? 'Low' : 'OK', testId: 'low' },
+      ]
+    : [],
+)
 </script>
 
 <template>
   <section>
-    <RouterLink class="text-sm underline" to="/stock">Back to the stock</RouterLink>
+    <RouterLink :class="buttonClass('link')" to="/stock">Back to the stock</RouterLink>
 
-    <p
-      v-if="loadError"
-      role="alert"
-      data-testid="stock-error"
-      class="mt-4 text-sm text-red-600 dark:text-red-400"
-    >
+    <StateMessage v-if="loadError" kind="error" data-testid="stock-error" class="mt-4">
       {{ loadError }}
-    </p>
+    </StateMessage>
 
     <template v-if="level">
       <h1 class="mt-3 text-2xl font-semibold">{{ level.name }}</h1>
-      <p class="text-sm text-slate-500">
+      <p class="text-sm text-muted">
         <span class="font-mono">{{ level.sku }}</span> ·
         {{ level.unitOfMeasure }}
       </p>
 
-      <dl class="mt-6 grid max-w-md grid-cols-2 gap-y-2 text-sm">
-        <dt class="text-slate-500">On hand</dt>
-        <dd data-testid="on-hand" class="text-right text-lg font-semibold">
-          {{ formatNumber(level.quantity) }}
-        </dd>
-        <dt class="text-slate-500">Reorder at</dt>
-        <dd class="text-right">{{ formatNumber(level.reorderPoint) }}</dd>
-        <dt class="text-slate-500">Supplier lead time</dt>
-        <dd class="text-right">
-          {{ level.reorderLeadTimeDays === null ? '—' : `${level.reorderLeadTimeDays} days` }}
-        </dd>
-        <dt class="text-slate-500">Status</dt>
-        <dd class="text-right" data-testid="low">{{ level.isLow ? 'Low' : 'OK' }}</dd>
-      </dl>
+      <div class="mt-6 max-w-md">
+        <FactList :facts="facts" />
+      </div>
 
       <form v-if="canManage" class="mt-8 max-w-md space-y-4" novalidate @submit.prevent="submit">
         <h2 class="text-lg font-semibold">Adjust the stock</h2>
-        <div>
-          <label class="block text-sm font-medium" for="quantityChange"
-            >Change (use a minus sign to remove)</label
-          >
-          <input
-            id="quantityChange"
-            v-model="quantityChange"
-            inputmode="decimal"
-            :class="inputClass"
-            autocomplete="off"
-          />
-          <p
-            v-if="fieldError('quantityChange')"
-            data-testid="error-quantityChange"
-            class="mt-1 text-sm text-red-600 dark:text-red-400"
-          >
-            {{ fieldError('quantityChange') }}
-          </p>
-        </div>
-        <div>
-          <label class="block text-sm font-medium" for="note">Why (required)</label>
-          <input id="note" v-model="note" :class="inputClass" autocomplete="off" />
-          <p
-            v-if="fieldError('note')"
-            data-testid="error-note"
-            class="mt-1 text-sm text-red-600 dark:text-red-400"
-          >
-            {{ fieldError('note') }}
-          </p>
-        </div>
-        <p
-          v-if="formError"
-          role="alert"
-          data-testid="form-error"
-          class="text-sm text-red-600 dark:text-red-400"
+        <FormField
+          id="quantityChange"
+          label="Change (use a minus sign to remove)"
+          :error="fieldError('quantityChange')"
+          error-test-id="error-quantityChange"
         >
+          <template #default="{ aria }">
+            <input
+              id="quantityChange"
+              v-model="quantityChange"
+              inputmode="decimal"
+              :class="inputClass"
+              autocomplete="off"
+              v-bind="aria"
+            />
+          </template>
+        </FormField>
+        <FormField
+          id="note"
+          label="Why (required)"
+          :error="fieldError('note')"
+          error-test-id="error-note"
+        >
+          <template #default="{ aria }">
+            <input id="note" v-model="note" :class="inputClass" autocomplete="off" v-bind="aria" />
+          </template>
+        </FormField>
+        <StateMessage v-if="formError" kind="error" data-testid="form-error">
           {{ formError }}
-        </p>
-        <p v-if="done" data-testid="done" class="text-sm text-green-700 dark:text-green-400">
+        </StateMessage>
+        <p v-if="done" role="status" data-testid="done" class="text-sm text-ok">
           {{ done }}
         </p>
-        <button
-          type="submit"
-          :disabled="saving"
-          class="rounded bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-        >
+        <BaseButton type="submit" :disabled="saving">
           {{ saving ? 'Saving…' : 'Adjust stock' }}
-        </button>
+        </BaseButton>
       </form>
-      <p v-else class="mt-8 text-sm text-slate-500">You can look at the stock but not change it.</p>
+      <p v-else class="mt-8 text-sm text-muted">You can look at the stock but not change it.</p>
 
       <section v-if="canManage" class="mt-10">
         <h2 class="text-lg font-semibold">History</h2>
-        <p v-if="movements.length === 0" class="mt-2 text-sm text-slate-500">
+        <StateMessage v-if="movements.length === 0" kind="empty" class="mt-2">
           No stock movements yet.
-        </p>
-        <table v-else class="mt-2 w-full text-left text-sm">
-          <thead class="border-b border-slate-200 text-slate-500 dark:border-slate-800">
+        </StateMessage>
+        <DataTable v-else class="mt-2" caption="Stock movements">
+          <template #head>
             <tr>
-              <th class="py-2 pr-4 font-medium">When</th>
-              <th class="py-2 pr-4 text-right font-medium">Change</th>
-              <th class="py-2 pr-4 font-medium">Reason</th>
-              <th class="py-2 font-medium">Note</th>
+              <th scope="col">When</th>
+              <th scope="col" class="text-right">Change</th>
+              <th scope="col">Reason</th>
+              <th scope="col">Note</th>
             </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="movement in movements"
-              :key="movement.id"
-              data-testid="movement-row"
-              class="border-b border-slate-100 dark:border-slate-900"
-            >
-              <td class="py-2 pr-4 whitespace-nowrap">{{ when(movement.occurredAtUtc) }}</td>
-              <td class="py-2 pr-4 text-right">
-                {{ Number(movement.quantityChange) > 0 ? '+' : ''
-                }}{{ formatNumber(movement.quantityChange) }}
-              </td>
-              <td class="py-2 pr-4">{{ reasonText(movement.reason) }}</td>
-              <td class="py-2">{{ movement.note ?? '' }}</td>
-            </tr>
-          </tbody>
-        </table>
-        <p v-if="movementTotal > movements.length" class="mt-2 text-sm text-slate-500">
+          </template>
+          <tr v-for="movement in movements" :key="movement.id" data-testid="movement-row">
+            <td class="whitespace-nowrap">{{ when(movement.occurredAtUtc) }}</td>
+            <td class="text-right">
+              {{ Number(movement.quantityChange) > 0 ? '+' : ''
+              }}{{ formatNumber(movement.quantityChange) }}
+            </td>
+            <td>{{ reasonText(movement.reason) }}</td>
+            <td>{{ movement.note ?? '' }}</td>
+          </tr>
+        </DataTable>
+        <p v-if="movementTotal > movements.length" class="mt-2 text-sm text-muted">
           Showing the latest {{ movements.length }} of {{ movementTotal }}.
         </p>
       </section>

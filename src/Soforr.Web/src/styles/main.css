@@ -1,1 +1,107 @@
 @import 'tailwindcss';
+
+/*
+ * Design tokens (docs/engineering/development.md, "Design system"). Screens use the semantic utilities generated below
+ * (bg-surface, text-muted, border-line, bg-accent, ...) and never raw palette colors, so light and dark are decided here
+ * once. Every text/background pair below meets WCAG 2.1 AA (4.5:1 text, 3:1 for control borders).
+ */
+:root {
+  --c-surface: #fbfaf8;
+  --c-raised: #ffffff;
+  --c-text: #1d2023;
+  --c-muted: #5c6169;
+  --c-line: #e3e0da;
+  --c-control: #8d9199;
+  --c-accent: #0f6b6b;
+  --c-accent-strong: #0b5555;
+  --c-accent-soft: #ddefee;
+  --c-on-accent: #ffffff;
+  --c-ok: #17663a;
+  --c-ok-soft: #e3f2e8;
+  --c-warn: #8a5200;
+  --c-warn-soft: #fbebd0;
+  --c-danger: #b3261e;
+  --c-danger-soft: #fbe3e1;
+  --c-info: #2f5d8a;
+  --c-info-soft: #e3edf7;
+}
+
+/* Dark follows the operating system unless the page says otherwise (data-theme on <html>). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --c-surface: #14161a;
+    --c-raised: #1b1e24;
+    --c-text: #ecedef;
+    --c-muted: #a3a8b0;
+    --c-line: #2d313a;
+    --c-control: #6b717b;
+    --c-accent: #4fb8b3;
+    --c-accent-strong: #6ccbc6;
+    --c-accent-soft: #12302f;
+    --c-on-accent: #0b1f1f;
+    --c-ok: #5fcb8a;
+    --c-ok-soft: #16301f;
+    --c-warn: #e8b04a;
+    --c-warn-soft: #3a2c10;
+    --c-danger: #f28b82;
+    --c-danger-soft: #3c1b19;
+    --c-info: #8db6e0;
+    --c-info-soft: #17283b;
+  }
+}
+
+:root[data-theme='dark'] {
+  --c-surface: #14161a;
+  --c-raised: #1b1e24;
+  --c-text: #ecedef;
+  --c-muted: #a3a8b0;
+  --c-line: #2d313a;
+  --c-control: #6b717b;
+  --c-accent: #4fb8b3;
+  --c-accent-strong: #6ccbc6;
+  --c-accent-soft: #12302f;
+  --c-on-accent: #0b1f1f;
+  --c-ok: #5fcb8a;
+  --c-ok-soft: #16301f;
+  --c-warn: #e8b04a;
+  --c-warn-soft: #3a2c10;
+  --c-danger: #f28b82;
+  --c-danger-soft: #3c1b19;
+  --c-info: #8db6e0;
+  --c-info-soft: #17283b;
+}
+
+@theme inline {
+  --color-surface: var(--c-surface);
+  --color-raised: var(--c-raised);
+  --color-ink: var(--c-text);
+  --color-muted: var(--c-muted);
+  --color-line: var(--c-line);
+  --color-control: var(--c-control);
+  --color-accent: var(--c-accent);
+  --color-accent-strong: var(--c-accent-strong);
+  --color-accent-soft: var(--c-accent-soft);
+  --color-on-accent: var(--c-on-accent);
+  --color-ok: var(--c-ok);
+  --color-ok-soft: var(--c-ok-soft);
+  --color-warn: var(--c-warn);
+  --color-warn-soft: var(--c-warn-soft);
+  --color-danger: var(--c-danger);
+  --color-danger-soft: var(--c-danger-soft);
+  --color-info: var(--c-info);
+  --color-info-soft: var(--c-info-soft);
+}
+
+@layer base {
+  /* One visible focus style for every keyboard-reachable control. */
+  :focus-visible {
+    outline: 2px solid var(--c-accent);
+    outline-offset: 2px;
+  }
+
+  /* Amounts and quantities line up in columns. */
+  td,
+  dd {
+    font-variant-numeric: tabular-nums;
+  }
+}
