@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { RouterLink, RouterView, useRouter } from 'vue-router'
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useSession } from './stores/session'
 import { useTheme } from './theme'
 
 const session = useSession()
 const router = useRouter()
+const route = useRoute()
 const { theme, toggle } = useTheme()
 
 // Icons are decorative (the label is always visible); 24x24 paths drawn with currentColor.
@@ -21,6 +22,11 @@ const links = [
     icon: 'M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12',
   },
 ]
+
+// A section stays selected on its sub-pages (for example Products while creating or editing a product).
+function isCurrent(to: string) {
+  return route.path === to || route.path.startsWith(`${to}/`)
+}
 
 const main = ref<HTMLElement | null>(null)
 
@@ -101,7 +107,12 @@ function initial() {
           v-for="link in links"
           :key="link.to"
           :to="link.to"
-          class="group flex items-center gap-3 rounded-lg px-3 py-2 font-medium text-nav-muted motion-safe:transition-colors hover:bg-hover hover:text-nav-ink aria-[current=page]:bg-nav-active aria-[current=page]:text-on-accent aria-[current=page]:hover:bg-nav-active"
+          class="group flex items-center gap-3 rounded-lg px-3 py-2 font-medium motion-safe:transition-colors"
+          :class="
+            isCurrent(link.to)
+              ? 'bg-nav-active text-on-accent'
+              : 'text-nav-muted hover:bg-hover hover:text-nav-ink'
+          "
         >
           <svg
             aria-hidden="true"
