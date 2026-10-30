@@ -5,12 +5,13 @@ import { useApi } from '../api/context'
 import { networkProblem, toProblem } from '../api/problem'
 import type { components } from '../api/schema'
 import BaseButton from '../components/BaseButton.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 import DataTable from '../components/DataTable.vue'
 import PageHeader from '../components/PageHeader.vue'
 import ListPager from '../components/ListPager.vue'
 import StateMessage from '../components/StateMessage.vue'
 import StatusBadge from '../components/StatusBadge.vue'
-import { buttonClass, inputClass } from '../components/styles'
+import { buttonClass, inputClass, panelClass } from '../components/styles'
 import { formatMoney, formatNumber } from '../format'
 import { canManageProducts, useSession } from '../stores/session'
 
@@ -33,6 +34,15 @@ const deactivating = ref<string | null>(null)
 let loadGeneration = 0
 
 const pageCount = computed(() => Math.max(1, Math.ceil(totalCount.value / pageSize)))
+const confirmingProduct = computed(() =>
+  items.value.find((product) => product.id === confirming.value),
+)
+const summary = computed(() => {
+  if (totalCount.value === 0) return ''
+  const from = (page.value - 1) * pageSize + 1
+  const to = Math.min(totalCount.value, page.value * pageSize)
+  return `Showing ${from}–${to} of ${totalCount.value}`
+})
 
 async function load() {
   const current = ++loadGeneration
@@ -116,28 +126,59 @@ async function deactivate(product: Product) {
   <section>
     <PageHeader>
       Products
+      <template #description>
+        <span data-testid="products-count">{{
+          totalCount === 1 ? '1 product' : `${totalCount} products`
+        }}</span>
+        · prices, units and reorder points
+      </template>
       <template #actions>
         <RouterLink v-if="canManage" to="/products/new" :class="buttonClass('primary')">
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            class="size-4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
           New product
         </RouterLink>
       </template>
     </PageHeader>
 
-    <div class="mt-4 flex flex-wrap items-center gap-4">
-      <label class="sr-only" for="search">Search products</label>
-      <input
-        id="search"
-        v-model="search"
-        type="search"
-        placeholder="Search by SKU or name"
-        :class="[inputClass, 'mt-0 max-w-xs']"
-      />
-      <label class="flex items-center gap-2 text-sm">
+    <div class="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
+      <div class="relative w-full max-w-sm">
+        <label class="sr-only" for="search">Search products</label>
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+        >
+          <circle cx="11" cy="11" r="6.5" />
+          <path d="M16 16l4 4" />
+        </svg>
+        <input
+          id="search"
+          v-model="search"
+          type="search"
+          placeholder="Search by SKU or name"
+          :class="[inputClass, 'mt-0 pl-9']"
+        />
+      </div>
+      <label class="flex cursor-pointer items-center gap-2 text-sm">
         <input
           id="includeInactive"
           v-model="includeInactive"
           type="checkbox"
-          class="accent-accent"
+          class="size-4 accent-accent"
         />
         Show inactive
       </label>
@@ -147,20 +188,31 @@ async function deactivate(product: Product) {
       {{ error }}
     </StateMessage>
 
-    <StateMessage v-if="loading && items.length === 0" kind="loading" class="mt-6">
-      Loading…
-    </StateMessage>
-    <StateMessage
+    <div v-if="loading && items.length === 0" class="mt-6" :class="panelClass">
+      <StateMessage kind="loading" class="sr-only">Loading…</StateMessage>
+      <div aria-hidden="true" class="divide-y divide-line">
+        <div v-for="n in 5" :key="n" class="flex items-center gap-4 px-4 py-4">
+          <span class="h-4 w-20 rounded bg-sunken motion-safe:animate-pulse"></span>
+          <span class="h-4 flex-1 rounded bg-sunken motion-safe:animate-pulse"></span>
+          <span class="hidden h-4 w-24 rounded bg-sunken motion-safe:animate-pulse sm:block"></span>
+        </div>
+      </div>
+    </div>
+    <div
       v-else-if="!loading && !error && items.length === 0"
-      kind="empty"
       data-testid="products-empty"
-      class="mt-6"
+      class="mt-6 rounded-lg border border-dashed border-control bg-raised px-6 py-14 text-center"
     >
-      {{ search.trim() ? 'No products match your search.' : 'There are no products yet.' }}
-    </StateMessage>
+      <StateMessage kind="empty">
+        {{ search.trim() ? 'No products match your search.' : 'There are no products yet.' }}
+      </StateMessage>
+      <p v-if="!search.trim() && canManage" class="mt-4">
+        <RouterLink to="/products/new" :class="buttonClass('primary')">New product</RouterLink>
+      </p>
+    </div>
 
-    <div v-if="items.length > 0" class="mt-6">
-      <DataTable caption="Products">
+    <div v-if="items.length > 0" class="mt-6" :aria-busy="loading">
+      <DataTable caption="Products" :class="loading && 'opacity-60'">
         <template #head>
           <tr>
             <th scope="col">SKU</th>
@@ -174,41 +226,34 @@ async function deactivate(product: Product) {
           </tr>
         </template>
         <tr v-for="product in items" :key="product.id" data-testid="product-row">
-          <td class="font-mono">{{ product.sku }}</td>
-          <td>{{ product.name }}</td>
-          <td>{{ product.unitOfMeasure }}</td>
-          <td class="text-right">{{ formatMoney(product.sellingPrice, product.currency) }}</td>
-          <td class="text-right">{{ formatMoney(product.costPrice, product.currency) }}</td>
-          <td class="text-right">{{ formatNumber(product.reorderPoint) }}</td>
+          <td class="font-mono text-xs whitespace-nowrap text-muted">{{ product.sku }}</td>
+          <td class="min-w-40 font-medium">{{ product.name }}</td>
+          <td class="text-muted">{{ product.unitOfMeasure }}</td>
+          <td class="text-right font-medium whitespace-nowrap">
+            {{ formatMoney(product.sellingPrice, product.currency) }}
+          </td>
+          <td class="text-right whitespace-nowrap text-muted">
+            {{ formatMoney(product.costPrice, product.currency) }}
+          </td>
+          <td class="text-right whitespace-nowrap text-muted">
+            {{ formatNumber(product.reorderPoint) }}
+          </td>
           <td>
             <StatusBadge :tone="product.isActive ? 'ok' : 'neutral'">{{
               product.isActive ? 'Active' : 'Inactive'
             }}</StatusBadge>
           </td>
           <td v-if="canManage" class="text-right whitespace-nowrap">
-            <template v-if="confirming === product.id">
-              <span class="mr-2">Deactivate {{ product.name }}?</span>
-              <BaseButton
-                variant="linkDanger"
-                class="mr-2"
-                :disabled="deactivating === product.id"
-                @click="deactivate(product)"
-              >
-                Yes, deactivate
-              </BaseButton>
-              <BaseButton variant="link" @click="confirming = null">Cancel</BaseButton>
-            </template>
-            <template v-else>
+            <template v-if="product.isActive">
               <RouterLink
-                v-if="product.isActive"
                 :to="`/products/${product.id}/edit`"
-                :class="[buttonClass('link'), 'mr-3']"
+                :class="buttonClass('link')"
+                :aria-label="`Edit ${product.name}`"
               >
                 Edit
               </RouterLink>
               <BaseButton
-                v-if="product.isActive"
-                variant="link"
+                variant="linkDanger"
                 :aria-label="`Deactivate ${product.name}`"
                 @click="confirming = product.id"
               >
@@ -217,9 +262,36 @@ async function deactivate(product: Product) {
             </template>
           </td>
         </tr>
+        <template #footer>
+          <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <ListPager
+              v-if="pageCount > 1"
+              class="w-full"
+              :page="page"
+              :page-count="pageCount"
+              :summary="summary"
+              @go="goTo"
+            />
+            <span v-else class="text-muted" data-testid="page-summary">{{ summary }}</span>
+          </div>
+        </template>
       </DataTable>
-
-      <ListPager :page="page" :page-count="pageCount" @go="goTo" />
     </div>
+
+    <ConfirmDialog
+      v-if="confirmingProduct"
+      :title="`Deactivate ${confirmingProduct.name}?`"
+      confirm-label="Yes, deactivate"
+      tone="danger"
+      :busy="deactivating === confirmingProduct.id"
+      @confirm="deactivate(confirmingProduct)"
+      @cancel="confirming = null"
+    >
+      <p>
+        <span class="font-mono text-xs">{{ confirmingProduct.sku }}</span> will be marked inactive.
+        It is hidden from this list unless “Show inactive” is on, and it can no longer be edited
+        here.
+      </p>
+    </ConfirmDialog>
   </section>
 </template>

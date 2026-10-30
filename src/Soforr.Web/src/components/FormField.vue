@@ -7,6 +7,7 @@ const props = defineProps<{
   error?: string | null
   errorTestId?: string
   hint?: string
+  required?: boolean
 }>()
 
 const errorId = computed(() => `${props.id}-error`)
@@ -18,15 +19,19 @@ const aria = computed(() => ({
       .filter(Boolean)
       .join(' ') || undefined,
   'aria-invalid': props.error ? true : undefined,
+  'aria-required': props.required ? true : undefined,
 }))
 </script>
 
 <template>
   <div>
-    <label class="block text-sm font-medium" :for="id">{{ label }}</label>
+    <label class="block text-sm font-medium text-ink" :for="id"
+      >{{ label
+      }}<span v-if="required" aria-hidden="true" class="ml-0.5 text-danger">*</span></label
+    >
     <slot :aria="aria" />
-    <p v-if="hint" :id="hintId" class="mt-1 text-xs text-muted">{{ hint }}</p>
-    <p v-if="error" :id="errorId" :data-testid="errorTestId" class="mt-1 text-sm text-danger">
+    <p v-if="hint" :id="hintId" class="mt-1.5 text-xs text-muted">{{ hint }}</p>
+    <p v-if="error" :id="errorId" :data-testid="errorTestId" class="mt-1.5 text-sm text-danger">
       {{ error }}
     </p>
   </div>

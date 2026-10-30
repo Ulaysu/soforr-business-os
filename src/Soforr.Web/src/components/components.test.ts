@@ -2,6 +2,7 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h } from 'vue'
 import BaseButton from './BaseButton.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
 import DataTable from './DataTable.vue'
 import FactList from './FactList.vue'
 import FormField from './FormField.vue'
@@ -102,5 +103,33 @@ describe('StatusBadge, FactList and DataTable', () => {
     const wrapper = mount(Host)
     expect(wrapper.get('caption').text()).toBe('Stock levels')
     expect(wrapper.get('th').attributes('scope')).toBe('col')
+  })
+})
+
+describe('ConfirmDialog', () => {
+  const mountDialog = (busy = false) =>
+    mount(ConfirmDialog, {
+      props: { title: 'Deactivate Rice?', confirmLabel: 'Yes, deactivate', busy },
+      slots: { default: 'It will be hidden.' },
+      attachTo: document.body,
+    })
+
+  it('names itself by its title and starts on the safe choice', () => {
+    const wrapper = mountDialog()
+    expect(wrapper.get('dialog').attributes('aria-labelledby')).toBe('confirm-title')
+    expect(wrapper.get('#confirm-title').text()).toBe('Deactivate Rice?')
+    expect(document.activeElement?.textContent?.trim()).toBe('Cancel')
+    wrapper.unmount()
+  })
+
+  it('emits confirm and cancel, and cannot be confirmed while busy', async () => {
+    const wrapper = mountDialog()
+    const [cancel, confirm] = wrapper.findAll('button')
+    await confirm?.trigger('click')
+    await cancel?.trigger('click')
+    expect(wrapper.emitted('confirm')).toHaveLength(1)
+    expect(wrapper.emitted('cancel')).toHaveLength(1)
+    wrapper.unmount()
+    expect(mountDialog(true).findAll('button')[1]?.attributes('disabled')).toBeDefined()
   })
 })

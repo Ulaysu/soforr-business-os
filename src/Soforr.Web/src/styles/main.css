@@ -3,18 +3,24 @@
 /*
  * Design tokens (docs/engineering/development.md, "Design system"). Screens use the semantic utilities generated below
  * (bg-surface, text-muted, border-line, bg-accent, ...) and never raw palette colors, so light and dark are decided here
- * once. Every text/background pair below meets WCAG 2.1 AA (4.5:1 text, 3:1 for control borders).
+ * once. Teal is reserved for primary actions, the selected navigation item, links and focus. Every text/background pair
+ * below meets WCAG 2.1 AA (4.5:1 text, 3:1 for control borders).
+ *
+ * Surface layers, light: surface (page, warm off-white) < sunken (table header, inset areas) < raised (panels, white).
+ * Surface layers, dark: surface (midnight) < sunken < raised (slate); hover is one step above raised.
  */
 :root {
-  --c-surface: #fbfaf8;
+  --c-surface: #f6f5f2;
   --c-raised: #ffffff;
-  --c-text: #1d2023;
-  --c-muted: #5c6169;
-  --c-line: #e3e0da;
-  --c-control: #8d9199;
-  --c-accent: #0f6b6b;
-  --c-accent-strong: #0b5555;
-  --c-accent-soft: #ddefee;
+  --c-sunken: #f0efeb;
+  --c-hover: #f3f6f5;
+  --c-text: #15201f;
+  --c-muted: #55606a;
+  --c-line: #e2e0d9;
+  --c-control: #868c94;
+  --c-accent: #0b7a73;
+  --c-accent-strong: #086c67;
+  --c-accent-soft: #dcefed;
   --c-on-accent: #ffffff;
   --c-ok: #17663a;
   --c-ok-soft: #e3f2e8;
@@ -24,56 +30,68 @@
   --c-danger-soft: #fbe3e1;
   --c-info: #2f5d8a;
   --c-info-soft: #e3edf7;
+  --shadow-panel: 0 1px 2px rgb(21 32 31 / 0.06), 0 1px 1px rgb(21 32 31 / 0.03);
+  --shadow-pop: 0 24px 48px -12px rgb(21 32 31 / 0.3), 0 4px 12px rgb(21 32 31 / 0.08);
 }
 
 /* Dark follows the operating system unless the page says otherwise (data-theme on <html>). */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --c-surface: #14161a;
-    --c-raised: #1b1e24;
-    --c-text: #ecedef;
-    --c-muted: #a3a8b0;
-    --c-line: #2d313a;
-    --c-control: #6b717b;
-    --c-accent: #4fb8b3;
-    --c-accent-strong: #6ccbc6;
-    --c-accent-soft: #12302f;
-    --c-on-accent: #0b1f1f;
+    --c-surface: #0d1317;
+    --c-raised: #151d23;
+    --c-sunken: #111a1f;
+    --c-hover: #1a252c;
+    --c-text: #e8eef0;
+    --c-muted: #9aa8b0;
+    --c-line: #26323a;
+    --c-control: #5f6f79;
+    --c-accent: #3fb6ad;
+    --c-accent-strong: #62cbc3;
+    --c-accent-soft: #0f2f2f;
+    --c-on-accent: #06201f;
     --c-ok: #5fcb8a;
-    --c-ok-soft: #16301f;
+    --c-ok-soft: #14301f;
     --c-warn: #e8b04a;
-    --c-warn-soft: #3a2c10;
+    --c-warn-soft: #382b10;
     --c-danger: #f28b82;
-    --c-danger-soft: #3c1b19;
+    --c-danger-soft: #3a1c1b;
     --c-info: #8db6e0;
     --c-info-soft: #17283b;
+    --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.35);
+    --shadow-pop: 0 24px 48px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.05);
   }
 }
 
 :root[data-theme='dark'] {
-  --c-surface: #14161a;
-  --c-raised: #1b1e24;
-  --c-text: #ecedef;
-  --c-muted: #a3a8b0;
-  --c-line: #2d313a;
-  --c-control: #6b717b;
-  --c-accent: #4fb8b3;
-  --c-accent-strong: #6ccbc6;
-  --c-accent-soft: #12302f;
-  --c-on-accent: #0b1f1f;
+  --c-surface: #0d1317;
+  --c-raised: #151d23;
+  --c-sunken: #111a1f;
+  --c-hover: #1a252c;
+  --c-text: #e8eef0;
+  --c-muted: #9aa8b0;
+  --c-line: #26323a;
+  --c-control: #5f6f79;
+  --c-accent: #3fb6ad;
+  --c-accent-strong: #62cbc3;
+  --c-accent-soft: #0f2f2f;
+  --c-on-accent: #06201f;
   --c-ok: #5fcb8a;
-  --c-ok-soft: #16301f;
+  --c-ok-soft: #14301f;
   --c-warn: #e8b04a;
-  --c-warn-soft: #3a2c10;
+  --c-warn-soft: #382b10;
   --c-danger: #f28b82;
-  --c-danger-soft: #3c1b19;
+  --c-danger-soft: #3a1c1b;
   --c-info: #8db6e0;
   --c-info-soft: #17283b;
+  --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-pop: 0 24px 48px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.05);
 }
 
 @theme inline {
   --color-surface: var(--c-surface);
   --color-raised: var(--c-raised);
+  --color-sunken: var(--c-sunken);
+  --color-hover: var(--c-hover);
   --color-ink: var(--c-text);
   --color-muted: var(--c-muted);
   --color-line: var(--c-line);
@@ -90,9 +108,22 @@
   --color-danger-soft: var(--c-danger-soft);
   --color-info: var(--c-info);
   --color-info-soft: var(--c-info-soft);
+  --shadow-panel: var(--shadow-panel);
+  --shadow-pop: var(--shadow-pop);
 }
 
 @layer base {
+  body {
+    background: var(--c-surface);
+    color: var(--c-text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2 {
+    letter-spacing: -0.015em;
+  }
+
   /* One visible focus style for every keyboard-reachable control. */
   :focus-visible {
     outline: 2px solid var(--c-accent);
@@ -103,5 +134,11 @@
   td,
   dd {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* The native dialog's backdrop. */
+  dialog::backdrop {
+    background: rgb(8 14 18 / 0.55);
+    backdrop-filter: blur(2px);
   }
 }
