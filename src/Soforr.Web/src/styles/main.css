@@ -3,77 +3,118 @@
 /*
  * Design tokens (docs/engineering/development.md, "Design system"). Screens use the semantic utilities generated below
  * (bg-surface, text-muted, border-line, bg-accent, ...) and never raw palette colors, so light and dark are decided here
- * once. Every text/background pair below meets WCAG 2.1 AA (4.5:1 text, 3:1 for control borders).
+ * once. Every text/background pair below meets WCAG 2.1 AA (4.5:1 text, 3:1 for control borders); the ratios were computed
+ * when the palette was chosen, so check any new pair before adding it.
+ *
+ * Reference: the owner's Soforr mockups (Executive Premium / Modern Finance / Next-Generation Business OS). Light: a cool
+ * mint-white workspace, white panels and sidebar, one deep mint-teal accent. Dark: a deep teal-green foundation whose layers
+ * (surface < sunken < raised < hover) step up, with a restrained bright mint accent. No gradients or glow in either theme.
+ * Status colors stay separate from the accent (ok, warn, danger, info) and always come with words.
+ *
+ * Surface layers: surface (page) < sunken (table header, insets) < raised (panels) < hover (row and control hover).
+ * nav-* tokens belong to the sidebar: it is a raised white (light) or deep teal (dark) panel; the active item is a solid accent pill.
  */
 :root {
-  --c-surface: #fbfaf8;
+  --c-surface: #f4f8f8;
   --c-raised: #ffffff;
-  --c-text: #1d2023;
-  --c-muted: #5c6169;
-  --c-line: #e3e0da;
-  --c-control: #8d9199;
-  --c-accent: #0f6b6b;
-  --c-accent-strong: #0b5555;
-  --c-accent-soft: #ddefee;
+  --c-sunken: #eaf2f1;
+  --c-hover: #eef6f5;
+  --c-text: #0f2a33;
+  --c-muted: #4d676d;
+  --c-line: #dde8e7;
+  --c-control: #7a9296;
+  --c-accent: #0a8470;
+  --c-accent-strong: #07715f;
+  --c-accent-soft: #dff4ef;
   --c-on-accent: #ffffff;
-  --c-ok: #17663a;
-  --c-ok-soft: #e3f2e8;
+  --c-ok: #0b6b4d;
+  --c-ok-soft: #ddf3ea;
   --c-warn: #8a5200;
   --c-warn-soft: #fbebd0;
   --c-danger: #b3261e;
   --c-danger-soft: #fbe3e1;
   --c-info: #2f5d8a;
   --c-info-soft: #e3edf7;
+  --c-nav: #ffffff;
+  --c-nav-ink: #0f2a33;
+  --c-nav-muted: #4d676d;
+  --c-nav-active: #0a8470;
+  --c-nav-highlight: #07715f;
+  --c-nav-line: #dde8e7;
+  --shadow-panel: 0 1px 2px rgb(15 42 51 / 0.06), 0 1px 1px rgb(15 42 51 / 0.03);
+  --shadow-pop: 0 24px 48px -12px rgb(15 42 51 / 0.3), 0 4px 12px rgb(15 42 51 / 0.08);
 }
 
 /* Dark follows the operating system unless the page says otherwise (data-theme on <html>). */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --c-surface: #14161a;
-    --c-raised: #1b1e24;
-    --c-text: #ecedef;
-    --c-muted: #a3a8b0;
-    --c-line: #2d313a;
-    --c-control: #6b717b;
-    --c-accent: #4fb8b3;
-    --c-accent-strong: #6ccbc6;
-    --c-accent-soft: #12302f;
-    --c-on-accent: #0b1f1f;
-    --c-ok: #5fcb8a;
-    --c-ok-soft: #16301f;
+    --c-surface: #071c23;
+    --c-raised: #0c2832;
+    --c-sunken: #09212a;
+    --c-hover: #123340;
+    --c-text: #e6f2f2;
+    --c-muted: #93b0b4;
+    --c-line: #164250;
+    --c-control: #4f7480;
+    --c-accent: #22b99d;
+    --c-accent-strong: #4fd6bb;
+    --c-accent-soft: #0f3a40;
+    --c-on-accent: #03211c;
+    --c-ok: #6fd9ae;
+    --c-ok-soft: #0f3a30;
     --c-warn: #e8b04a;
-    --c-warn-soft: #3a2c10;
+    --c-warn-soft: #382b10;
     --c-danger: #f28b82;
-    --c-danger-soft: #3c1b19;
+    --c-danger-soft: #3a1c22;
     --c-info: #8db6e0;
     --c-info-soft: #17283b;
+    --c-nav: #0a232c;
+    --c-nav-ink: #e6f2f2;
+    --c-nav-muted: #93b0b4;
+    --c-nav-active: #22b99d;
+    --c-nav-highlight: #4fd6bb;
+    --c-nav-line: #164250;
+    --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.35);
+    --shadow-pop: 0 24px 48px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.05);
   }
 }
 
 :root[data-theme='dark'] {
-  --c-surface: #14161a;
-  --c-raised: #1b1e24;
-  --c-text: #ecedef;
-  --c-muted: #a3a8b0;
-  --c-line: #2d313a;
-  --c-control: #6b717b;
-  --c-accent: #4fb8b3;
-  --c-accent-strong: #6ccbc6;
-  --c-accent-soft: #12302f;
-  --c-on-accent: #0b1f1f;
-  --c-ok: #5fcb8a;
-  --c-ok-soft: #16301f;
+  --c-surface: #071c23;
+  --c-raised: #0c2832;
+  --c-sunken: #09212a;
+  --c-hover: #123340;
+  --c-text: #e6f2f2;
+  --c-muted: #93b0b4;
+  --c-line: #164250;
+  --c-control: #4f7480;
+  --c-accent: #22b99d;
+  --c-accent-strong: #4fd6bb;
+  --c-accent-soft: #0f3a40;
+  --c-on-accent: #03211c;
+  --c-ok: #6fd9ae;
+  --c-ok-soft: #0f3a30;
   --c-warn: #e8b04a;
-  --c-warn-soft: #3a2c10;
+  --c-warn-soft: #382b10;
   --c-danger: #f28b82;
-  --c-danger-soft: #3c1b19;
+  --c-danger-soft: #3a1c22;
   --c-info: #8db6e0;
   --c-info-soft: #17283b;
+  --c-nav: #0a232c;
+  --c-nav-ink: #e6f2f2;
+  --c-nav-muted: #93b0b4;
+  --c-nav-active: #22b99d;
+  --c-nav-highlight: #4fd6bb;
+  --c-nav-line: #164250;
+  --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-pop: 0 24px 48px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.05);
 }
 
 @theme inline {
   --color-surface: var(--c-surface);
   --color-raised: var(--c-raised);
+  --color-sunken: var(--c-sunken);
+  --color-hover: var(--c-hover);
   --color-ink: var(--c-text);
   --color-muted: var(--c-muted);
   --color-line: var(--c-line);
@@ -90,9 +131,31 @@
   --color-danger-soft: var(--c-danger-soft);
   --color-info: var(--c-info);
   --color-info-soft: var(--c-info-soft);
+  --color-nav: var(--c-nav);
+  --color-nav-ink: var(--c-nav-ink);
+  --color-nav-muted: var(--c-nav-muted);
+  --color-nav-active: var(--c-nav-active);
+  --color-nav-highlight: var(--c-nav-highlight);
+  --color-nav-line: var(--c-nav-line);
+  --shadow-panel: var(--shadow-panel);
+  --shadow-pop: var(--shadow-pop);
+  --font-sans:
+    'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial,
+    sans-serif;
 }
 
 @layer base {
+  body {
+    background: var(--c-surface);
+    color: var(--c-text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2 {
+    letter-spacing: -0.015em;
+  }
+
   /* One visible focus style for every keyboard-reachable control. */
   :focus-visible {
     outline: 2px solid var(--c-accent);
@@ -103,5 +166,11 @@
   td,
   dd {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* The native dialog's backdrop. */
+  dialog::backdrop {
+    background: rgb(4 12 8 / 0.6);
+    backdrop-filter: blur(2px);
   }
 }

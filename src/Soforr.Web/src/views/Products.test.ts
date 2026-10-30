@@ -296,4 +296,27 @@ describe('deactivating a product', () => {
     expect(app.allByTestId('product-row').map((row) => row.textContent)).not.toContain('Rice 25kg')
     expect(app.text()).not.toContain('RICE-25')
   })
+
+  it('moves focus to the next row action after deactivating, and to the heading when none is left', async () => {
+    const { app } = await openProducts(owner)
+
+    await app.click('Deactivate Cooking oil 5l')
+    await app.click('Yes, deactivate')
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Edit Rice 25kg')
+
+    await app.click('Deactivate Rice 25kg')
+    await app.click('Yes, deactivate')
+    expect(document.activeElement?.tagName).toBe('H1')
+  })
+
+  it('returns focus to the Deactivate button when the person cancels', async () => {
+    const { app } = await openProducts(owner)
+    const opener = app.button('Deactivate Rice 25kg')
+    opener.focus()
+
+    await app.click('Deactivate Rice 25kg')
+    await app.click('Cancel')
+
+    expect(document.activeElement).toBe(opener)
+  })
 })

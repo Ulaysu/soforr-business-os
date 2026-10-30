@@ -6,7 +6,7 @@ import BaseButton from '../components/BaseButton.vue'
 import FormField from '../components/FormField.vue'
 import PageHeader from '../components/PageHeader.vue'
 import StateMessage from '../components/StateMessage.vue'
-import { inputClass } from '../components/styles'
+import { inputClass, panelClass } from '../components/styles'
 
 const session = useSession()
 const route = useRoute()
@@ -45,8 +45,11 @@ async function submit() {
 </script>
 
 <template>
-  <section class="mx-auto max-w-sm">
-    <PageHeader>Sign in</PageHeader>
+  <section :class="[panelClass, 'mx-auto mt-6 max-w-sm p-6 sm:mt-14 sm:p-8']">
+    <PageHeader>
+      Sign in
+      <template #description>Welcome back. Sign in to manage your business.</template>
+    </PageHeader>
     <form class="mt-6 space-y-4" novalidate @submit.prevent="submit">
       <FormField id="email" label="E-mail address">
         <template #default="{ aria }">
