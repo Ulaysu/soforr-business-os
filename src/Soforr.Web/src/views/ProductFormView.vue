@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useApi } from '../api/context'
 import { networkProblem, toProblem } from '../api/problem'
@@ -32,6 +32,7 @@ const loading = ref(false)
 const saving = ref(false)
 const message = ref<string | null>(null)
 const fieldErrors = ref<Record<string, string[]>>({})
+const formElement = ref<HTMLFormElement | null>(null)
 
 function text(value: number | string | null | undefined): string {
   return value === null || value === undefined ? '' : String(value)
@@ -131,10 +132,17 @@ function checkLocally(): Record<string, string[]> {
   return problems
 }
 
+/** After a failed check, move focus to the first field with an error: a screen reader then reads its label and its message. */
+async function focusFirstInvalid() {
+  await nextTick()
+  formElement.value?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+}
+
 async function submit() {
   message.value = null
   fieldErrors.value = checkLocally()
   if (Object.keys(fieldErrors.value).length > 0) {
+    await focusFirstInvalid()
     return
   }
 
@@ -172,6 +180,7 @@ async function submit() {
       Object.keys(fieldErrors.value).length > 0
         ? 'Some of the details need attention.'
         : problem.message
+    await focusFirstInvalid()
   } catch {
     if (current === generation) message.value = networkProblem().message
   } finally {
@@ -206,7 +215,7 @@ async function submit() {
 
     <StateMessage v-else-if="loading" kind="loading" class="mt-6">Loading…</StateMessage>
 
-    <form v-else class="mt-6 space-y-6" novalidate @submit.prevent="submit">
+    <form v-else ref="formElement" class="mt-6 space-y-6" novalidate @submit.prevent="submit">
       <p class="text-xs text-muted">
         <span aria-hidden="true" class="text-danger">*</span> Required
       </p>
@@ -369,10 +378,12 @@ async function submit() {
         message
       }}</StateMessage>
 
-      <div class="flex flex-wrap items-center justify-end gap-3">
+      <div
+        class="sticky bottom-0 -mx-4 flex items-center justify-end gap-3 border-t border-line bg-surface px-4 py-3 sm:static sm:mx-0 sm:border-t-0 sm:bg-transparent sm:px-0 sm:py-0"
+      >
         <RouterLink :class="buttonClass('secondary')" to="/products">Cancel</RouterLink>
         <BaseButton type="submit" :disabled="saving">{{
-          saving ? 'Saving…' : isEdit ? 'Save changes' : 'Save'
+          saving ? 'Saving…' : isEdit ? 'Save changes' : 'Create product'
         }}</BaseButton>
       </div>
     </form>

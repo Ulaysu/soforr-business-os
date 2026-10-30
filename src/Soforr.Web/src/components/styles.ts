@@ -4,8 +4,7 @@ const buttonBase =
   'inline-flex items-center justify-center gap-2 text-sm font-medium whitespace-nowrap motion-safe:transition-colors disabled:cursor-not-allowed disabled:opacity-60'
 
 const buttonVariants: Record<ButtonVariant, string> = {
-  primary:
-    'rounded-md bg-accent px-4 py-2 text-on-accent shadow-panel hover:bg-accent-strong hover:text-on-accent',
+  primary: 'rounded-md bg-accent px-4 py-2 text-on-accent shadow-panel hover:bg-accent-strong',
   secondary:
     'rounded-md border border-control bg-raised px-4 py-2 text-ink shadow-panel hover:bg-hover',
   danger: 'rounded-md bg-danger px-4 py-2 text-surface shadow-panel hover:opacity-90',

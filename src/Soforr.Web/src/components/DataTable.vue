@@ -8,17 +8,18 @@ defineProps<{ caption?: string }>()
   <div class="relative overflow-hidden rounded-lg border border-line bg-raised shadow-panel">
     <div class="overflow-x-auto">
       <table
-        class="w-full text-left text-sm [&_td]:px-3 [&_td]:py-3 [&_th]:px-3 [&_th]:py-2.5 [&_th]:text-xs [&_th]:font-medium [&_th]:tracking-wide [&_th]:whitespace-nowrap [&_th]:text-muted [&_th]:uppercase [&_thead]:border-b [&_thead]:border-line [&_thead]:bg-sunken [&_tbody_tr]:border-b [&_tbody_tr]:border-line motion-safe:[&_tbody_tr]:transition-colors [&_tbody_tr:hover]:bg-hover [&_tbody_tr:last-child]:border-b-0"
+        role="table"
+        class="w-full text-left text-sm [&_td]:px-3 [&_td]:py-3 [&_th]:px-3 [&_th]:py-2.5 [&_th]:font-medium [&_th]:whitespace-nowrap [&_th]:text-muted [&_thead]:border-b [&_thead]:border-line [&_thead]:bg-sunken [&_tbody_tr]:border-b [&_tbody_tr]:border-line motion-safe:[&_tbody_tr]:transition-colors [&_tbody_tr:hover]:bg-hover [&_tbody_tr:last-child]:border-b-0"
       >
         <caption v-if="caption" class="sr-only">
           {{
             caption
           }}
         </caption>
-        <thead>
+        <thead role="rowgroup" class="max-xl:sr-only">
           <slot name="head" />
         </thead>
-        <tbody>
+        <tbody role="rowgroup">
           <slot />
         </tbody>
       </table>

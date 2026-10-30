@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { RouterLink, RouterView, useRouter } from 'vue-router'
-import BaseButton from './components/BaseButton.vue'
 import { useSession } from './stores/session'
 
 const session = useSession()
@@ -27,6 +26,9 @@ async function signOut() {
   await session.signOut()
   await router.push({ name: 'sign-in' })
 }
+
+const signOutClass =
+  'rounded-md border border-nav-line px-3 py-1.5 text-sm font-medium text-nav-ink motion-safe:transition-colors hover:bg-nav-active focus-visible:outline-nav-highlight'
 </script>
 
 <template>
@@ -39,41 +41,39 @@ async function signOut() {
     >
     <aside
       :class="[
-        'border-b border-line bg-raised',
+        'bg-nav text-nav-ink',
         session.isSignedIn.value &&
-          'lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:shrink-0 lg:flex-col lg:border-r lg:border-b-0',
+          'lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:shrink-0 lg:flex-col',
       ]"
     >
-      <div class="flex items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-5 lg:py-5">
+      <div class="flex items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-5 lg:py-6">
         <div class="flex items-center gap-3">
           <span
             aria-hidden="true"
-            class="grid size-8 place-items-center rounded-lg bg-accent text-sm font-bold text-on-accent"
+            class="grid size-9 place-items-center rounded-lg bg-nav-highlight text-base font-bold text-nav"
             >S</span
           >
           <span class="leading-tight">
-            <span class="block text-sm font-semibold whitespace-nowrap">Soforr</span>
-            <span class="block text-xs whitespace-nowrap text-muted">Business OS</span>
+            <span class="block text-base font-semibold whitespace-nowrap">Soforr</span>
+            <span class="block text-xs whitespace-nowrap text-nav-muted">Business OS</span>
           </span>
         </div>
-        <div v-if="session.isSignedIn.value" class="flex items-center gap-3 text-sm lg:hidden">
-          <span data-testid="role-compact" class="text-muted">{{
-            session.state.account?.role ?? 'No role'
-          }}</span>
-          <BaseButton variant="secondary" @click="signOut">Sign out</BaseButton>
+        <div v-if="session.isSignedIn.value" class="flex items-center gap-3 lg:hidden">
+          <span class="text-sm text-nav-muted">{{ session.state.account?.role ?? 'No role' }}</span>
+          <button type="button" :class="signOutClass" @click="signOut">Sign out</button>
         </div>
       </div>
 
       <nav
         v-if="session.isSignedIn.value"
         aria-label="Main"
-        class="flex gap-1 px-3 pb-2 text-sm lg:flex-1 lg:flex-col lg:pb-0"
+        class="flex gap-1 px-3 pb-3 text-sm lg:flex-1 lg:flex-col lg:pb-0"
       >
         <RouterLink
           v-for="link in links"
           :key="link.to"
           :to="link.to"
-          class="flex items-center gap-3 rounded-md px-3 py-2 font-medium text-muted motion-safe:transition-colors hover:bg-hover hover:text-ink aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent-strong"
+          class="group flex items-center gap-3 rounded-md px-3 py-2 font-medium text-nav-muted motion-safe:transition-colors hover:bg-nav-active hover:text-nav-ink focus-visible:outline-nav-highlight aria-[current=page]:bg-nav-active aria-[current=page]:text-nav-highlight"
         >
           <svg
             aria-hidden="true"
@@ -91,12 +91,17 @@ async function signOut() {
         </RouterLink>
       </nav>
 
-      <div v-if="session.isSignedIn.value" class="hidden border-t border-line p-4 text-sm lg:block">
-        <p class="text-xs text-muted">Signed in as</p>
+      <div
+        v-if="session.isSignedIn.value"
+        class="hidden border-t border-nav-line p-4 text-sm lg:block"
+      >
+        <p class="text-xs text-nav-muted">Signed in as</p>
         <p data-testid="role" class="mt-0.5 font-medium">
           {{ session.state.account?.role ?? 'No role' }}
         </p>
-        <BaseButton variant="secondary" class="mt-3 w-full" @click="signOut">Sign out</BaseButton>
+        <button type="button" :class="[signOutClass, 'mt-3 w-full']" @click="signOut">
+          Sign out
+        </button>
       </div>
     </aside>
 
@@ -104,7 +109,7 @@ async function signOut() {
       id="main"
       ref="main"
       tabindex="-1"
-      class="min-w-0 flex-1 outline-none px-4 py-6 sm:px-8 lg:py-10"
+      class="min-w-0 flex-1 px-4 py-6 outline-none sm:px-8 lg:py-10"
     >
       <div class="mx-auto max-w-6xl">
         <RouterView />

@@ -139,18 +139,20 @@ async function deactivate(product: Product) {
     await restoreFocusAfterDeactivation(index)
   }
 }
+
+// Below the xl breakpoint each row becomes a stacked block (name first, then labelled facts) instead of a squeezed table row; the
+// roles on the cells keep the table semantics when the display type changes.
+const rowClass =
+  'max-xl:grid max-xl:grid-cols-2 sm:max-xl:grid-cols-4 max-xl:gap-x-4 max-xl:gap-y-3 max-xl:p-4'
+const cellClass =
+  'max-xl:block max-xl:p-0! max-xl:before:mb-0.5 max-xl:before:block max-xl:before:text-xs max-xl:before:font-normal max-xl:before:text-muted max-xl:before:content-[attr(data-label)]'
 </script>
 
 <template>
   <section ref="root">
     <PageHeader>
       Products
-      <template #description>
-        <span data-testid="products-count">{{
-          totalCount === 1 ? '1 product' : `${totalCount} products`
-        }}</span>
-        · prices, units and reorder points
-      </template>
+      <template #description>Everything you sell, with its price, cost and reorder point.</template>
       <template #actions>
         <RouterLink v-if="canManage" to="/products/new" :class="buttonClass('primary')">
           <svg
@@ -170,7 +172,7 @@ async function deactivate(product: Product) {
     </PageHeader>
 
     <div class="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
-      <div class="relative w-full max-w-sm">
+      <div class="relative w-full sm:max-w-sm">
         <label class="sr-only" for="search">Search products</label>
         <svg
           aria-hidden="true"
@@ -192,20 +194,30 @@ async function deactivate(product: Product) {
           :class="[inputClass, 'mt-0 pl-9']"
         />
       </div>
-      <label class="flex cursor-pointer items-center gap-2 text-sm">
+      <label class="flex cursor-pointer items-center gap-3 text-sm">
         <input
           id="includeInactive"
           v-model="includeInactive"
           type="checkbox"
-          class="size-4 accent-accent"
+          class="peer sr-only"
         />
+        <span
+          aria-hidden="true"
+          class="relative h-5 w-9 shrink-0 rounded-full bg-control motion-safe:transition-colors peer-checked:bg-accent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent after:absolute after:top-0.5 after:left-0.5 after:size-4 after:rounded-full after:bg-raised after:shadow-panel after:content-[''] motion-safe:after:transition-transform peer-checked:after:translate-x-4"
+        ></span>
         Show inactive
       </label>
+      <p v-if="totalCount > 0" class="text-sm text-muted sm:ml-auto" data-testid="products-count">
+        {{ totalCount === 1 ? '1 product' : `${totalCount} products` }}
+      </p>
     </div>
 
-    <StateMessage v-if="error" kind="error" data-testid="products-error" class="mt-4">
-      {{ error }}
-    </StateMessage>
+    <div v-if="error" class="mt-4 flex flex-wrap items-center gap-3">
+      <StateMessage kind="error" data-testid="products-error" class="flex-1">
+        {{ error }}
+      </StateMessage>
+      <BaseButton variant="secondary" :disabled="loading" @click="load">Try again</BaseButton>
+    </div>
 
     <div v-if="loading && items.length === 0" class="mt-6" :class="panelClass">
       <StateMessage kind="loading" class="sr-only">Loading…</StateMessage>
@@ -222,10 +234,19 @@ async function deactivate(product: Product) {
       data-testid="products-empty"
       class="mt-6 rounded-lg border border-dashed border-control bg-raised px-6 py-14 text-center"
     >
-      <StateMessage kind="empty">
+      <p class="text-base font-medium">
         {{ search.trim() ? 'No products match your search.' : 'There are no products yet.' }}
-      </StateMessage>
-      <p v-if="!search.trim() && canManage" class="mt-4">
+      </p>
+      <p class="mt-1 text-sm text-muted">
+        {{
+          search.trim()
+            ? 'Check the SKU or name, or turn on Show inactive.'
+            : canManage
+              ? 'Add your first product to start tracking its price and stock.'
+              : 'Products will appear here once someone adds them.'
+        }}
+      </p>
+      <p v-if="!search.trim() && canManage" class="mt-5">
         <RouterLink to="/products/new" :class="buttonClass('primary')">New product</RouterLink>
       </p>
     </div>
@@ -233,7 +254,7 @@ async function deactivate(product: Product) {
     <div v-if="items.length > 0" class="mt-6" :aria-busy="loading">
       <DataTable caption="Products" :class="loading && 'opacity-60'">
         <template #head>
-          <tr>
+          <tr role="row">
             <th scope="col">SKU</th>
             <th scope="col">Name</th>
             <th scope="col">Unit</th>
@@ -244,35 +265,77 @@ async function deactivate(product: Product) {
             <th v-if="canManage" scope="col"><span class="sr-only">Actions</span></th>
           </tr>
         </template>
-        <tr v-for="product in items" :key="product.id" data-testid="product-row">
-          <td class="font-mono text-xs whitespace-nowrap text-muted">{{ product.sku }}</td>
-          <td class="min-w-40 font-medium">{{ product.name }}</td>
-          <td class="text-muted">{{ product.unitOfMeasure }}</td>
-          <td class="text-right font-medium whitespace-nowrap">
+        <tr
+          v-for="product in items"
+          :key="product.id"
+          role="row"
+          data-testid="product-row"
+          :class="rowClass"
+        >
+          <td
+            role="cell"
+            data-label="SKU"
+            :class="[cellClass, 'order-2 font-mono text-xs text-muted']"
+          >
+            {{ product.sku }}
+          </td>
+          <td
+            role="cell"
+            :class="[
+              cellClass,
+              'order-1 col-span-full min-w-40 text-base font-semibold xl:text-sm',
+            ]"
+          >
+            {{ product.name }}
+          </td>
+          <td role="cell" data-label="Unit" :class="[cellClass, 'order-3 text-muted']">
+            {{ product.unitOfMeasure }}
+          </td>
+          <td
+            role="cell"
+            data-label="Price"
+            :class="[cellClass, 'order-4 font-semibold whitespace-nowrap xl:text-right']"
+          >
             {{ formatMoney(product.sellingPrice, product.currency) }}
           </td>
-          <td class="text-right whitespace-nowrap text-muted">
+          <td
+            role="cell"
+            data-label="Cost"
+            :class="[cellClass, 'order-5 whitespace-nowrap text-muted xl:text-right']"
+          >
             {{ formatMoney(product.costPrice, product.currency) }}
           </td>
-          <td class="text-right whitespace-nowrap text-muted">
+          <td
+            role="cell"
+            data-label="Reorder at"
+            :class="[cellClass, 'order-6 whitespace-nowrap text-muted xl:text-right']"
+          >
             {{ formatNumber(product.reorderPoint) }}
           </td>
-          <td>
+          <td role="cell" data-label="Status" :class="[cellClass, 'order-7']">
             <StatusBadge :tone="product.isActive ? 'ok' : 'neutral'">{{
               product.isActive ? 'Active' : 'Inactive'
             }}</StatusBadge>
           </td>
-          <td v-if="canManage" class="text-right whitespace-nowrap">
+          <td
+            v-if="canManage"
+            role="cell"
+            :class="[
+              cellClass,
+              'order-8 col-span-full max-xl:flex max-xl:gap-1 xl:text-right xl:whitespace-nowrap',
+            ]"
+          >
             <template v-if="product.isActive">
               <RouterLink
                 :to="`/products/${product.id}/edit`"
-                :class="buttonClass('link')"
+                :class="[buttonClass('link'), 'max-xl:min-h-10 max-xl:px-3']"
                 :aria-label="`Edit ${product.name}`"
               >
                 Edit
               </RouterLink>
               <BaseButton
                 variant="linkDanger"
+                class="max-xl:min-h-10 max-xl:px-3"
                 :aria-label="`Deactivate ${product.name}`"
                 @click="confirming = product.id"
               >
@@ -282,17 +345,14 @@ async function deactivate(product: Product) {
           </td>
         </tr>
         <template #footer>
-          <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <ListPager
-              v-if="pageCount > 1"
-              class="w-full"
-              :page="page"
-              :page-count="pageCount"
-              :summary="summary"
-              @go="goTo"
-            />
-            <span v-else class="text-muted" data-testid="page-summary">{{ summary }}</span>
-          </div>
+          <ListPager
+            v-if="pageCount > 1"
+            :page="page"
+            :page-count="pageCount"
+            :summary="summary"
+            @go="goTo"
+          />
+          <span v-else class="text-sm text-muted" data-testid="page-summary">{{ summary }}</span>
         </template>
       </DataTable>
     </div>

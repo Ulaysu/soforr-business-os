@@ -98,6 +98,20 @@ describe('creating a product', () => {
     expect(server.requests.some((request) => request.method === 'POST')).toBe(false)
   })
 
+  it('moves focus to the first field with an error, and marks the required fields', async () => {
+    const { app } = await openForm('/products/new', [])
+
+    await app.submit()
+
+    expect(document.activeElement).toBe(app.field('sku'))
+    for (const id of ['sku', 'unit', 'name', 'price', 'cost']) {
+      expect(app.field(id).getAttribute('aria-required')).toBe('true')
+    }
+    for (const id of ['reorder', 'lead']) {
+      expect(app.field(id).getAttribute('aria-required')).toBeNull()
+    }
+  })
+
   it("shows the server's own message under the field it is about (a duplicate SKU)", async () => {
     const { app } = await openForm('/products/new', [aProduct({ sku: 'SUGAR-50' })])
 

@@ -3,24 +3,29 @@
 /*
  * Design tokens (docs/engineering/development.md, "Design system"). Screens use the semantic utilities generated below
  * (bg-surface, text-muted, border-line, bg-accent, ...) and never raw palette colors, so light and dark are decided here
- * once. Teal is reserved for primary actions, the selected navigation item, links and focus. Every text/background pair
- * below meets WCAG 2.1 AA (4.5:1 text, 3:1 for control borders).
+ * once. Every text/background pair below meets WCAG 2.1 AA (4.5:1 text, 3:1 for control borders); the ratios were computed
+ * when the palette was chosen, so check any new pair before adding it.
  *
- * Surface layers, light: surface (page, warm off-white) < sunken (table header, inset areas) < raised (panels, white).
- * Surface layers, dark: surface (midnight) < sunken < raised (slate); hover is one step above raised.
+ * Green is the identity. Light: a white-and-stone workspace with a deep forest navigation rail and one confident green for
+ * primary actions, links and selection. Dark: a forest-black foundation whose layers (surface < sunken < raised < hover) step
+ * up in green-tinted charcoal; the accent is a restrained mid green and the highlight a lighter green. Neither theme uses
+ * gradients or glow. Status colors stay separate from the accent (ok, warn, danger, info) and always come with words.
+ *
+ * Surface layers: surface (page) < sunken (table header, insets) < raised (panels) < hover (row and control hover).
+ * nav-* tokens belong to the navigation rail, which is deep forest in both themes.
  */
 :root {
-  --c-surface: #f6f5f2;
+  --c-surface: #f4f6f2;
   --c-raised: #ffffff;
-  --c-sunken: #f0efeb;
-  --c-hover: #f3f6f5;
-  --c-text: #15201f;
-  --c-muted: #55606a;
-  --c-line: #e2e0d9;
-  --c-control: #868c94;
-  --c-accent: #0b7a73;
-  --c-accent-strong: #086c67;
-  --c-accent-soft: #dcefed;
+  --c-sunken: #edf0ec;
+  --c-hover: #f0f5f1;
+  --c-text: #13201a;
+  --c-muted: #516058;
+  --c-line: #dfe5dd;
+  --c-control: #78867d;
+  --c-accent: #177a4a;
+  --c-accent-strong: #0f6038;
+  --c-accent-soft: #dcf0e3;
   --c-on-accent: #ffffff;
   --c-ok: #17663a;
   --c-ok-soft: #e3f2e8;
@@ -30,59 +35,77 @@
   --c-danger-soft: #fbe3e1;
   --c-info: #2f5d8a;
   --c-info-soft: #e3edf7;
-  --shadow-panel: 0 1px 2px rgb(21 32 31 / 0.06), 0 1px 1px rgb(21 32 31 / 0.03);
-  --shadow-pop: 0 24px 48px -12px rgb(21 32 31 / 0.3), 0 4px 12px rgb(21 32 31 / 0.08);
+  --c-nav: #0f2a1f;
+  --c-nav-ink: #e9f2ec;
+  --c-nav-muted: #a8c1b2;
+  --c-nav-active: #1d4a35;
+  --c-nav-highlight: #7fdca4;
+  --c-nav-line: #24473a;
+  --shadow-panel: 0 1px 2px rgb(19 32 26 / 0.06), 0 1px 1px rgb(19 32 26 / 0.03);
+  --shadow-pop: 0 24px 48px -12px rgb(19 32 26 / 0.3), 0 4px 12px rgb(19 32 26 / 0.08);
 }
 
 /* Dark follows the operating system unless the page says otherwise (data-theme on <html>). */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --c-surface: #0d1317;
-    --c-raised: #151d23;
-    --c-sunken: #111a1f;
-    --c-hover: #1a252c;
-    --c-text: #e8eef0;
-    --c-muted: #9aa8b0;
-    --c-line: #26323a;
-    --c-control: #5f6f79;
-    --c-accent: #3fb6ad;
-    --c-accent-strong: #62cbc3;
-    --c-accent-soft: #0f2f2f;
-    --c-on-accent: #06201f;
-    --c-ok: #5fcb8a;
-    --c-ok-soft: #14301f;
+    --c-surface: #08120d;
+    --c-raised: #0f1d16;
+    --c-sunken: #0b1711;
+    --c-hover: #15271e;
+    --c-text: #e5efe8;
+    --c-muted: #96ab9e;
+    --c-line: #223a2e;
+    --c-control: #587364;
+    --c-accent: #3da46a;
+    --c-accent-strong: #74d39a;
+    --c-accent-soft: #123524;
+    --c-on-accent: #04170d;
+    --c-ok: #6fd195;
+    --c-ok-soft: #13301f;
     --c-warn: #e8b04a;
     --c-warn-soft: #382b10;
     --c-danger: #f28b82;
     --c-danger-soft: #3a1c1b;
     --c-info: #8db6e0;
     --c-info-soft: #17283b;
+    --c-nav: #050d09;
+    --c-nav-ink: #e5efe8;
+    --c-nav-muted: #8fa699;
+    --c-nav-active: #14301f;
+    --c-nav-highlight: #74d39a;
+    --c-nav-line: #17291f;
     --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.35);
     --shadow-pop: 0 24px 48px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.05);
   }
 }
 
 :root[data-theme='dark'] {
-  --c-surface: #0d1317;
-  --c-raised: #151d23;
-  --c-sunken: #111a1f;
-  --c-hover: #1a252c;
-  --c-text: #e8eef0;
-  --c-muted: #9aa8b0;
-  --c-line: #26323a;
-  --c-control: #5f6f79;
-  --c-accent: #3fb6ad;
-  --c-accent-strong: #62cbc3;
-  --c-accent-soft: #0f2f2f;
-  --c-on-accent: #06201f;
-  --c-ok: #5fcb8a;
-  --c-ok-soft: #14301f;
+  --c-surface: #08120d;
+  --c-raised: #0f1d16;
+  --c-sunken: #0b1711;
+  --c-hover: #15271e;
+  --c-text: #e5efe8;
+  --c-muted: #96ab9e;
+  --c-line: #223a2e;
+  --c-control: #587364;
+  --c-accent: #3da46a;
+  --c-accent-strong: #74d39a;
+  --c-accent-soft: #123524;
+  --c-on-accent: #04170d;
+  --c-ok: #6fd195;
+  --c-ok-soft: #13301f;
   --c-warn: #e8b04a;
   --c-warn-soft: #382b10;
   --c-danger: #f28b82;
   --c-danger-soft: #3a1c1b;
   --c-info: #8db6e0;
   --c-info-soft: #17283b;
+  --c-nav: #050d09;
+  --c-nav-ink: #e5efe8;
+  --c-nav-muted: #8fa699;
+  --c-nav-active: #14301f;
+  --c-nav-highlight: #74d39a;
+  --c-nav-line: #17291f;
   --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.35);
   --shadow-pop: 0 24px 48px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.05);
 }
@@ -108,8 +131,17 @@
   --color-danger-soft: var(--c-danger-soft);
   --color-info: var(--c-info);
   --color-info-soft: var(--c-info-soft);
+  --color-nav: var(--c-nav);
+  --color-nav-ink: var(--c-nav-ink);
+  --color-nav-muted: var(--c-nav-muted);
+  --color-nav-active: var(--c-nav-active);
+  --color-nav-highlight: var(--c-nav-highlight);
+  --color-nav-line: var(--c-nav-line);
   --shadow-panel: var(--shadow-panel);
   --shadow-pop: var(--shadow-pop);
+  --font-sans:
+    'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial,
+    sans-serif;
 }
 
 @layer base {
@@ -138,7 +170,7 @@
 
   /* The native dialog's backdrop. */
   dialog::backdrop {
-    background: rgb(8 14 18 / 0.55);
+    background: rgb(4 12 8 / 0.6);
     backdrop-filter: blur(2px);
   }
 }
