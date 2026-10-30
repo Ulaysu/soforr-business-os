@@ -43,7 +43,7 @@ function onBackdropClick(event: MouseEvent) {
   <dialog
     ref="dialog"
     aria-labelledby="confirm-title"
-    class="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-line bg-raised p-0 text-ink shadow-pop"
+    class="m-auto max-h-[calc(100%-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-xl border border-line bg-raised p-0 text-ink shadow-pop"
     @cancel.prevent="emit('cancel')"
     @click="onBackdropClick"
   >

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useApi } from '../api/context'
 import { networkProblem, toProblem } from '../api/problem'
@@ -29,6 +29,7 @@ const items = ref<Product[]>([])
 const totalCount = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const root = ref<HTMLElement | null>(null)
 const confirming = ref<string | null>(null)
 const deactivating = ref<string | null>(null)
 let loadGeneration = 0
@@ -98,7 +99,22 @@ function goTo(next: number) {
   void load()
 }
 
+/**
+ * After a deactivation the row the person acted on is gone or has no actions, so focus would fall to the page. Move it to the next row's
+ * action (or the one before, at the end of the list), and to the heading when no row has an action.
+ */
+async function restoreFocusAfterDeactivation(index: number) {
+  await nextTick()
+  const actions = Array.from(
+    root.value?.querySelectorAll<HTMLElement>('[data-testid="product-row"]') ?? [],
+  ).map((row) => row.querySelector<HTMLElement>('td:last-child a, td:last-child button'))
+  const target =
+    actions.slice(index).find((control) => control) ?? actions.reverse().find((control) => control)
+  ;(target ?? root.value?.querySelector<HTMLElement>('h1'))?.focus()
+}
+
 async function deactivate(product: Product) {
+  const index = items.value.findIndex((item) => item.id === product.id)
   deactivating.value = product.id
   error.value = null
   let succeeded = false
@@ -118,12 +134,15 @@ async function deactivate(product: Product) {
     confirming.value = null
   }
   // Do not reload on failure: load() clears the error and would hide why the action failed.
-  if (succeeded) await load()
+  if (succeeded) {
+    await load()
+    await restoreFocusAfterDeactivation(index)
+  }
 }
 </script>
 
 <template>
-  <section>
+  <section ref="root">
     <PageHeader>
       Products
       <template #description>
@@ -192,9 +211,9 @@ async function deactivate(product: Product) {
       <StateMessage kind="loading" class="sr-only">Loading…</StateMessage>
       <div aria-hidden="true" class="divide-y divide-line">
         <div v-for="n in 5" :key="n" class="flex items-center gap-4 px-4 py-4">
-          <span class="h-4 w-20 rounded bg-sunken motion-safe:animate-pulse"></span>
-          <span class="h-4 flex-1 rounded bg-sunken motion-safe:animate-pulse"></span>
-          <span class="hidden h-4 w-24 rounded bg-sunken motion-safe:animate-pulse sm:block"></span>
+          <span class="h-4 w-20 rounded bg-line motion-safe:animate-pulse"></span>
+          <span class="h-4 flex-1 rounded bg-line motion-safe:animate-pulse"></span>
+          <span class="hidden h-4 w-24 rounded bg-line motion-safe:animate-pulse sm:block"></span>
         </div>
       </div>
     </div>

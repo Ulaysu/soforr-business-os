@@ -30,7 +30,7 @@ async function signOut() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-surface text-ink lg:flex">
+  <div :class="['min-h-screen bg-surface text-ink', session.isSignedIn.value && 'lg:flex']">
     <a
       href="#main"
       class="sr-only rounded-md bg-raised px-4 py-2 text-sm font-medium text-ink shadow-pop focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-10"
@@ -38,7 +38,11 @@ async function signOut() {
       >Skip to content</a
     >
     <aside
-      class="border-b border-line bg-raised lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:shrink-0 lg:flex-col lg:border-r lg:border-b-0"
+      :class="[
+        'border-b border-line bg-raised',
+        session.isSignedIn.value &&
+          'lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:shrink-0 lg:flex-col lg:border-r lg:border-b-0',
+      ]"
     >
       <div class="flex items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-5 lg:py-5">
         <div class="flex items-center gap-3">
