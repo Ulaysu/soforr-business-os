@@ -6,106 +6,106 @@
  * once. Every text/background pair below meets WCAG 2.1 AA (4.5:1 text, 3:1 for control borders); the ratios were computed
  * when the palette was chosen, so check any new pair before adding it.
  *
- * Green is the identity. Light: a white-and-stone workspace with a deep forest navigation rail and one confident green for
- * primary actions, links and selection. Dark: a forest-black foundation whose layers (surface < sunken < raised < hover) step
- * up in green-tinted charcoal; the accent is a restrained mid green and the highlight a lighter green. Neither theme uses
- * gradients or glow. Status colors stay separate from the accent (ok, warn, danger, info) and always come with words.
+ * Reference: the owner's Soforr mockups (Executive Premium / Modern Finance / Next-Generation Business OS). Light: a cool
+ * mint-white workspace, white panels and sidebar, one deep mint-teal accent. Dark: a deep teal-green foundation whose layers
+ * (surface < sunken < raised < hover) step up, with a restrained bright mint accent. No gradients or glow in either theme.
+ * Status colors stay separate from the accent (ok, warn, danger, info) and always come with words.
  *
  * Surface layers: surface (page) < sunken (table header, insets) < raised (panels) < hover (row and control hover).
- * nav-* tokens belong to the navigation rail, which is deep forest in both themes.
+ * nav-* tokens belong to the sidebar: it is a raised white (light) or deep teal (dark) panel; the active item is a solid accent pill.
  */
 :root {
-  --c-surface: #f4f6f2;
+  --c-surface: #f4f8f8;
   --c-raised: #ffffff;
-  --c-sunken: #edf0ec;
-  --c-hover: #f0f5f1;
-  --c-text: #13201a;
-  --c-muted: #516058;
-  --c-line: #dfe5dd;
-  --c-control: #78867d;
-  --c-accent: #177a4a;
-  --c-accent-strong: #0f6038;
-  --c-accent-soft: #dcf0e3;
+  --c-sunken: #eaf2f1;
+  --c-hover: #eef6f5;
+  --c-text: #0f2a33;
+  --c-muted: #4d676d;
+  --c-line: #dde8e7;
+  --c-control: #7a9296;
+  --c-accent: #0a8470;
+  --c-accent-strong: #07715f;
+  --c-accent-soft: #dff4ef;
   --c-on-accent: #ffffff;
-  --c-ok: #17663a;
-  --c-ok-soft: #e3f2e8;
+  --c-ok: #0b6b4d;
+  --c-ok-soft: #ddf3ea;
   --c-warn: #8a5200;
   --c-warn-soft: #fbebd0;
   --c-danger: #b3261e;
   --c-danger-soft: #fbe3e1;
   --c-info: #2f5d8a;
   --c-info-soft: #e3edf7;
-  --c-nav: #0f2a1f;
-  --c-nav-ink: #e9f2ec;
-  --c-nav-muted: #a8c1b2;
-  --c-nav-active: #1d4a35;
-  --c-nav-highlight: #7fdca4;
-  --c-nav-line: #24473a;
-  --shadow-panel: 0 1px 2px rgb(19 32 26 / 0.06), 0 1px 1px rgb(19 32 26 / 0.03);
-  --shadow-pop: 0 24px 48px -12px rgb(19 32 26 / 0.3), 0 4px 12px rgb(19 32 26 / 0.08);
+  --c-nav: #ffffff;
+  --c-nav-ink: #0f2a33;
+  --c-nav-muted: #4d676d;
+  --c-nav-active: #0a8470;
+  --c-nav-highlight: #07715f;
+  --c-nav-line: #dde8e7;
+  --shadow-panel: 0 1px 2px rgb(15 42 51 / 0.06), 0 1px 1px rgb(15 42 51 / 0.03);
+  --shadow-pop: 0 24px 48px -12px rgb(15 42 51 / 0.3), 0 4px 12px rgb(15 42 51 / 0.08);
 }
 
 /* Dark follows the operating system unless the page says otherwise (data-theme on <html>). */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --c-surface: #08120d;
-    --c-raised: #0f1d16;
-    --c-sunken: #0b1711;
-    --c-hover: #15271e;
-    --c-text: #e5efe8;
-    --c-muted: #96ab9e;
-    --c-line: #223a2e;
-    --c-control: #587364;
-    --c-accent: #3da46a;
-    --c-accent-strong: #74d39a;
-    --c-accent-soft: #123524;
-    --c-on-accent: #04170d;
-    --c-ok: #6fd195;
-    --c-ok-soft: #13301f;
+    --c-surface: #071c23;
+    --c-raised: #0c2832;
+    --c-sunken: #09212a;
+    --c-hover: #123340;
+    --c-text: #e6f2f2;
+    --c-muted: #93b0b4;
+    --c-line: #164250;
+    --c-control: #4f7480;
+    --c-accent: #22b99d;
+    --c-accent-strong: #4fd6bb;
+    --c-accent-soft: #0f3a40;
+    --c-on-accent: #03211c;
+    --c-ok: #6fd9ae;
+    --c-ok-soft: #0f3a30;
     --c-warn: #e8b04a;
     --c-warn-soft: #382b10;
     --c-danger: #f28b82;
-    --c-danger-soft: #3a1c1b;
+    --c-danger-soft: #3a1c22;
     --c-info: #8db6e0;
     --c-info-soft: #17283b;
-    --c-nav: #050d09;
-    --c-nav-ink: #e5efe8;
-    --c-nav-muted: #8fa699;
-    --c-nav-active: #14301f;
-    --c-nav-highlight: #74d39a;
-    --c-nav-line: #17291f;
+    --c-nav: #0a232c;
+    --c-nav-ink: #e6f2f2;
+    --c-nav-muted: #93b0b4;
+    --c-nav-active: #22b99d;
+    --c-nav-highlight: #4fd6bb;
+    --c-nav-line: #164250;
     --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.35);
     --shadow-pop: 0 24px 48px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.05);
   }
 }
 
 :root[data-theme='dark'] {
-  --c-surface: #08120d;
-  --c-raised: #0f1d16;
-  --c-sunken: #0b1711;
-  --c-hover: #15271e;
-  --c-text: #e5efe8;
-  --c-muted: #96ab9e;
-  --c-line: #223a2e;
-  --c-control: #587364;
-  --c-accent: #3da46a;
-  --c-accent-strong: #74d39a;
-  --c-accent-soft: #123524;
-  --c-on-accent: #04170d;
-  --c-ok: #6fd195;
-  --c-ok-soft: #13301f;
+  --c-surface: #071c23;
+  --c-raised: #0c2832;
+  --c-sunken: #09212a;
+  --c-hover: #123340;
+  --c-text: #e6f2f2;
+  --c-muted: #93b0b4;
+  --c-line: #164250;
+  --c-control: #4f7480;
+  --c-accent: #22b99d;
+  --c-accent-strong: #4fd6bb;
+  --c-accent-soft: #0f3a40;
+  --c-on-accent: #03211c;
+  --c-ok: #6fd9ae;
+  --c-ok-soft: #0f3a30;
   --c-warn: #e8b04a;
   --c-warn-soft: #382b10;
   --c-danger: #f28b82;
-  --c-danger-soft: #3a1c1b;
+  --c-danger-soft: #3a1c22;
   --c-info: #8db6e0;
   --c-info-soft: #17283b;
-  --c-nav: #050d09;
-  --c-nav-ink: #e5efe8;
-  --c-nav-muted: #8fa699;
-  --c-nav-active: #14301f;
-  --c-nav-highlight: #74d39a;
-  --c-nav-line: #17291f;
+  --c-nav: #0a232c;
+  --c-nav-ink: #e6f2f2;
+  --c-nav-muted: #93b0b4;
+  --c-nav-active: #22b99d;
+  --c-nav-highlight: #4fd6bb;
+  --c-nav-line: #164250;
   --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.35);
   --shadow-pop: 0 24px 48px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.05);
 }

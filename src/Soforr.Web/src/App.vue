@@ -2,9 +2,11 @@
 import { ref } from 'vue'
 import { RouterLink, RouterView, useRouter } from 'vue-router'
 import { useSession } from './stores/session'
+import { useTheme } from './theme'
 
 const session = useSession()
 const router = useRouter()
+const { theme, toggle } = useTheme()
 
 // Icons are decorative (the label is always visible); 24x24 paths drawn with currentColor.
 const links = [
@@ -27,8 +29,12 @@ async function signOut() {
   await router.push({ name: 'sign-in' })
 }
 
-const signOutClass =
-  'rounded-md border border-nav-line px-3 py-1.5 text-sm font-medium text-nav-ink motion-safe:transition-colors hover:bg-nav-active focus-visible:outline-nav-highlight'
+const quietButton =
+  'rounded-md border border-nav-line px-3 py-1.5 text-sm font-medium whitespace-nowrap text-nav-ink motion-safe:transition-colors hover:bg-hover'
+
+function initial() {
+  return (session.state.account?.email ?? 'S').charAt(0).toUpperCase()
+}
 </script>
 
 <template>
@@ -41,26 +47,48 @@ const signOutClass =
     >
     <aside
       :class="[
-        'bg-nav text-nav-ink',
+        'border-b border-nav-line bg-nav text-nav-ink',
         session.isSignedIn.value &&
-          'lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:shrink-0 lg:flex-col',
+          'lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:shrink-0 lg:flex-col lg:border-r lg:border-b-0',
       ]"
     >
       <div class="flex items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-5 lg:py-6">
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2.5">
           <span
             aria-hidden="true"
-            class="grid size-9 place-items-center rounded-lg bg-nav-highlight text-base font-bold text-nav"
+            class="grid size-8 place-items-center rounded-lg bg-accent text-base font-bold text-on-accent"
             >S</span
           >
-          <span class="leading-tight">
-            <span class="block text-base font-semibold whitespace-nowrap">Soforr</span>
-            <span class="block text-xs whitespace-nowrap text-nav-muted">Business OS</span>
-          </span>
+          <span class="text-xl font-semibold tracking-tight whitespace-nowrap">Soforr.</span>
         </div>
         <div v-if="session.isSignedIn.value" class="flex items-center gap-3 lg:hidden">
-          <span class="text-sm text-nav-muted">{{ session.state.account?.role ?? 'No role' }}</span>
-          <button type="button" :class="signOutClass" @click="signOut">Sign out</button>
+          <button
+            type="button"
+            :class="[quietButton, 'grid size-9 place-items-center px-0']"
+            :aria-label="theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
+            @click="toggle"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              class="size-4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                v-if="theme === 'dark'"
+                d="M12 4v2m0 12v2M4 12h2m12 0h2M6.3 6.3l1.4 1.4m8.6 8.6l1.4 1.4m0-11.4l-1.4 1.4M7.7 16.3l-1.4 1.4M12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7z"
+              />
+              <path v-else d="M20 14.5A8 8 0 019.5 4 8 8 0 1020 14.5z" />
+            </svg>
+          </button>
+          <span class="text-sm text-nav-muted max-[24rem]:hidden">{{
+            session.state.account?.role ?? 'No role'
+          }}</span>
+          <button type="button" :class="quietButton" @click="signOut">Sign out</button>
         </div>
       </div>
 
@@ -73,7 +101,7 @@ const signOutClass =
           v-for="link in links"
           :key="link.to"
           :to="link.to"
-          class="group flex items-center gap-3 rounded-md px-3 py-2 font-medium text-nav-muted motion-safe:transition-colors hover:bg-nav-active hover:text-nav-ink focus-visible:outline-nav-highlight aria-[current=page]:bg-nav-active aria-[current=page]:text-nav-highlight"
+          class="group flex items-center gap-3 rounded-lg px-3 py-2 font-medium text-nav-muted motion-safe:transition-colors hover:bg-hover hover:text-nav-ink aria-[current=page]:bg-nav-active aria-[current=page]:text-on-accent aria-[current=page]:hover:bg-nav-active"
         >
           <svg
             aria-hidden="true"
@@ -95,13 +123,45 @@ const signOutClass =
         v-if="session.isSignedIn.value"
         class="hidden border-t border-nav-line p-4 text-sm lg:block"
       >
-        <p class="text-xs text-nav-muted">Signed in as</p>
-        <p data-testid="role" class="mt-0.5 font-medium">
-          {{ session.state.account?.role ?? 'No role' }}
-        </p>
-        <button type="button" :class="[signOutClass, 'mt-3 w-full']" @click="signOut">
-          Sign out
-        </button>
+        <div class="flex items-center gap-3">
+          <span
+            aria-hidden="true"
+            class="grid size-9 shrink-0 place-items-center rounded-full bg-accent-soft text-sm font-semibold text-accent-strong"
+            >{{ initial() }}</span
+          >
+          <div class="min-w-0">
+            <p class="text-xs text-nav-muted">Signed in as</p>
+            <p data-testid="role" class="font-medium">
+              {{ session.state.account?.role ?? 'No role' }}
+            </p>
+          </div>
+        </div>
+        <div class="mt-3 flex gap-2">
+          <button type="button" :class="[quietButton, 'flex-1']" @click="signOut">Sign out</button>
+          <button
+            type="button"
+            :class="[quietButton, 'grid size-9 shrink-0 place-items-center px-0']"
+            :aria-label="theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
+            @click="toggle"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              class="size-4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                v-if="theme === 'dark'"
+                d="M12 4v2m0 12v2M4 12h2m12 0h2M6.3 6.3l1.4 1.4m8.6 8.6l1.4 1.4m0-11.4l-1.4 1.4M7.7 16.3l-1.4 1.4M12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7z"
+              />
+              <path v-else d="M20 14.5A8 8 0 019.5 4 8 8 0 1020 14.5z" />
+            </svg>
+          </button>
+        </div>
       </div>
     </aside>
 
